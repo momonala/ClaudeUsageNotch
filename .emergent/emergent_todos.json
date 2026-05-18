@@ -1,0 +1,30 @@
+[
+  {
+    "content": "Phase 1: Research Claude usage endpoint contract (DONE)",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2A: Generate Swift Xcode scaffold (40 Swift files + docs + scripts + license)",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2B: Build FastAPI backend (zip serving, waitlist, stats, feedback endpoints)",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2C: Build React landing page (hero, notch demo, mascot, sections, accordion, waitlist)",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2D: Install frontend dependencies (framer-motion) + restart services + lint clean",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2E: End-to-end testing via testing_agent_v3",
+    "status": "in_progress"
+  },
+  {
+    "content": "Phase 2F: Fix any bugs found, then finish",
+    "status": "pending"
+  }
+]
