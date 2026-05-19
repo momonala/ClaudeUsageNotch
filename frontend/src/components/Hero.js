@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Download, Github, Star } from "lucide-react";
 import { motion } from "framer-motion";
 import { dmgDownloadUrl } from "@/lib/api";
@@ -6,6 +6,13 @@ import NotchDemo from "@/components/NotchDemo";
 import RetroMascot from "@/components/RetroMascot";
 
 export default function Hero() {
+  const [stars, setStars] = useState(null);
+  useEffect(() => {
+    fetch("https://api.github.com/repos/I-N-SILVA/NOTCHY")
+      .then((r) => r.json())
+      .then((d) => typeof d.stargazers_count === "number" && setStars(d.stargazers_count))
+      .catch(() => {});
+  }, []);
   return (
     <header className="nl-hero" data-testid="hero">
       <motion.div
@@ -59,7 +66,10 @@ export default function Hero() {
 
         <div className="nl-hero-meta">
           <Star size={12} />
-          <span>Star the repo if you find it useful</span>
+          {stars !== null
+            ? <span><strong style={{ color: "var(--text-0)" }}>{stars.toLocaleString()}</strong> stars on GitHub — add yours</span>
+            : <span>Star the repo if you find it useful</span>
+          }
         </div>
       </motion.div>
 

@@ -15,7 +15,9 @@ export default function Footer({ stats }) {
         {" "}
         <a href="https://github.com/I-N-SILVA/NOTCHY/issues" target="_blank" rel="noopener noreferrer">Issues</a> ·
         {" "}
-        <a href="https://ko-fi.com/iamnsilva" target="_blank" rel="noopener noreferrer" className="nl-kofi-link">☕ Buy me a coffee</a>
+        <a href="https://github.com/I-N-SILVA/NOTCHY/blob/main/swift-project/NotchyLimit/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contributing</a> ·
+        {" "}
+        <a href="https://ko-fi.com/iamnsilva" target="_blank" rel="noopener noreferrer" className="nl-kofi-link">☕ Support</a>
       </div>
     </footer>
   );

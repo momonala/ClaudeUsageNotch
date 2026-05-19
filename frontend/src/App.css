@@ -114,6 +114,10 @@
   background: var(--surface);
   color: var(--text-0);
 }
+@media (max-width: 768px) {
+  .nl-nav .links { display: none; }
+  .nl-nav { gap: 10px; }
+}
 .nl-cta {
   display: inline-flex;
   align-items: center;
@@ -493,6 +497,24 @@
   margin-top: 24px;
 }
 @media (max-width: 800px) { .nl-providers { grid-template-columns: 1fr; } }
+.nl-providers-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 24px;
+}
+@media (max-width: 700px) { .nl-providers-grid { grid-template-columns: 1fr; } }
+.nl-provider-featured { border-color: rgba(84, 214, 139, 0.25); }
+.nl-provider-coming { opacity: 0.85; }
+.nl-coming-list { display: grid; gap: 12px; margin: 10px 0; }
+.nl-coming-item { display: flex; align-items: center; gap: 10px; }
+.nl-contribute-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 14px;
+  font-size: 12px; color: var(--text-2); text-decoration: none;
+  transition: color 0.18s;
+}
+.nl-contribute-link:hover { color: var(--text-0); }
 .nl-provider {
   padding: 20px;
   border-radius: var(--radius);
@@ -625,6 +647,18 @@
 .nl-download p { color: var(--text-1); margin: 0 0 22px; font-size: 15px; }
 .nl-download .buttons { display: inline-flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .nl-download .meta { margin-top: 18px; font-size: 12px; color: var(--text-2); font-family: var(--font-mono); }
+.nl-download-sub {
+  display: flex; align-items: center; justify-content: center;
+  gap: 16px; flex-wrap: wrap;
+  margin-top: 18px;
+}
+.nl-download-star {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--text-2); text-decoration: none;
+  transition: color 0.18s;
+}
+.nl-download-star:hover { color: var(--amber); }
+.nl-download-meta { font-size: 12px; color: var(--text-2); font-family: var(--font-mono); }
 
 /* Footer */
 .nl-footer {

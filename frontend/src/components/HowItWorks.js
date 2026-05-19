@@ -5,11 +5,12 @@ import { motion } from "framer-motion";
 const steps = [
   {
     icon: <Cookie size={18} />,
-    title: "Paste your cookie",
+    title: "Grab your session token",
     body: (
       <>
-        Open <kbd>claude.ai/settings/usage</kbd>, copy the <kbd>Cookie</kbd> header
-        from the <kbd>usage</kbd> network request, and paste it into Notchy Limit.
+        Sign into <kbd>claude.ai</kbd>, open DevTools (<kbd>⌘+⌥+I</kbd>), and
+        copy one value from the Network tab. Takes 30 seconds — stored in your
+        macOS Keychain, never on disk, never logged.
       </>
     ),
   },

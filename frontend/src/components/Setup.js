@@ -3,15 +3,32 @@ import { ChevronDown } from "lucide-react";
 
 const items = [
   {
-    q: "How do I get my Claude cookie?",
+    q: "How do I get my session token?",
     a: (
-      <ol>
-        <li>Open <code>claude.ai/settings/usage</code> in your browser.</li>
-        <li>Open DevTools (<code>⌘+⌥+I</code>) and switch to the <strong>Network</strong> tab.</li>
-        <li>Refresh the page. Find the request named <code>usage</code>.</li>
-        <li>Under <strong>Request Headers</strong>, copy the full <code>Cookie</code> value.</li>
-        <li>Paste it into the Notchy Limit onboarding step.</li>
-      </ol>
+      <>
+        <p style={{ marginBottom: 10, color: "var(--text-2)", fontSize: 12 }}>
+          Takes about 30 seconds. No extensions, no scripts — just your browser's built-in DevTools.
+        </p>
+        <ol>
+          <li>Open <code>claude.ai</code> and make sure you're logged in.</li>
+          <li>Press <code>⌘+⌥+I</code> to open DevTools, then click the <strong>Network</strong> tab.</li>
+          <li>Refresh the page (<code>⌘+R</code>). A list of requests will appear.</li>
+          <li>Click the request named <strong>usage</strong> (filter by "usage" if needed).</li>
+          <li>Under <strong>Request Headers</strong>, find and copy the full <code>Cookie</code> value.</li>
+          <li>Paste it into Notchy's setup screen and hit <strong>Validate</strong>.</li>
+        </ol>
+        <p style={{ marginTop: 10, fontSize: 12, color: "var(--text-2)" }}>
+          Your token is stored in the macOS <strong>Keychain</strong> — never on disk, never logged.{" "}
+          <a
+            href="https://github.com/I-N-SILVA/NOTCHY/blob/main/swift-project/NotchyLimit/docs/COOKIE_SETUP.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "var(--cool)" }}
+          >
+            Full guide with screenshots →
+          </a>
+        </p>
+      </>
     ),
   },
   {
