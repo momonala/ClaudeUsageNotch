@@ -54,13 +54,52 @@ struct OnboardingView: View {
     }
 
     private var welcomeStep: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("See your Claude limits at a glance.")
-                .font(.title3.weight(.semibold))
-                .foregroundColor(Theme.textPrimary)
-            Text("A tiny pill lives in your notch. Hover for details. Everything stays on your Mac.")
-                .font(Theme.bodyFont)
-                .foregroundColor(Theme.textSecondary)
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("See your Claude limits at a glance.")
+                    .font(.title3.weight(.semibold))
+                    .foregroundColor(Theme.textPrimary)
+                Text("A tiny pill lives in your notch. Hover for details. Everything stays on your Mac.")
+                    .font(Theme.bodyFont)
+                    .foregroundColor(Theme.textSecondary)
+            }
+
+            // Live preview of the compact pill so users know exactly what they'll see
+            VStack(spacing: 8) {
+                Text("This will live in your notch:")
+                    .font(Theme.captionFont)
+                    .foregroundColor(Theme.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+
+                HStack(spacing: 0) {
+                    // Simulated notch hardware (black bar above)
+                    VStack(spacing: 0) {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Color.black)
+                            .frame(width: 130, height: 22)
+                            .overlay(
+                                Text("camera")
+                                    .font(.system(size: 7))
+                                    .foregroundColor(Color.white.opacity(0.15))
+                            )
+                        // The pill preview extending below
+                        OnboardingPillPreview()
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+
+                Text("Hover it to expand. Click to pin.")
+                    .font(Theme.captionFont)
+                    .foregroundColor(Theme.textSecondary.opacity(0.6))
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Theme.surface)
+                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(Theme.stroke))
+            )
         }
     }
 
@@ -175,7 +214,11 @@ struct OnboardingView: View {
         validateError = nil
         validating = true
         let credential = ClaudeCredential(cookie: cookieInput.trimmingCharacters(in: .whitespacesAndNewlines))
-        AuthService.shared.saveClaudeCredential(credential)
+        if let err = AuthService.shared.saveClaudeCredential(credential) {
+            validateError = err
+            validating = false
+            return
+        }
         step = .validate
         Task {
             do {
@@ -199,6 +242,63 @@ struct OnboardingView: View {
                     validating = false
                 }
             }
+        }
+    }
+}
+
+// MARK: - Onboarding pill preview
+
+/// Animated replica of the compact pill used in the welcome step.
+/// Cycles through healthy → warning → critical to show mood-reactive colours.
+private struct OnboardingPillPreview: View {
+    @State private var demoPercent: Double = 0.42
+    @State private var glowPulse = false
+    private let demoValues: [Double] = [0.42, 0.71, 0.88, 0.42]
+    @State private var demoIndex = 0
+
+    var body: some View {
+        let status: UsageStatus = demoPercent >= 0.9 ? .critical : demoPercent >= 0.7 ? .warning : .healthy
+        let color = status.color
+
+        HStack(spacing: 7) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(glowPulse ? 0.32 : 0.12))
+                    .frame(width: 12, height: 12)
+                    .blur(radius: 3)
+                Circle().fill(color).frame(width: 5, height: 5)
+            }
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.white.opacity(0.08))
+                Capsule()
+                    .fill(LinearGradient(colors: [color.opacity(0.75), color], startPoint: .leading, endPoint: .trailing))
+                    .frame(width: max(4, CGFloat(demoPercent) * 80))
+            }
+            .frame(width: 80, height: 3)
+            Text("\(Int((demoPercent * 100).rounded()))%")
+                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                .foregroundColor(.white.opacity(0.88))
+                .frame(minWidth: 25, alignment: .trailing)
+        }
+        .padding(.horizontal, 10)
+        .frame(width: 220, height: 22)
+        .background(NotchPillShape(topRadius: 0, bottomRadius: 12).fill(Color.black))
+        .shadow(color: color.opacity(0.4), radius: 8, y: 4)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
+                glowPulse = true
+            }
+            // Cycle through demo values every 2 s
+            func cycle() {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    demoIndex = (demoIndex + 1) % demoValues.count
+                    withAnimation(.spring(response: 0.6, dampingFraction: 0.75)) {
+                        demoPercent = demoValues[demoIndex]
+                    }
+                    cycle()
+                }
+            }
+            cycle()
         }
     }
 }

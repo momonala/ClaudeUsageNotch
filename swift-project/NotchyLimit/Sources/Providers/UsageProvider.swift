@@ -11,6 +11,8 @@ public protocol UsageProvider: AnyObject {
     var id: ProviderId { get }
     var displayName: String { get }
     var requiresCookie: Bool { get }
+    /// False for stub/future providers; UI gates on this so they never reach fetchUsage.
+    var isAvailable: Bool { get }
 
     func validateCredentials() async throws
     func fetchUsage() async throws -> ServiceUsageSnapshot

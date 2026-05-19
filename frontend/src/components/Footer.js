@@ -11,9 +11,9 @@ export default function Footer({ stats }) {
       <div>
         Built for the Claude community ·
         {" "}
-        <a href="https://github.com/notchylimit/notchy-limit" target="_blank" rel="noopener noreferrer">GitHub</a> ·
+        <a href="https://github.com/I-N-SILVA/NOTCHY" target="_blank" rel="noopener noreferrer">GitHub</a> ·
         {" "}
-        <a href="https://github.com/notchylimit/notchy-limit/issues" target="_blank" rel="noopener noreferrer">Issues</a>
+        <a href="https://github.com/I-N-SILVA/NOTCHY/issues" target="_blank" rel="noopener noreferrer">Issues</a>
       </div>
     </footer>
   );

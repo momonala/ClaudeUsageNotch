@@ -17,7 +17,7 @@ export default function Nav() {
         <a href="#privacy" data-testid="nav-privacy">Privacy</a>
       </div>
       <a
-        href="https://github.com/notchylimit/notchy-limit"
+        href="https://github.com/I-N-SILVA/NOTCHY"
         target="_blank"
         rel="noopener noreferrer"
         className="nl-cta ghost"

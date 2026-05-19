@@ -2,40 +2,46 @@ import SwiftUI
 
 struct WeeklyCard: View {
     let window: UsageWindow
-    var title: String = "This week"
+    var title: String   = "This week"
     var subtitle: String? = nil
 
     var body: some View {
-        let pct = window.percentUsed
+        let pct    = window.percentUsed
         let status = window.status
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
+        let color  = status.color
+
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 5) {
                     Text(title)
-                        .font(Theme.captionFont.weight(.semibold))
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundColor(Theme.textPrimary)
-                    if let subtitle = subtitle {
-                        Text(subtitle)
-                            .font(Theme.captionFont)
+                    if let sub = subtitle {
+                        Text(sub)
+                            .font(.system(size: 10, design: .rounded))
                             .foregroundColor(Theme.textSecondary)
                     }
                 }
-                CompactProgressBar(progress: pct, color: status.color)
-                    .frame(height: 4)
+                CompactProgressBar(progress: pct, color: color)
+                    .frame(height: 3)
                 Text(window.timeToResetString() ?? " ")
-                    .font(Theme.captionFont)
+                    .font(.system(size: 10, design: .rounded))
                     .foregroundColor(Theme.textSecondary)
             }
             Spacer()
             Text("\(Int((pct * 100).rounded()))%")
-                .font(Theme.numericFont)
-                .foregroundColor(status.color)
+                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                .foregroundColor(color)
         }
-        .padding(10)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Theme.surface.opacity(0.6))
-                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.stroke))
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(color.opacity(0.06))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(color.opacity(0.18), lineWidth: 0.75)
+                )
         )
     }
 }

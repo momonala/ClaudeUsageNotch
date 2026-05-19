@@ -1,5 +1,5 @@
 import React from "react";
-import { Download, Github } from "lucide-react";
+import { Download, Github, Star } from "lucide-react";
 import { motion } from "framer-motion";
 import { dmgDownloadUrl } from "@/lib/api";
 import NotchDemo from "@/components/NotchDemo";
@@ -9,50 +9,65 @@ export default function Hero() {
   return (
     <header className="nl-hero" data-testid="hero">
       <motion.div
-        initial={{ opacity: 0, y: 16 }}
+        className="nl-hero-copy"
+        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
+        transition={{ duration: 0.55, ease: "easeOut" }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <RetroMascot size={56} />
-          <div style={{ fontSize: 12, color: "var(--text-2)", letterSpacing: "0.16em", textTransform: "uppercase" }}>
-            Open source · MIT · macOS
+        {/* Badge row */}
+        <div className="nl-hero-badge-row">
+          <RetroMascot size={44} />
+          <div className="nl-hero-badges">
+            <span className="nl-badge accent">Free &amp; Open Source</span>
+            <span className="nl-badge">MIT License</span>
+            <span className="nl-badge">macOS 12+</span>
           </div>
         </div>
+
         <h1>
-          See your AI limits<br />
-          <span className="pop">at a glance.</span>
+          Your notch.<br />
+          <span className="pop">Now showing your AI limits.</span>
         </h1>
-        <p>
-          Notchy Limit lives in your MacBook notch. A tiny pill shows your
-          session usage. Hover for the full picture — session, weekly, and reset times,
-          all local, all yours.
+
+        <p className="nl-hero-lead">
+          A tiny pill blends seamlessly with your MacBook notch and shows your
+          Claude usage at a glance. Hover to expand — session %, weekly quota,
+          time to reset. Everything runs locally. Nothing leaves your Mac.
         </p>
+
+        {/* Feature bullets */}
+        <ul className="nl-hero-bullets">
+          <li><span className="bull-dot healthy" /> Session &amp; weekly usage, always visible</li>
+          <li><span className="bull-dot warn" /> Threshold alerts at 25 / 50 / 75 / 90%</li>
+          <li><span className="bull-dot" style={{ background: "var(--cool)" }} /> Cookie stored in Keychain — never logged</li>
+        </ul>
+
         <div className="actions">
-          <a href={dmgDownloadUrl()} className="nl-cta" data-testid="hero-download">
-            <Download size={16} /> Download for macOS
-          </a>
           <a
-            href="https://github.com/notchylimit/notchy-limit"
+            href="https://github.com/I-N-SILVA/NOTCHY"
             target="_blank"
             rel="noopener noreferrer"
-            className="nl-cta ghost"
+            className="nl-cta"
             data-testid="hero-github"
           >
             <Github size={16} /> View on GitHub
           </a>
+          <a href={dmgDownloadUrl()} className="nl-cta ghost" data-testid="hero-download">
+            <Download size={16} /> Build from source
+          </a>
         </div>
-        <div className="pills">
-          <span className="nl-pill"><span className="ind" /> Claude supported</span>
-          <span className="nl-pill">Gemini next</span>
-          <span className="nl-pill">Local-only · Keychain</span>
+
+        <div className="nl-hero-meta">
+          <Star size={12} />
+          <span>Star the repo if you find it useful</span>
         </div>
       </motion.div>
 
       <motion.div
-        initial={{ opacity: 0, y: 24 }}
+        className="nl-hero-demo"
+        initial={{ opacity: 0, y: 28 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, ease: "easeOut", delay: 0.1 }}
+        transition={{ duration: 0.65, ease: "easeOut", delay: 0.12 }}
       >
         <NotchDemo />
       </motion.div>

@@ -16,7 +16,7 @@ export default function Download({ stats }) {
             <FileCode size={16} /> Download source (.zip)
           </a>
           <a
-            href="https://github.com/notchylimit/notchy-limit"
+            href="https://github.com/I-N-SILVA/NOTCHY"
             target="_blank"
             rel="noopener noreferrer"
             className="nl-cta ghost"

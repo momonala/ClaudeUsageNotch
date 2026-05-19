@@ -21,6 +21,7 @@ public final class AppState: ObservableObject {
     @Published public var pollIntervalSeconds: TimeInterval = 300
     @Published public var notificationsEnabled: Bool = true
     @Published public var thresholds: [Double] = [0.25, 0.5, 0.75, 0.9]
+    @Published public var launchAtLogin: Bool = false
 
     // Convenience accessors used by views
     public var sessionPercent: Double {

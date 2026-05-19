@@ -7,6 +7,7 @@ final class GeminiProvider: UsageProvider {
     let id: ProviderId = .gemini
     let displayName: String = "Gemini"
     let requiresCookie: Bool = true
+    let isAvailable: Bool = false
 
     func validateCredentials() async throws {
         throw ProviderError.unknown("Gemini provider is not implemented yet.")

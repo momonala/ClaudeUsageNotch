@@ -103,8 +103,23 @@ struct SettingsView: View {
                 UsageService.shared.updateInterval(newValue)
             }
 
+            if #available(macOS 13.0, *) {
+                Toggle("Launch at login", isOn: $appState.launchAtLogin)
+                    .toggleStyle(.switch)
+                    .foregroundColor(Theme.textPrimary)
+            }
+
             Button("Open Diagnostics") { appState.showDiagnostics = true }
                 .buttonStyle(.bordered)
+
+            Divider().background(Theme.stroke)
+
+            Button("Quit Notchy Limit") {
+                NSApplication.shared.terminate(nil)
+            }
+            .buttonStyle(.bordered)
+            .foregroundColor(Theme.statusCritical)
+
             Spacer()
         }
         .padding(.vertical, 8)

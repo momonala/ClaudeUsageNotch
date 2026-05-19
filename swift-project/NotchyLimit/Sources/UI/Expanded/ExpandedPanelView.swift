@@ -1,35 +1,94 @@
 import SwiftUI
 
-/// Expanded notch panel. Shown on hover-expand or click-pin.
+/// Expanded notch panel.
+///
+/// Panel frame is `notchH + 300` tall, anchored at screen top.
+/// The top `notchH` points are pure black and overlap the hardware notch.
+/// Everything visible lives in the lower 300 pt glass card.
+///
+/// Content reveal is delayed by 0.14 s so it fades in after the
+/// stretchy width animation settles (phase 1 of the frame morph).
 struct ExpandedPanelView: View {
     @ObservedObject var appState: AppState
     let controller: NotchWindowController
+    @State private var appeared = false
+
+    private var statusColor: Color { appState.sessionStatus.color }
+    private var notchH: CGFloat    { ScreenUtils.notchScreen().safeAreaInsets.top }
 
     var body: some View {
-        ZStack {
-            GlassBackground(cornerRadius: 22)
-            VStack(alignment: .leading, spacing: 14) {
-                HeaderRow(appState: appState, controller: controller)
-                SessionCard(appState: appState)
-                if let weekly = appState.latestSnapshot?.secondaryWindow {
-                    WeeklyCard(window: weekly)
+        ZStack(alignment: .bottom) {
+            // Black notch-overlap fill — blends with hardware above.
+            Color.black.frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            // Glass card — the 300 pt visible portion below the notch.
+            ZStack(alignment: .topTrailing) {
+                NotchGlassBackground(topRadius: 10, bottomRadius: 20, tintColor: statusColor)
+                    .shadow(color: statusColor.opacity(0.18), radius: 18, y: 6)
+                    .shadow(color: .black.opacity(0.55), radius: 28, y: 10)
+
+                // Pinned badge — appears when user has clicked to lock the panel open
+                if appState.notchState == .expandedPinned {
+                    HStack(spacing: 3) {
+                        Image(systemName: "pin.fill")
+                            .font(.system(size: 8, weight: .semibold))
+                        Text("Pinned")
+                            .font(.system(size: 9, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundColor(Theme.textSecondary.opacity(0.7))
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(Theme.surface))
+                    .padding(.top, 8)
+                    .padding(.trailing, 10)
+                    .transition(.opacity.combined(with: .scale(scale: 0.85, anchor: .topTrailing)))
                 }
-                if let weeklySonnet = appState.latestSnapshot?.tertiaryWindow {
-                    WeeklyCard(window: weeklySonnet,
-                               title: "Weekly Sonnet",
-                               subtitle: "Pro plan")
+
+                VStack(alignment: .leading, spacing: 10) {
+                    HeaderRow(appState: appState, controller: controller)
+                    SessionCard(appState: appState)
+
+                    if let weekly = appState.latestSnapshot?.secondaryWindow {
+                        WeeklyCard(window: weekly)
+                    }
+                    if let weeklySonnet = appState.latestSnapshot?.tertiaryWindow {
+                        WeeklyCard(window: weeklySonnet,
+                                   title: "Weekly Sonnet",
+                                   subtitle: "Pro plan")
+                    }
+
+                    Spacer(minLength: 0)
+                    ActionsRow(appState: appState, controller: controller)
+                    FooterRow()
                 }
-                PaceRow(appState: appState)
-                Spacer(minLength: 0)
-                ActionsRow(appState: appState, controller: controller)
-                FooterRow()
+                .padding(16)
             }
-            .padding(18)
+            .frame(width: 380, height: 300)
+            // Grows downward from the notch — anchored at top edge.
+            .scaleEffect(appeared ? 1 : 0.90, anchor: .top)
+            .opacity(appeared ? 1 : 0)
         }
-        .frame(width: 360, height: 320)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Delay content reveal so it syncs with phase-2 of the frame stretch.
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
+                withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
+                    appeared = true
+                }
+            }
+        }
         .background(KeyEventCatcher { key in
-            if key == "\u{1B}" { controller.userPressedEscape() }  // ESC
+            if key == "\u{1B}" { controller.userPressedEscape() }
         })
+        .sheet(isPresented: $appState.showOnboarding) {
+            OnboardingView(appState: appState).frame(width: 420, height: 480)
+        }
+        .sheet(isPresented: $appState.showSettings) {
+            SettingsView(appState: appState).frame(width: 440, height: 520)
+        }
+        .sheet(isPresented: $appState.showDiagnostics) {
+            DiagnosticsView(appState: appState).frame(width: 420, height: 360)
+        }
     }
 }
 

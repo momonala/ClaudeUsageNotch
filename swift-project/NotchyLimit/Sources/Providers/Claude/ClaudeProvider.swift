@@ -6,6 +6,7 @@ final class ClaudeProvider: UsageProvider {
     let id: ProviderId = .claude
     let displayName: String = "Claude"
     let requiresCookie: Bool = true
+    let isAvailable: Bool = true
 
     private let session: URLSession
 

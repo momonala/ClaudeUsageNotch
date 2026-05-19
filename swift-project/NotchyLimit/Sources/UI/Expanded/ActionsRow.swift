@@ -18,6 +18,9 @@ struct ActionsRow: View {
             actionButton(label: "Diagnostics", icon: "stethoscope") {
                 appState.showDiagnostics = true
             }
+            actionButton(label: "Quit", icon: "power") {
+                NSApplication.shared.terminate(nil)
+            }
         }
     }
 

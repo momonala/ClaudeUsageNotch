@@ -155,7 +155,7 @@ export default function NotchDemo() {
                   </div>
                   <div className="panel-foot">
                     <span>v0.1.0</span>
-                    <a href="https://github.com/notchylimit/notchy-limit" target="_blank" rel="noopener noreferrer">GitHub</a>
+                    <a href="https://github.com/I-N-SILVA/NOTCHY" target="_blank" rel="noopener noreferrer">GitHub</a>
                   </div>
                 </motion.div>
               ) : (
