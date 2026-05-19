@@ -23,16 +23,25 @@ public final class NotificationService {
 
         var dirty = false
         for (window, label) in windows where window.percentUsed > 0 {
+            // Collect all thresholds newly crossed in this poll cycle (sorted low → high).
+            var newlyCrossed: [(threshold: Double, key: String)] = []
             for threshold in thresholds.sorted() {
                 let key = "\(providerId.rawValue):\(label):\(threshold):\(window.resetAt?.timeIntervalSince1970 ?? 0)"
                 if window.percentUsed >= threshold && lastFired[key] == nil {
-                    lastFired[key] = threshold
-                    dirty = true
-                    fire(
-                        title: "\(providerId.displayName) \(label) \(Int(threshold * 100))% used",
-                        body: usageBody(window: window, label: label)
-                    )
+                    newlyCrossed.append((threshold, key))
                 }
+            }
+
+            // Mark all of them fired, but only notify once — for the highest.
+            for (threshold, key) in newlyCrossed {
+                lastFired[key] = threshold
+                dirty = true
+            }
+            if let highest = newlyCrossed.last {
+                fire(
+                    title: "\(providerId.displayName) \(label) \(Int(highest.threshold * 100))% used",
+                    body: usageBody(window: window, label: label)
+                )
             }
         }
         if dirty { saveLastFired() }

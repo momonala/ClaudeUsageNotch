@@ -51,6 +51,8 @@ backend_test.py
 test_reports/
 test_result.md
 tests/
+.gitconfig
+.emergent/
 
 # ── Credentials / secrets ─────────────────────────────────────────────────────
 .env
