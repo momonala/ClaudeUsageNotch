@@ -50,7 +50,7 @@ export default function NotchDemo() {
     <div data-testid="notch-demo">
       <div className="nl-laptop" aria-label="MacBook notch preview">
         <div className="screen-bezel">
-          <div className="wall" />
+          <img className="wall" src="/demo.gif" alt="" aria-hidden="true" />
           <div className="menubar" aria-hidden="true">
             <span> Finder</span>
             <span>File</span>
