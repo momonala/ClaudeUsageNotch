@@ -5,6 +5,16 @@
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#000000" />
         <meta name="description" content="Turn your MacBook notch into a real-time Claude AI usage monitor. Free, open-source, zero telemetry." />
+
+        <!-- Open Graph / Twitter Card -->
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="NOTCHY — Claude usage in your MacBook notch" />
+        <meta property="og:description" content="A tiny pill blends with your MacBook notch and shows your Claude limits live. Free, open-source, zero telemetry." />
+        <meta property="og:image" content="%PUBLIC_URL%/demo.gif" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="NOTCHY — Claude usage in your MacBook notch" />
+        <meta name="twitter:description" content="A tiny pill blends with your MacBook notch and shows your Claude limits live. Free, open-source, zero telemetry." />
+        <meta name="twitter:image" content="%PUBLIC_URL%/demo.gif" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap" rel="stylesheet" />
@@ -106,6 +116,17 @@
                     recordCrossOriginIframes: true,
                     capturePerformance: false,
                 },
+            });
+        </script>
+
+        <!-- Ko-fi floating support widget -->
+        <script src="https://storage.ko-fi.com/cdn/scripts/overlay-widget.js"></script>
+        <script>
+            kofiWidgetOverlay.draw('iamnsilva', {
+                'type': 'floating-chat',
+                'floating-chat.donateButton.text': 'Support me',
+                'floating-chat.donateButton.background-color': '#ff8a66',
+                'floating-chat.donateButton.text-color': '#1a0d09'
             });
         </script>
     </body>

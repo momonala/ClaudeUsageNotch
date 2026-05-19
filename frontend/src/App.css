@@ -642,8 +642,11 @@
   font-family: var(--font-mono);
 }
 .nl-footer .left { display: flex; align-items: center; gap: 12px; }
+.nl-footer-links { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .nl-footer a { color: var(--text-1); text-decoration: none; }
 .nl-footer a:hover { color: var(--text-0); }
+.nl-kofi-link { color: var(--warm) !important; font-weight: 600; transition: opacity 0.18s; }
+.nl-kofi-link:hover { opacity: 0.8; color: var(--warm) !important; }
 
 /* Color tokens for fill bars */
 .nl-fill-healthy { background: linear-gradient(90deg, var(--green), #79e6a6); box-shadow: 0 0 10px var(--green); }
