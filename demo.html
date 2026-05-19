@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>NOTCHY Demo</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #07070a;
+    display: flex; align-items: center; justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  /* ── Scene ── */
+  .scene {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+  }
+
+  /* ── MacBook shell ── */
+  .mac {
+    width: 560px;
+    background: #1a1a1e;
+    border-radius: 20px 20px 8px 8px;
+    border: 1.5px solid #333338;
+    box-shadow:
+      0 0 0 1px #111,
+      0 40px 100px rgba(0,0,0,0.7),
+      inset 0 1px 0 rgba(255,255,255,0.06);
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Screen area */
+  .screen {
+    background: #07070a;
+    margin: 8px 8px 0;
+    border-radius: 14px 14px 0 0;
+    height: 320px;
+    position: relative;
+    overflow: hidden;
+  }
+  /* wallpaper gradient */
+  .screen::before {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(600px 400px at 20% -20%, rgba(255,138,102,0.18), transparent 60%),
+      radial-gradient(500px 350px at 85% 5%, rgba(110,240,245,0.14), transparent 60%);
+    pointer-events: none;
+  }
+
+  /* Physical notch cutout */
+  .notch-cut {
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 120px; height: 32px;
+    background: #1a1a1e; /* matches mac body */
+    border-radius: 0 0 14px 14px;
+    z-index: 20;
+  }
+
+  /* Menu bar */
+  .menubar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 28px;
+    display: flex; align-items: center;
+    padding: 0 16px;
+    gap: 14px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.7);
+    z-index: 10;
+    background: rgba(7,7,10,0.8);
+    backdrop-filter: blur(10px);
+  }
+  .menubar .apple { font-size: 13px; }
+  .menubar .right { margin-left: auto; font-size: 11px; color: rgba(255,255,255,0.55); }
+
+  /* Notch pill host — sits just below the physical notch */
+  .pill-host {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* ── Compact pill ── */
+  .pill {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(18,18,22,0.92);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px;
+    padding: 4px 12px 4px 8px;
+    margin-top: 4px;
+    cursor: pointer;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.5);
+    backdrop-filter: blur(16px);
+    transition: opacity 0.2s, transform 0.2s;
+    white-space: nowrap;
+  }
+  .pill.hidden { opacity: 0; transform: scale(0.94) translateY(-4px); pointer-events: none; }
+
+  .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 6px currentColor;
+  }
+  .dot.healthy { background: #54d68b; color: #54d68b; }
+  .dot.warning { background: #ffc83d; color: #ffc83d; }
+  .dot.critical { background: #ff6b62; color: #ff6b62; }
+
+  .pill-bar {
+    width: 38px; height: 3px;
+    background: rgba(255,255,255,0.12);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .pill-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: #54d68b;
+    transition: width 0.8s ease, background 0.5s;
+  }
+  .pill-pct {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.88);
+    letter-spacing: -0.01em;
+  }
+
+  /* ── Expanded panel ── */
+  .panel {
+    width: 240px;
+    background: rgba(12,12,18,0.95);
+    border: 1px solid rgba(255,255,255,0.11);
+    border-radius: 0 0 18px 18px;
+    backdrop-filter: blur(24px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+    overflow: hidden;
+    transform-origin: top center;
+    transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34,1.56,0.64,1), max-height 0.3s ease;
+    opacity: 0;
+    transform: scaleY(0.6) translateY(-20px);
+    max-height: 0;
+    pointer-events: none;
+  }
+  .panel.visible {
+    opacity: 1;
+    transform: scaleY(1) translateY(0);
+    max-height: 300px;
+    pointer-events: auto;
+  }
+
+  .panel-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 14px 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+  .panel-head .title { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.88); }
+  .panel-head .sub { font-size: 10px; color: rgba(255,255,255,0.42); }
+
+  .card {
+    margin: 8px 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .card-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .card-label { font-size: 11px; color: rgba(255,255,255,0.48); }
+  .card-value { font-size: 18px; font-weight: 800; letter-spacing: -0.03em; }
+  .card-value.healthy { color: #54d68b; }
+  .card-value.warning { color: #ffc83d; }
+  .card-value.critical { color: #ff6b62; }
+  .bar { height: 5px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; position: relative; }
+  .bar-fill { height: 100%; border-radius: 3px; position: absolute; inset: 0; transition: width 0.8s ease, background 0.5s; }
+  .bar-fill.healthy { background: #54d68b; }
+  .bar-fill.warning { background: #ffc83d; }
+  .bar-fill.critical { background: #ff6b62; }
+  .card-meta { display: flex; justify-content: space-between; margin-top: 5px; font-size: 10px; color: rgba(255,255,255,0.35); }
+
+  .card.secondary { margin-top: 0; }
+  .card.secondary .card-value { font-size: 13px; }
+
+  .actions {
+    display: flex; gap: 6px;
+    padding: 8px 10px 12px;
+  }
+  .action-btn {
+    flex: 1; padding: 6px 4px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.55);
+    text-align: center;
+    cursor: pointer;
+  }
+
+  /* ── Caption ── */
+  .caption {
+    font-size: 13px;
+    color: rgba(255,255,255,0.38);
+    text-align: center;
+  }
+  .caption span { color: rgba(255,255,255,0.6); }
+
+  /* Mac base */
+  .mac-base {
+    height: 12px;
+    background: linear-gradient(to bottom, #1a1a1e, #111115);
+    border-top: 1px solid rgba(255,255,255,0.05);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .mac-base-bar {
+    width: 120px; height: 4px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 2px;
+  }
+
+  /* Cursor indicator */
+  .cursor-hint {
+    position: absolute;
+    width: 20px; height: 20px;
+    background: rgba(255,255,255,0.15);
+    border: 2px solid rgba(255,255,255,0.5);
+    border-radius: 50%;
+    pointer-events: none;
+    transition: all 0.4s ease;
+    transform: translate(-50%, -50%);
+    z-index: 50;
+    opacity: 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="scene">
+  <div class="mac">
+    <div class="screen">
+      <div class="menubar">
+        <span class="apple">&#63743;</span>
+        <span>Finder</span>
+        <span>File</span>
+        <span>Edit</span>
+        <span>View</span>
+        <span class="right" id="clock">9:41 AM</span>
+      </div>
+
+      <div class="notch-cut"></div>
+
+      <div class="pill-host">
+        <div class="pill" id="pill">
+          <span class="dot healthy" id="dot"></span>
+          <div class="pill-bar"><div class="pill-bar-fill healthy" id="pill-fill" style="width:42%"></div></div>
+          <span class="pill-pct" id="pill-pct">42%</span>
+        </div>
+
+        <div class="panel" id="panel">
+          <div class="panel-head">
+            <span class="dot healthy" id="panel-dot" style="width:6px;height:6px;flex-shrink:0"></span>
+            <div>
+              <div class="title">Notchy Limit</div>
+              <div class="sub">Updated just now · Claude</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-row">
+              <span class="card-label">Session</span>
+              <span class="card-value healthy" id="session-val">42%</span>
+            </div>
+            <div class="bar"><div class="bar-fill healthy" id="session-bar" style="width:42%"></div></div>
+            <div class="card-meta">
+              <span>Resets in 1h 12m</span>
+              <span class="healthy" id="session-status">On track</span>
+            </div>
+          </div>
+
+          <div class="card secondary">
+            <div class="card-row">
+              <span class="card-label" style="font-size:10px">Weekly</span>
+              <span class="card-value healthy" id="weekly-val" style="font-size:13px">38%</span>
+            </div>
+            <div class="bar" style="height:4px"><div class="bar-fill healthy" id="weekly-bar" style="width:38%"></div></div>
+            <div class="card-meta"><span>Resets Mon 00:00</span></div>
+          </div>
+
+          <div class="actions">
+            <div class="action-btn">↻ Refresh</div>
+            <div class="action-btn">🔑 Cookie</div>
+            <div class="action-btn">🔔 Alerts</div>
+            <div class="action-btn">⚡ Diag</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cursor-hint" id="cursor"></div>
+    </div>
+
+    <div class="mac-base"><div class="mac-base-bar"></div></div>
+  </div>
+
+  <div class="caption">NOTCHY · <span>Live Claude usage in your MacBook notch</span> · Free &amp; Open Source</div>
+</div>
+
+<script>
+  const pill = document.getElementById('pill');
+  const panel = document.getElementById('panel');
+  const dot = document.getElementById('dot');
+  const panelDot = document.getElementById('panel-dot');
+  const pillFill = document.getElementById('pill-fill');
+  const pillPct = document.getElementById('pill-pct');
+  const sessionVal = document.getElementById('session-val');
+  const sessionBar = document.getElementById('session-bar');
+  const sessionStatus = document.getElementById('session-status');
+  const weeklyVal = document.getElementById('weekly-val');
+  const weeklyBar = document.getElementById('weekly-bar');
+  const cursor = document.getElementById('cursor');
+  const clock = document.getElementById('clock');
+
+  // Live clock
+  function updateClock() {
+    const now = new Date();
+    const h = now.getHours() % 12 || 12;
+    const m = String(now.getMinutes()).padStart(2,'0');
+    const ap = now.getHours() >= 12 ? 'PM' : 'AM';
+    clock.textContent = h + ':' + m + ' ' + ap;
+  }
+  updateClock();
+  setInterval(updateClock, 10000);
+
+  // Usage state
+  let pct = 42;
+  let panelOpen = false;
+
+  function statusClass(p) {
+    return p >= 90 ? 'critical' : p >= 70 ? 'warning' : 'healthy';
+  }
+  function statusLabel(p) {
+    return p >= 90 ? 'At limit' : p >= 70 ? 'Approaching' : 'On track';
+  }
+
+  function applyPct(p) {
+    const cls = statusClass(p);
+    const weekly = Math.min(99, Math.round(p * 0.7 + 12));
+    const wCls = statusClass(weekly);
+
+    // pill
+    dot.className = 'dot ' + cls;
+    pillFill.style.width = p + '%';
+    pillFill.className = 'bar-fill ' + cls;
+    pillPct.textContent = p + '%';
+
+    // panel
+    panelDot.className = 'dot ' + cls;
+    sessionVal.textContent = p + '%';
+    sessionVal.className = 'card-value ' + cls;
+    sessionBar.style.width = p + '%';
+    sessionBar.className = 'bar-fill ' + cls;
+    sessionStatus.textContent = statusLabel(p);
+    sessionStatus.className = cls;
+
+    weeklyVal.textContent = weekly + '%';
+    weeklyVal.className = 'card-value ' + wCls;
+    weeklyBar.style.width = weekly + '%';
+    weeklyBar.className = 'bar-fill ' + wCls;
+  }
+
+  function openPanel() {
+    panelOpen = true;
+    pill.classList.add('hidden');
+    panel.classList.add('visible');
+  }
+  function closePanel() {
+    panelOpen = false;
+    pill.classList.remove('hidden');
+    panel.classList.remove('visible');
+  }
+
+  // Slow drift of percentage
+  setInterval(() => {
+    const delta = Math.random() < 0.5 ? -3 : 3;
+    pct = Math.min(88, Math.max(28, pct + delta));
+    applyPct(pct);
+  }, 1800);
+
+  // Cursor animation helper
+  function moveCursor(x, y, show) {
+    cursor.style.left = x + 'px';
+    cursor.style.top = y + 'px';
+    cursor.style.opacity = show ? '1' : '0';
+  }
+
+  // ── Auto-demo sequence ──
+  // Loops: hover → expand → wait → collapse → wait → repeat
+  const screen = document.querySelector('.screen');
+  const pillHost = document.querySelector('.pill-host');
+  const pillRect = () => {
+    const r = pillHost.getBoundingClientRect();
+    const sr = screen.getBoundingClientRect();
+    return {
+      x: r.left - sr.left + r.width / 2,
+      y: r.top - sr.top + r.height / 2
+    };
+  };
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  async function demoLoop() {
+    while (true) {
+      // 1. Show cursor drifting toward pill
+      const pr = pillRect();
+      moveCursor(pr.x + 60, pr.y + 40, true);
+      await sleep(600);
+
+      // 2. Cursor moves to pill
+      moveCursor(pr.x, pr.y, true);
+      await sleep(500);
+
+      // 3. Open panel
+      openPanel();
+      await sleep(2800);
+
+      // 4. Usage ticks up a bit
+      pct = Math.min(85, pct + 8);
+      applyPct(pct);
+      await sleep(1000);
+
+      // 5. Move cursor away
+      moveCursor(pr.x + 80, pr.y + 100, true);
+      await sleep(400);
+      moveCursor(pr.x + 80, pr.y + 100, false);
+      await sleep(200);
+
+      // 6. Close panel
+      closePanel();
+      await sleep(1200);
+
+      // 7. Drift pct back
+      pct = Math.max(30, pct - 12);
+      applyPct(pct);
+      await sleep(1800);
+    }
+  }
+
+  demoLoop();
+  applyPct(pct);
+</script>
+</body>
+</html>

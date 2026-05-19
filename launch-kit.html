@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NOTCHY — Launch Kit</title>
+<style>
+  :root {
+    --bg: #07070a;
+    --surface: #0f0f14;
+    --surface2: #161620;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: rgba(255,255,255,0.94);
+    --text2: rgba(255,255,255,0.60);
+    --text3: rgba(255,255,255,0.38);
+    --green: #54d68b;
+    --amber: #ffc83d;
+    --red: #ff6b62;
+    --teal: #6ef0f5;
+    --orange: #ff8a66;
+    --purple: #a78bfa;
+    --pink: #f472b6;
+    --blue: #60a5fa;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--teal); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-size: 0.88em;
+    background: rgba(255,255,255,0.07);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  /* ── Layout ── */
+  .page { max-width: 860px; margin: 0 auto; padding: 0 24px 80px; }
+
+  /* ── Header ── */
+  .header {
+    padding: 48px 0 36px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 40px;
+  }
+  .header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(110,240,245,0.10);
+    border: 1px solid rgba(110,240,245,0.22);
+    color: var(--teal);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 20px;
+    margin-bottom: 16px;
+  }
+  .header h1 {
+    font-size: 38px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 12px;
+  }
+  .header h1 span { color: var(--orange); }
+  .header p {
+    color: var(--text2);
+    font-size: 16px;
+    max-width: 560px;
+    margin-bottom: 20px;
+  }
+  .header-links { display: flex; gap: 12px; flex-wrap: wrap; }
+  .header-links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: border-color 0.15s;
+  }
+  .header-links a:hover { border-color: rgba(255,255,255,0.28); text-decoration: none; }
+
+  /* ── Progress checklist ── */
+  .checklist-section {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 14px;
+    padding: 24px 28px;
+    margin-bottom: 40px;
+  }
+  .checklist-section h2 { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: var(--text); }
+  .checklist-section p { color: var(--text2); font-size: 13px; margin-bottom: 20px; }
+  .progress-bar-wrap { background: rgba(255,255,255,0.06); border-radius: 6px; height: 6px; margin-bottom: 24px; overflow: hidden; }
+  .progress-bar { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--orange), var(--teal)); width: 0%; transition: width 0.4s ease; }
+  .steps { display: flex; flex-direction: column; gap: 10px; }
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    user-select: none;
+  }
+  .step:hover { background: rgba(255,255,255,0.03); border-color: var(--border); }
+  .step.done { background: rgba(84,214,139,0.05); border-color: rgba(84,214,139,0.18); }
+  .step-check {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 2px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+    font-size: 11px; transition: all 0.2s;
+  }
+  .step.done .step-check { background: var(--green); border-color: var(--green); color: #000; }
+  .step-text { flex: 1; }
+  .step-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .step.done .step-title { color: var(--text2); text-decoration: line-through; }
+  .step-desc { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .step-tag {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 4px; flex-shrink: 0; margin-top: 2px;
+  }
+  .tag-now { background: rgba(255,138,102,0.15); color: var(--orange); }
+  .tag-week { background: rgba(110,240,245,0.12); color: var(--teal); }
+  .tag-ongoing { background: rgba(167,139,250,0.12); color: var(--purple); }
+
+  /* ── Section ── */
+  .section { margin-bottom: 48px; }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; flex-shrink: 0;
+  }
+  .section-header h2 { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; }
+  .section-header p { font-size: 13px; color: var(--text2); margin-top: 1px; }
+
+  /* ── Content card ── */
+  .content-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .card-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .card-label { font-size: 12px; font-weight: 700; color: var(--text2); letter-spacing: 0.05em; text-transform: uppercase; }
+  .card-platform {
+    font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .platform-hn { background: rgba(255,102,0,0.15); color: #ff6600; }
+  .platform-ph { background: rgba(218,68,0,0.15); color: #da4400; }
+  .platform-reddit { background: rgba(255,69,0,0.15); color: #ff4500; }
+  .platform-twitter { background: rgba(29,155,240,0.15); color: #1d9bf0; }
+  .platform-github { background: rgba(255,255,255,0.08); color: var(--text2); }
+  .platform-email { background: rgba(167,139,250,0.15); color: var(--purple); }
+
+  .card-body { padding: 18px 20px; }
+  .card-title { font-size: 13px; font-weight: 700; color: var(--text2); margin-bottom: 8px; }
+  .card-content {
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: var(--text);
+    white-space: pre-wrap;
+    font-family: inherit;
+  }
+  .copy-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 14px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    padding: 7px 14px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .copy-btn:hover { background: rgba(255,255,255,0.10); color: var(--text); }
+  .copy-btn.copied { background: rgba(84,214,139,0.12); border-color: rgba(84,214,139,0.3); color: var(--green); }
+
+  /* tweet thread */
+  .tweet-thread { display: flex; flex-direction: column; gap: 0; }
+  .tweet {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .tweet:last-child { border-bottom: none; }
+  .tweet-num {
+    font-size: 10px; font-weight: 700; color: var(--text3);
+    letter-spacing: 0.06em; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .tweet-text { font-size: 14px; line-height: 1.65; color: var(--text); white-space: pre-wrap; }
+
+  /* highlight note */
+  .tip {
+    display: flex;
+    gap: 10px;
+    background: rgba(255,200,61,0.07);
+    border: 1px solid rgba(255,200,61,0.20);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    color: var(--text2);
+  }
+  .tip-icon { flex-shrink: 0; font-size: 16px; }
+
+  /* outreach table */
+  .outreach-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .outreach-table th {
+    text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--text3);
+    border-bottom: 1px solid var(--border);
+  }
+  .outreach-table td {
+    padding: 11px 14px; border-bottom: 1px solid var(--border);
+    vertical-align: top; color: var(--text2);
+  }
+  .outreach-table tr:last-child td { border-bottom: none; }
+  .outreach-table td:first-child { color: var(--text); font-weight: 600; }
+
+  /* GIF section */
+  .gif-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 40px;
+    text-align: center;
+  }
+  .gif-section h3 { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+  .gif-section p { color: var(--text2); font-size: 13px; margin-bottom: 20px; max-width: 480px; margin-left: auto; margin-right: auto; }
+  .gif-placeholder {
+    background: var(--surface2);
+    border: 2px dashed var(--border2);
+    border-radius: 10px;
+    padding: 40px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    color: var(--text3);
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+  .gif-placeholder .icon { font-size: 36px; }
+  .gif-placeholder strong { color: var(--text2); font-size: 14px; }
+  .record-cmd {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    color: var(--green);
+    text-align: left;
+    line-height: 1.9;
+    margin: 0 auto;
+    max-width: 560px;
+  }
+
+  /* metrics */
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 40px; }
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .metric-label { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text3); margin-bottom: 6px; }
+  .metric-value { font-size: 26px; font-weight: 800; letter-spacing: -0.03em; }
+  .metric-desc { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  /* footer */
+  .kit-footer {
+    border-top: 1px solid var(--border);
+    padding-top: 28px;
+    text-align: center;
+    color: var(--text3);
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ── Header ── -->
+  <div class="header">
+    <div class="header-badge">🚀 Launch Kit · NOTCHY</div>
+    <h1>Your <span>launch playbook</span><br>is right here.</h1>
+    <p>Every post, every thread, every outreach email — ready to copy and paste. Work through the checklist top to bottom.</p>
+    <div class="header-links">
+      <a href="https://github.com/I-N-SILVA/NOTCHY" target="_blank">⭐ GitHub Repo</a>
+      <a href="https://www.producthunt.com" target="_blank">🦁 Product Hunt</a>
+      <a href="https://news.ycombinator.com/submit" target="_blank">🔶 Hacker News</a>
+      <a href="https://reddit.com/r/MacApps" target="_blank">🤖 Reddit</a>
+    </div>
+  </div>
+
+  <!-- ── Checklist ── -->
+  <div class="checklist-section">
+    <h2>Launch Checklist</h2>
+    <p>Click each step to mark it done. Progress is saved in your browser.</p>
+    <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+    <div class="steps" id="steps">
+
+      <div class="step" data-id="s1">
+        <div class="step-check">✓</div>
+        <div class="step-text">
+          <div class="step-title">README is live on GitHub</div>
+          <div class="step-desc">Root README already updated and pushed to https://github.com/I-N-SILVA/NOTCHY</div>
+        </div>
+        <span class="step-tag tag-now">Done ✓</span>
+      </div>
+
+      <div class="step" data-id="s2">
+        <div class="step-check">✓</div>
+        <div class="step-text">
+          <div class="step-title">Record the demo GIF</div>
+          <div class="step-desc">5–10 seconds: pill in notch → hover to expand → stats → collapse. See GIF section below.</div>
+        </div>
+        <span class="step-tag tag-now">This week</span>
+      </div>
+
+      <div class="step" data-id="s3">
+        <div class="step-check">✓</div>
+        <div class="step-text">
+          <div class="step-title">Add GIF + topics to GitHub repo</div>
+          <div class="step-desc">Add demo GIF to README header. Add topics: macos, swift, claude, ai, menubar, notch, open-source</div>
+        </div>
+        <span class="step-tag tag-now">This week</span>
+      </div>
+
+      <div class="step" data-id="s4">
+        <div class="step-check">✓</div>
+        <div class="step-text">
+          <div class="step-title">Post on Hacker News — Show HN</div>
+          <div class="step-desc">Tuesday–Thursday 8–10am ET. Use the exact post from this kit. Monitor for 3 hrs.</div>
+        </div>
+        <span class="step-tag tag-now">This week</span>
+      </div>
+
+      <div class="step" data-id="s5">
+        <div class="step-check">✓</div>
+        <div class="step-text">
+          <div class="step-title">Post Twitter/X thread</div>
+          <div class="step-desc">Same day as HN or the next day. Pin the tweet. Reply to every response.</div>
+        </div>
+        <span class="step-tag tag-now">This week</span>
+      </div>
+
+      <div class="step" data-id="s6">
+        <div class="step-check">✓</div>
+        <div class="step-text">
+          <div class="step-title">Post on r/ClaudeAI</div>
+          <div class="step-desc">Lead with the usage anxiety problem. Use the Reddit post from this kit.</div>
+        </div>
+        <span class="step-tag tag-now">This week</span>
+      </div>
+
+      <div class="step" data-id="s7">
+        <div class="step-check">✓</div>
+        <div class="step-text">
+          <div class="step-title">Post on r/MacApps</div>
+          <div class="step-desc">Focus on the macOS design + open source angle.</div>
+        </div>
+        <span class="step-tag tag-now">This week</span>
+      </div>
+
+      <div class="step" data-id="s8">
+        <div class="step-check">✓</div>
+        <div class="step-text">
+          <div class="step-title">Post on r/programming (technical angle)</div>
+          <div class="step-desc">"How I made content sit inside the MacBook camera housing" — drives GitHub stars.</div>
+        </div>
+        <span class="step-tag tag-week">Week 2</span>
+      </div>
+
+      <div class="step" data-id="s9">
+        <div class="step-check">✓</div>
+        <div class="step-text">
+          <div class="step-title">Send creator outreach emails (5–10 creators)</div>
+          <div class="step-desc">macOS YouTubers, AI newsletter writers. Use the template from this kit.</div>
+        </div>
+        <span class="step-tag tag-week">Week 2</span>
+      </div>
+
+      <div class="step" data-id="s10">
+        <div class="step-check">✓</div>
+        <div class="step-text">
+          <div class="step-title">Submit to Product Hunt</div>
+          <div class="step-desc">One week after HN. Prepare listing, find a hunter, launch at 12:01am PST.</div>
+        </div>
+        <span class="step-tag tag-week">Week 2</span>
+      </div>
+
+      <div class="step" data-id="s11">
+        <div class="step-check">✓</div>
+        <div class="step-text">
+          <div class="step-title">Add "good first issue" labels on GitHub</div>
+          <div class="step-desc">Gemini provider, ChatGPT provider, Intel build. Drives contributor interest.</div>
+        </div>
+        <span class="step-tag tag-week">Week 2</span>
+      </div>
+
+      <div class="step" data-id="s12">
+        <div class="step-check">✓</div>
+        <div class="step-text">
+          <div class="step-title">Announce Gemini support (wave 2 launch)</div>
+          <div class="step-desc">Every new provider = a fresh Product Hunt / HN moment.</div>
+        </div>
+        <span class="step-tag tag-ongoing">Ongoing</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Success metrics ── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(84,214,139,0.12)">📊</div>
+      <div>
+        <h2>30-Day Success Targets</h2>
+        <p>Track these weekly. If any are off-track, double down on borrowing audience from creators.</p>
+      </div>
+    </div>
+    <div class="metrics-grid">
+      <div class="metric-card"><div class="metric-label">GitHub Stars</div><div class="metric-value" style="color:var(--amber)">200+</div><div class="metric-desc">Primary credibility signal</div></div>
+      <div class="metric-card"><div class="metric-label">Waitlist</div><div class="metric-value" style="color:var(--teal)">300+</div><div class="metric-desc">Gemini/ChatGPT signups</div></div>
+      <div class="metric-card"><div class="metric-label">Downloads</div><div class="metric-value" style="color:var(--green)">100+</div><div class="metric-desc">Source ZIP or DMG</div></div>
+      <div class="metric-card"><div class="metric-label">HN Points</div><div class="metric-value" style="color:var(--orange)">50+</div><div class="metric-desc">Indicates front page potential</div></div>
+      <div class="metric-card"><div class="metric-label">PH Upvotes</div><div class="metric-value" style="color:var(--pink)">100+</div><div class="metric-desc">Product of the Day target</div></div>
+    </div>
+  </div>
+
+  <!-- ── GIF guide ── -->
+  <div class="gif-section" id="gif">
+    <h3>🎬 The Demo GIF — Your #1 Asset</h3>
+    <p>A great GIF will get your post upvoted before anyone reads a word. This is the single highest-leverage thing you can do before launching. Aim for 5–10 seconds.</p>
+    <div class="gif-placeholder">
+      <div class="icon">🎬</div>
+      <strong>Demo GIF goes here</strong>
+      <span>Record: pill in notch → hover → panel drops → usage stats → collapse</span>
+    </div>
+    <p style="margin-bottom:14px;font-size:13px;color:var(--text2)"><strong style="color:var(--text)">How to record it:</strong> Use QuickTime Player → File → New Screen Recording. Select the area around the notch. Then convert:</p>
+    <div class="record-cmd">
+# 1. Record with QuickTime → save as demo.mov<br>
+# 2. Convert to GIF (install ffmpeg if needed: brew install ffmpeg)<br><br>
+ffmpeg -i demo.mov \<br>
+  -vf "fps=20,scale=800:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" \<br>
+  -loop 0 \<br>
+  notchy-demo.gif<br><br>
+# 3. Optimize (keep under 5MB)<br>
+# gifsicle -O3 notchy-demo.gif -o notchy-demo.gif<br><br>
+# 4. Add to README: ![NOTCHY demo](notchy-demo.gif)
+    </div>
+    <button class="copy-btn" onclick="copyText(this, 'ffmpeg -i demo.mov -vf \"fps=20,scale=800:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse\" -loop 0 notchy-demo.gif')">Copy ffmpeg command</button>
+  </div>
+
+  <!-- ── Hacker News ── -->
+  <div class="section" id="hn">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(255,102,0,0.12)">🔶</div>
+      <div>
+        <h2>Hacker News — Show HN</h2>
+        <p>Post this first. HN is your highest-leverage channel for developers. Post Tue–Thu 8–10am ET.</p>
+      </div>
+    </div>
+
+    <div class="tip">
+      <span class="tip-icon">💡</span>
+      <span><strong>Post at:</strong> news.ycombinator.com/submit — use "Show HN:" prefix exactly. For the first 3 hours, reply to every single comment. Your rank depends on engagement velocity.</span>
+    </div>
+
+    <div class="content-card">
+      <div class="card-topbar">
+        <span class="card-label">Post Title</span>
+        <span class="card-platform platform-hn">HN</span>
+      </div>
+      <div class="card-body">
+        <div class="card-content">Show HN: I turned the MacBook notch into a live Claude usage monitor (free, open source)</div>
+        <button class="copy-btn" onclick="copyText(this, 'Show HN: I turned the MacBook notch into a live Claude usage monitor (free, open source)')">Copy title</button>
+      </div>
+    </div>
+
+    <div class="content-card">
+      <div class="card-topbar">
+        <span class="card-label">Post Body</span>
+        <span class="card-platform platform-hn">HN</span>
+      </div>
+      <div class="card-body">
+        <div class="card-content" id="hn-body">I kept hitting my Claude limit mid-session with no warning. So I built a macOS utility that uses the hardware notch as a live usage indicator.
+
+A small pill sits inside the physical camera housing — same trick iOS uses for Dynamic Island. Hover to expand into a full panel: session %, weekly quota, time to reset, threshold alerts at 25/50/75/90%.
+
+Zero telemetry. Cookie stored in macOS Keychain — never in UserDefaults, never logged. Talks only to claude.ai. MIT licensed.
+
+Build from source in 3 commands:
+
+  git clone https://github.com/I-N-SILVA/NOTCHY.git
+  cd NOTCHY/swift-project/NotchyLimit
+  bash scripts/build.sh
+
+The tricky part: making content anchor inside the camera housing so it blends. The panel sits at screen.frame.maxY — the top portion hides behind the physical bezel, only the lower content is visible. The hover detection uses a 40ms Timer polling NSEvent.mouseLocation because NSTrackingArea.mouseExited is unreliable during resize animations.
+
+Architecture is provider-extensible (UsageProvider protocol) — Gemini stub is already in place. Happy to share more on the implementation if anyone's curious.</div>
+        <button class="copy-btn" onclick="copyText(this, document.getElementById('hn-body').textContent)">Copy body</button>
+      </div>
+    </div>
+
+    <div class="content-card">
+      <div class="card-topbar">
+        <span class="card-label">First comment (post immediately after submitting)</span>
+        <span class="card-platform platform-hn">HN</span>
+      </div>
+      <div class="card-body">
+        <div class="card-content" id="hn-comment">Hi HN — Ian here, I built this.
+
+A few things worth knowing:
+
+- This uses an undocumented Claude endpoint that could break if Anthropic changes their internal API. If that happens, I'll push a fix and flag it in Issues.
+- The notch blend only works on MacBooks with a hardware notch (M1 Pro/Max and newer). On non-notch Macs it falls back to a standard menubar item.
+- The cookie never leaves your machine. All the code is MIT and readable — please audit it.
+
+What's coming next: Gemini provider (stub already in the codebase), ChatGPT/OpenAI, and a browser extension to auto-grab the cookie so you don't need DevTools.
+
+Happy to answer any questions about the implementation.</div>
+        <button class="copy-btn" onclick="copyText(this, document.getElementById('hn-comment').textContent)">Copy first comment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Twitter/X ── -->
+  <div class="section" id="twitter">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(29,155,240,0.12)">🐦</div>
+      <div>
+        <h2>Twitter / X — Thread</h2>
+        <p>Post same day as HN or the day after. Pin to your profile immediately. Attach the demo GIF to Tweet 1.</p>
+      </div>
+    </div>
+
+    <div class="tip">
+      <span class="tip-icon">📌</span>
+      <span><strong>Attach your demo GIF to Tweet 1.</strong> That's what stops the scroll. Without a visual the thread won't get traction. Pin to your profile immediately after posting.</span>
+    </div>
+
+    <div class="content-card">
+      <div class="card-topbar">
+        <span class="card-label">Full Thread — 6 tweets</span>
+        <span class="card-platform platform-twitter">Twitter/X</span>
+      </div>
+      <div class="tweet-thread">
+        <div class="tweet">
+          <div class="tweet-num">Tweet 1 — Hook (attach your GIF here)</div>
+          <div class="tweet-text" id="tw1">I kept hitting my Claude limit mid-session with zero warning.
+
+So I turned the MacBook notch into a live usage meter.
+
+[attach demo GIF]</div>
+          <button class="copy-btn" onclick="copyText(this, document.getElementById('tw1').textContent)">Copy</button>
+        </div>
+        <div class="tweet">
+          <div class="tweet-num">Tweet 2 — Show the product</div>
+          <div class="tweet-text" id="tw2">A Dynamic Island-style pill blends with the physical camera housing.
+
+Hover → full panel drops down:
+• Session % with reset countdown
+• Weekly quota card
+• Alerts at 25 / 50 / 75 / 90%
+• Mood-reactive mascot (calm → worried → alarmed)</div>
+          <button class="copy-btn" onclick="copyText(this, document.getElementById('tw2').textContent)">Copy</button>
+        </div>
+        <div class="tweet">
+          <div class="tweet-num">Tweet 3 — Privacy + cred</div>
+          <div class="tweet-text" id="tw3">Zero telemetry. Cookie stored in macOS Keychain — never in UserDefaults, never logged.
+
+Talks only to claude.ai. Nothing leaves your Mac.
+
+Free. MIT licensed. Read every line yourself.</div>
+          <button class="copy-btn" onclick="copyText(this, document.getElementById('tw3').textContent)">Copy</button>
+        </div>
+        <div class="tweet">
+          <div class="tweet-num">Tweet 4 — The technical trick (developer hook)</div>
+          <div class="tweet-text" id="tw4">The tricky part: making content actually sit inside the camera housing.
+
+The panel anchors at screen.frame.maxY. The top hides behind the physical bezel. Only the lower content is visible.
+
+Same approach as iOS Dynamic Island — pure AppKit, no private APIs.</div>
+          <button class="copy-btn" onclick="copyText(this, document.getElementById('tw4').textContent)">Copy</button>
+        </div>
+        <div class="tweet">
+          <div class="tweet-num">Tweet 5 — Roadmap / momentum</div>
+          <div class="tweet-text" id="tw5">Built with a clean UsageProvider protocol — so Gemini, ChatGPT, and Cursor support can plug in without touching the UI or notification logic.
+
+Gemini stub is already in the codebase. Who wants it next?</div>
+          <button class="copy-btn" onclick="copyText(this, document.getElementById('tw5').textContent)">Copy</button>
+        </div>
+        <div class="tweet">
+          <div class="tweet-num">Tweet 6 — CTA</div>
+          <div class="tweet-text" id="tw6">Free. Build from source in 3 commands. No Xcode needed.
+
+⭐ github.com/I-N-SILVA/NOTCHY
+
+If you use Claude on a notch MacBook — this is for you.</div>
+          <button class="copy-btn" onclick="copyText(this, document.getElementById('tw6').textContent)">Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Reddit ── -->
+  <div class="section" id="reddit">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(255,69,0,0.12)">🤖</div>
+      <div>
+        <h2>Reddit — 4 Subreddits, 4 Angles</h2>
+        <p>Space these out by 1–2 days. Each gets a different framing. Never post the same text twice.</p>
+      </div>
+    </div>
+
+    <div class="content-card">
+      <div class="card-topbar">
+        <span class="card-label">r/ClaudeAI — Usage anxiety angle</span>
+        <span class="card-platform platform-reddit">Reddit</span>
+      </div>
+      <div class="card-body">
+        <div class="card-title">Title:</div>
+        <div class="card-content" id="r1t">I built a free macOS app that shows your Claude usage live in the notch — no more surprise limits</div>
+        <button class="copy-btn" onclick="copyText(this, document.getElementById('r1t').textContent)" style="margin-bottom:14px">Copy title</button>
+        <div class="card-title">Body:</div>
+        <div class="card-content" id="r1b">I kept burning through my Claude limit mid-task with no warning. Opened DevTools to check the usage endpoint, saw the data was there — so I built a small app to surface it.
+
+NOTCHY sits in the MacBook notch (same Dynamic Island trick as iOS). A tiny pill shows your session % with a colour-coded glow. Hover to expand: full panel with session card, weekly quota, reset countdown, and threshold alerts at 25/50/75/90%.
+
+Completely local — talks only to claude.ai. Cookie in Keychain, no telemetry, MIT licensed.
+
+GitHub: https://github.com/I-N-SILVA/NOTCHY
+
+Happy to answer questions. Would love to hear if this solves the problem for others too.</div>
+        <button class="copy-btn" onclick="copyText(this, document.getElementById('r1b').textContent)">Copy body</button>
+      </div>
+    </div>
+
+    <div class="content-card">
+      <div class="card-topbar">
+        <span class="card-label">r/MacApps — Design + open source angle</span>
+        <span class="card-platform platform-reddit">Reddit</span>
+      </div>
+      <div class="card-body">
+        <div class="card-title">Title:</div>
+        <div class="card-content" id="r2t">NOTCHY — free, open-source macOS app that turns your notch into a Claude AI usage monitor</div>
+        <button class="copy-btn" onclick="copyText(this, document.getElementById('r2t').textContent)" style="margin-bottom:14px">Copy title</button>
+        <div class="card-title">Body:</div>
+        <div class="card-content" id="r2b">Built a free menubar utility (MIT licensed) that uses the MacBook's hardware notch as a live Claude usage indicator.
+
+Features:
+• Dynamic Island-style pill blends with the physical notch
+• Hover to expand → session %, weekly quota, reset timer
+• Threshold alerts at 25/50/75/90% (no system permission required)
+• Mood-reactive retro mascot (calm/worried/alarmed)
+• Cookie stored in Keychain — nothing ever logged
+• Provider-extensible — Gemini/ChatGPT support coming
+
+Build from source in 3 commands, no full Xcode needed. macOS 12+ (Apple Silicon).
+
+https://github.com/I-N-SILVA/NOTCHY
+
+Feedback welcome — especially from folks running Intel Macs or non-notch models.</div>
+        <button class="copy-btn" onclick="copyText(this, document.getElementById('r2b').textContent)">Copy body</button>
+      </div>
+    </div>
+
+    <div class="content-card">
+      <div class="card-topbar">
+        <span class="card-label">r/artificial — Multi-provider roadmap angle</span>
+        <span class="card-platform platform-reddit">Reddit</span>
+      </div>
+      <div class="card-body">
+        <div class="card-title">Title:</div>
+        <div class="card-content" id="r3t">Built a free tool that shows your AI usage limits live in the MacBook notch — Claude now, Gemini/ChatGPT coming</div>
+        <button class="copy-btn" onclick="copyText(this, document.getElementById('r3t').textContent)" style="margin-bottom:14px">Copy title</button>
+        <div class="card-title">Body:</div>
+        <div class="card-content" id="r3b">If you use Claude (or any AI with usage limits), this is for you.
+
+NOTCHY is a free macOS utility that puts your AI usage in the notch — always visible, never in the way. Pill shows your session % with a status glow. Hover to expand into a full panel with quota details and a countdown to reset.
+
+The architecture uses a clean UsageProvider protocol — so adding Gemini, ChatGPT, Cursor, etc. is just implementing an interface. Gemini stub is already in the codebase.
+
+Free, MIT licensed, zero telemetry.
+
+GitHub: https://github.com/I-N-SILVA/NOTCHY
+
+Which provider would you want to see supported next?</div>
+        <button class="copy-btn" onclick="copyText(this, document.getElementById('r3b').textContent)">Copy body</button>
+      </div>
+    </div>
+
+    <div class="content-card">
+      <div class="card-topbar">
+        <span class="card-label">r/programming — Technical implementation angle (drives stars)</span>
+        <span class="card-platform platform-reddit">Reddit</span>
+      </div>
+      <div class="card-body">
+        <div class="card-title">Title:</div>
+        <div class="card-content" id="r4t">How I made content sit inside the MacBook camera housing (the Dynamic Island trick, in pure AppKit)</div>
+        <button class="copy-btn" onclick="copyText(this, document.getElementById('r4t').textContent)" style="margin-bottom:14px">Copy title</button>
+        <div class="card-title">Body:</div>
+        <div class="card-content" id="r4b">I built a macOS app that puts a usage indicator inside the physical notch. Here's the core trick:
+
+The panel is an NSPanel anchored at `screen.frame.maxY`. Its height = `safeAreaInsets.top` (the hardware notch height, ~37pt) + the visible content area below. The top portion sits inside the physical camera housing — black on black, invisible. Only the lower portion shows content.
+
+This is exactly how iOS implements Dynamic Island. No private APIs, no hacks — just geometry.
+
+Hover detection was the other tricky part: `NSTrackingArea.mouseExited` is unreliable during resize animations, and `addGlobalMonitorForEvents` only fires for other apps. Solution: a 40ms Timer polling `NSEvent.mouseLocation` vs `panel.frame`. Works at any window level, any activation state.
+
+The full project (MIT) if you want to see the implementation: https://github.com/I-N-SILVA/NOTCHY
+
+Happy to answer questions on the AppKit/SwiftUI interop, window level management, or the hover detection approach.</div>
+        <button class="copy-btn" onclick="copyText(this, document.getElementById('r4b').textContent)">Copy body</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Product Hunt ── -->
+  <div class="section" id="ph">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(218,68,0,0.12)">🦁</div>
+      <div>
+        <h2>Product Hunt</h2>
+        <p>Launch 1 week after HN. Prep the listing now, find a hunter in the PH Discord this week.</p>
+      </div>
+    </div>
+
+    <div class="tip">
+      <span class="tip-icon">🎯</span>
+      <span><strong>Key move:</strong> Find a well-followed PH hunter to submit it — this adds ~20–30% upvotes. Join the PH Discord and post in #hunter-requests. Launch at exactly 12:01am PST.</span>
+    </div>
+
+    <div class="content-card">
+      <div class="card-topbar">
+        <span class="card-label">PH Listing — Tagline</span>
+        <span class="card-platform platform-ph">Product Hunt</span>
+      </div>
+      <div class="card-body">
+        <div class="card-content" id="ph-tag">Your MacBook notch, now showing your Claude limits — live</div>
+        <button class="copy-btn" onclick="copyText(this, document.getElementById('ph-tag').textContent)">Copy tagline</button>
+      </div>
+    </div>
+
+    <div class="content-card">
+      <div class="card-topbar">
+        <span class="card-label">PH Listing — Description (260 chars max)</span>
+        <span class="card-platform platform-ph">Product Hunt</span>
+      </div>
+      <div class="card-body">
+        <div class="card-content" id="ph-desc">NOTCHY turns the MacBook hardware notch into a live Claude usage meter. Dynamic Island-style pill → hover to expand: session %, weekly quota, reset timer, alerts at 25/50/75/90%. Zero telemetry. Cookie in Keychain. Free, MIT licensed.</div>
+        <button class="copy-btn" onclick="copyText(this, document.getElementById('ph-desc').textContent)">Copy description</button>
+      </div>
+    </div>
+
+    <div class="content-card">
+      <div class="card-topbar">
+        <span class="card-label">PH First Comment — Your founder story</span>
+        <span class="card-platform platform-ph">Product Hunt</span>
+      </div>
+      <div class="card-body">
+        <div class="card-content" id="ph-comment">Hey Product Hunt! 👋
+
+I'm Ian, and I built NOTCHY because I kept hitting my Claude limit mid-thought with absolutely no warning.
+
+The obvious fix was a menubar icon — but that felt wrong. The MacBook already has a dedicated display slot that nobody uses for anything: the notch. So I figured out how to anchor content inside the physical camera housing (same geometry trick iOS uses for Dynamic Island) and built a usage indicator that lives there.
+
+What it does:
+• Compact pill with a colour-coded glow — green/amber/red based on usage
+• Hover to expand → session %, weekly quota, time to reset
+• Threshold alerts at 25/50/75/90% (no system permission needed)
+• Cookie stored in Keychain, talks only to claude.ai, zero telemetry
+
+Everything is MIT licensed and buildable from source without a full Xcode install.
+
+What's next: Gemini provider (stub already in the codebase), ChatGPT support, and a browser extension to auto-grab the cookie.
+
+Would love to hear your feedback — especially if you're on an Intel Mac or want to contribute a provider! 🙏</div>
+        <button class="copy-btn" onclick="copyText(this, document.getElementById('ph-comment').textContent)">Copy first comment</button>
+      </div>
+    </div>
+
+    <div class="content-card">
+      <div class="card-topbar">
+        <span class="card-label">PH Launch Day — Notify your list (email)</span>
+        <span class="card-platform platform-email">Email</span>
+      </div>
+      <div class="card-body">
+        <div class="card-content" id="ph-email">Subject: NOTCHY is live on Product Hunt today 🚀
+
+Hey,
+
+NOTCHY launched on Product Hunt today — it would mean a lot if you checked it out.
+
+[Product Hunt link]
+
+If you've been waiting to try it, today is the perfect day — an upvote takes 10 seconds and helps a lot.
+
+Thanks for being here early.
+
+— Ian</div>
+        <button class="copy-btn" onclick="copyText(this, document.getElementById('ph-email').textContent)">Copy email</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Creator outreach ── -->
+  <div class="section" id="outreach">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(167,139,250,0.12)">📨</div>
+      <div>
+        <h2>Creator Outreach</h2>
+        <p>Send 5–10 of these this week. Short, no ask, just "try it if you like it."</p>
+      </div>
+    </div>
+
+    <div class="tip">
+      <span class="tip-icon">💡</span>
+      <span><strong>No paid sponsorship needed.</strong> TRMNL sent a free device to Snazzy Labs with zero ask — he made a 500K-view review. Just ship them the .app and let the product speak.</span>
+    </div>
+
+    <div class="content-card">
+      <div class="card-topbar">
+        <span class="card-label">Outreach Email Template</span>
+        <span class="card-platform platform-email">Email</span>
+      </div>
+      <div class="card-body">
+        <div class="card-content" id="outreach-email">Subject: Built a free macOS app you might like
+
+Hey [Name],
+
+I built a free, open-source macOS utility called NOTCHY — it turns the MacBook hardware notch into a live Claude AI usage monitor, using the same Dynamic Island approach as iOS.
+
+No strings at all — just thought it might be interesting given your audience uses Claude / cares about macOS tools.
+
+GitHub: https://github.com/I-N-SILVA/NOTCHY
+
+Happy to answer any questions or send a pre-built .app if you'd rather not compile.
+
+— Ian</div>
+        <button class="copy-btn" onclick="copyText(this, document.getElementById('outreach-email').textContent)">Copy email</button>
+      </div>
+    </div>
+
+    <div class="content-card">
+      <div class="card-topbar">
+        <span class="card-label">Creator Target List</span>
+        <span class="card-platform platform-github">Research</span>
+      </div>
+      <div class="card-body">
+        <table class="outreach-table">
+          <thead>
+            <tr>
+              <th>Creator / Channel</th>
+              <th>Platform</th>
+              <th>Why they fit</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Snazzy Labs</td><td>YouTube</td><td>macOS / Apple Silicon deep dives, open source friendly</td><td>—</td></tr>
+            <tr><td>Chris Lawley</td><td>YouTube</td><td>iPad / Mac productivity, covers indie mac apps</td><td>—</td></tr>
+            <tr><td>The Rundown AI</td><td>Newsletter</td><td>130K+ AI subscribers, features free tools regularly</td><td>—</td></tr>
+            <tr><td>TLDR AI</td><td>Newsletter</td><td>700K+ devs, open source section every issue</td><td>—</td></tr>
+            <tr><td>Ben's Bites</td><td>Newsletter</td><td>Covers AI tools, has a "cool things" section</td><td>—</td></tr>
+            <tr><td>Mac Power Users</td><td>Podcast</td><td>Long-running macOS podcast, loves indie utilities</td><td>—</td></tr>
+            <tr><td>Developer Twitter</td><td>Twitter/X</td><td>Tag @swiftlang, @apple, @anthropic with demo</td><td>—</td></tr>
+            <tr><td>r/SwiftUI moderators</td><td>Reddit</td><td>Technical showcase post about the notch trick</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── GitHub polish ── -->
+  <div class="section" id="github">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(255,255,255,0.06)">⚙️</div>
+      <div>
+        <h2>GitHub Repo Polish</h2>
+        <p>Do these before any launch post. The repo is your homepage.</p>
+      </div>
+    </div>
+
+    <div class="content-card">
+      <div class="card-topbar">
+        <span class="card-label">Repo About section</span>
+        <span class="card-platform platform-github">GitHub</span>
+      </div>
+      <div class="card-body">
+        <div class="card-title">Description (1 line, shown in search results):</div>
+        <div class="card-content" id="gh-desc">Free macOS utility that turns your MacBook notch into a live Claude AI usage monitor. Dynamic Island-style. Zero telemetry. MIT.</div>
+        <button class="copy-btn" onclick="copyText(this, document.getElementById('gh-desc').textContent)" style="margin-bottom:16px">Copy description</button>
+        <div class="card-title">Topics to add (click the gear icon next to "About"):</div>
+        <div class="card-content">macos  swift  claude  ai  menubar  notch  dynamic-island  open-source  usage-monitor  anthropic</div>
+        <button class="copy-btn" onclick="copyText(this, 'macos swift claude ai menubar notch dynamic-island open-source usage-monitor anthropic')">Copy topics</button>
+      </div>
+    </div>
+
+    <div class="content-card">
+      <div class="card-topbar">
+        <span class="card-label">Good First Issues to create</span>
+        <span class="card-platform platform-github">GitHub</span>
+      </div>
+      <div class="card-body">
+        <table class="outreach-table">
+          <thead><tr><th>Issue title</th><th>Label</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>Implement Gemini provider</td><td>good first issue, enhancement</td><td>Stub is in Sources/Providers/Gemini/</td></tr>
+            <tr><td>Add ChatGPT / OpenAI usage support</td><td>good first issue, enhancement</td><td>OpenAI has a /v1/usage endpoint</td></tr>
+            <tr><td>Verify and document Intel (x86_64) build</td><td>good first issue, docs</td><td>Change -target flag in build.sh</td></tr>
+            <tr><td>Add Sparkle auto-update support</td><td>enhancement</td><td>Sparkle.framework update checking</td></tr>
+            <tr><td>Browser extension to auto-grab cookie</td><td>enhancement</td><td>Eliminates the DevTools setup step</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Wave 2 ── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(110,240,245,0.10)">🌊</div>
+      <div>
+        <h2>Wave 2 — Gemini Launch</h2>
+        <p>Every new provider = a fresh launch. The roadmap is your content engine.</p>
+      </div>
+    </div>
+    <div class="tip" style="background:rgba(110,240,245,0.06);border-color:rgba(110,240,245,0.18)">
+      <span class="tip-icon">🎯</span>
+      <span>When Gemini support ships: post "Show HN: NOTCHY now supports Gemini — live AI quota in your MacBook notch." That's a second front page. Repeat for ChatGPT. Three launches from one app.</span>
+    </div>
+
+    <div class="content-card">
+      <div class="card-topbar">
+        <span class="card-label">Wave 2 HN title (when Gemini ships)</span>
+        <span class="card-platform platform-hn">HN</span>
+      </div>
+      <div class="card-body">
+        <div class="card-content" id="w2-hn">Show HN: NOTCHY now supports Gemini — live AI quota in your MacBook notch</div>
+        <button class="copy-btn" onclick="copyText(this, document.getElementById('w2-hn').textContent)">Copy</button>
+      </div>
+    </div>
+
+    <div class="content-card">
+      <div class="card-topbar">
+        <span class="card-label">Wave 2 Tweet</span>
+        <span class="card-platform platform-twitter">Twitter/X</span>
+      </div>
+      <div class="card-body">
+        <div class="card-content" id="w2-tw">NOTCHY now shows your Gemini usage in the MacBook notch.
+
+Same pill, same Dynamic Island design, same zero telemetry.
+
+Claude ✓
+Gemini ✓
+ChatGPT — coming soon
+
+github.com/I-N-SILVA/NOTCHY</div>
+        <button class="copy-btn" onclick="copyText(this, document.getElementById('w2-tw').textContent)">Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="kit-footer">
+    Built for <strong>Ian Silva</strong> · NOTCHY Launch Kit · May 2026<br>
+    GitHub: <a href="https://github.com/I-N-SILVA/NOTCHY">I-N-SILVA/NOTCHY</a>
+  </div>
+
+</div>
+
+<script>
+// ── Copy to clipboard ──
+function copyText(btn, text) {
+  navigator.clipboard.writeText(text.trim()).then(() => {
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = btn.textContent.includes('title') ? 'Copy title' :
+                        btn.textContent.includes('body') ? 'Copy body' :
+                        btn.textContent.includes('comment') ? 'Copy first comment' :
+                        btn.textContent.includes('email') ? 'Copy email' :
+                        btn.textContent.includes('description') ? 'Copy description' :
+                        btn.textContent.includes('tagline') ? 'Copy tagline' :
+                        btn.textContent.includes('command') ? 'Copy ffmpeg command' :
+                        btn.textContent.includes('topics') ? 'Copy topics' : 'Copy';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+// ── Checklist ──
+const STORAGE_KEY = 'notchy_launch_checklist';
+const steps = document.querySelectorAll('.step');
+const bar = document.getElementById('progress-bar');
+
+function loadState() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; }
+}
+function saveState(state) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+function updateProgress() {
+  const done = document.querySelectorAll('.step.done').length;
+  bar.style.width = (done / steps.length * 100) + '%';
+}
+
+const state = loadState();
+steps.forEach(step => {
+  const id = step.dataset.id;
+  if (state[id]) step.classList.add('done');
+  step.addEventListener('click', () => {
+    step.classList.toggle('done');
+    const s = loadState();
+    s[id] = step.classList.contains('done');
+    saveState(s);
+    updateProgress();
+  });
+});
+updateProgress();
+
+// fix copy button labels after copied state reset
+document.querySelectorAll('.copy-btn').forEach(btn => {
+  const orig = btn.textContent;
+  btn.__origText = orig;
+  btn.addEventListener('click', function() {
+    setTimeout(() => { this.textContent = this.__origText; }, 2000);
+  });
+});
+</script>
+</body>
+</html>
