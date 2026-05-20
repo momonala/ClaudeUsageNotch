@@ -104,15 +104,16 @@ final class NotificationServiceEvaluateTests: XCTestCase {
         service.evaluate(snapshot: snapshot, thresholds: [0.25, 0.5, 0.75, 0.9], providerId: .claude)
 
         let fired = UserDefaults.standard.dictionary(forKey: defaultsKey) as? [String: Double] ?? [:]
-        let resetTs = resetAt.timeIntervalSince1970
+        // Keys use hourly buckets, not raw timestamps.
+        let bucket = Int(resetAt.timeIntervalSince1970 / 3600)
 
         // All three crossed thresholds must be marked fired (no future re-fire).
-        XCTAssertNotNil(fired["claude:session:0.25:\(resetTs)"], "25% should be marked fired")
-        XCTAssertNotNil(fired["claude:session:0.5:\(resetTs)"],  "50% should be marked fired")
-        XCTAssertNotNil(fired["claude:session:0.75:\(resetTs)"], "75% should be marked fired")
+        XCTAssertNotNil(fired["claude:session:0.25:\(bucket)"], "25% should be marked fired")
+        XCTAssertNotNil(fired["claude:session:0.5:\(bucket)"],  "50% should be marked fired")
+        XCTAssertNotNil(fired["claude:session:0.75:\(bucket)"], "75% should be marked fired")
 
         // 90% was NOT crossed — must not be in the fired set.
-        XCTAssertNil(fired["claude:session:0.9:\(resetTs)"], "90% must not be marked fired")
+        XCTAssertNil(fired["claude:session:0.9:\(bucket)"], "90% must not be marked fired")
 
         // A second evaluate at the same usage must not alter the fired set.
         service.evaluate(snapshot: snapshot, thresholds: [0.25, 0.5, 0.75, 0.9], providerId: .claude)

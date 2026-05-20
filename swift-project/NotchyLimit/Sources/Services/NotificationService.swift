@@ -26,7 +26,8 @@ public final class NotificationService {
             // Collect all thresholds newly crossed in this poll cycle (sorted low → high).
             var newlyCrossed: [(threshold: Double, key: String)] = []
             for threshold in thresholds.sorted() {
-                let key = "\(providerId.rawValue):\(label):\(threshold):\(window.resetAt?.timeIntervalSince1970 ?? 0)"
+                let key = fireKey(providerId: providerId, label: label,
+                                  threshold: threshold, window: window)
                 if window.percentUsed >= threshold && lastFired[key] == nil {
                     newlyCrossed.append((threshold, key))
                 }
@@ -45,6 +46,32 @@ public final class NotificationService {
             }
         }
         if dirty { saveLastFired() }
+    }
+
+    // MARK: - Key generation
+
+    /// Builds a stable deduplication key for a threshold + window pair.
+    ///
+    /// WHY hourly bucketing: Claude's usage endpoint recalculates `resets_at` as
+    /// "now + 5 hours" on every API call. Using the raw `timeIntervalSince1970`
+    /// as the key component means the key drifts by the poll interval on every
+    /// fetch — the threshold appears unfired on every poll and notifications fire
+    /// continuously. Truncating to the nearest hour produces a key that is stable
+    /// for the full duration of any window (5-hour session, 7-day weekly) while
+    /// still generating a new key once the window actually rolls over.
+    ///
+    /// WHY daily fallback: a nil `resetAt` previously hardcoded to 0, meaning
+    /// "fire once, never again across all time." A daily bucket fires at most once
+    /// per calendar day, which is more useful than either extreme.
+    private func fireKey(providerId: ProviderId, label: String,
+                         threshold: Double, window: UsageWindow) -> String {
+        let bucket: Int
+        if let resetAt = window.resetAt {
+            bucket = Int(resetAt.timeIntervalSince1970 / 3600)
+        } else {
+            bucket = Int(Date().timeIntervalSince1970 / 86400)
+        }
+        return "\(providerId.rawValue):\(label):\(threshold):\(bucket)"
     }
 
     public func sendTest() {
