@@ -16,10 +16,10 @@ swift-project/NotchyLimit/.derived-data/
 # Private / dev-only
 memory/
 plan.md
-backend_test.py
-test_reports/
-test_result.md
-tests/
+/backend_test.py
+/test_reports/
+/test_result.md
+/tests/
 .gitconfig
 .emergent/
 
