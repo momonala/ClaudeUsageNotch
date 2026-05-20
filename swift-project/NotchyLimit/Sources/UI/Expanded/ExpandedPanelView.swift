@@ -80,15 +80,6 @@ struct ExpandedPanelView: View {
         .background(KeyEventCatcher { key in
             if key == "\u{1B}" { controller.userPressedEscape() }
         })
-        .sheet(isPresented: $appState.showOnboarding) {
-            OnboardingView(appState: appState).frame(width: 420, height: 480)
-        }
-        .sheet(isPresented: $appState.showSettings) {
-            SettingsView(appState: appState).frame(width: 440, height: 520)
-        }
-        .sheet(isPresented: $appState.showDiagnostics) {
-            DiagnosticsView(appState: appState).frame(width: 420, height: 360)
-        }
     }
 }
 

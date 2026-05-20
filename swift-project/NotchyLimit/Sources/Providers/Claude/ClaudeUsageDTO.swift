@@ -84,13 +84,19 @@ enum ClaudeUsageMapper {
         )
     }
 
+    private static let isoWithFrac: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+    private static let isoNoFrac: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
     private static func parseISO(_ raw: String?) -> Date? {
-        guard let raw = raw else { return nil }
-        let withFrac = ISO8601DateFormatter()
-        withFrac.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let d = withFrac.date(from: raw) { return d }
-        let noFrac = ISO8601DateFormatter()
-        noFrac.formatOptions = [.withInternetDateTime]
-        return noFrac.date(from: raw)
+        guard let raw else { return nil }
+        return isoWithFrac.date(from: raw) ?? isoNoFrac.date(from: raw)
     }
 }

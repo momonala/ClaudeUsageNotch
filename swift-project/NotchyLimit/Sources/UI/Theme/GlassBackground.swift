@@ -77,47 +77,6 @@ struct NotchGlassBackground: View {
     }
 }
 
-// MARK: - GlassBackground (legacy — kept for any other call sites)
-
-/// Reusable glass background — frosted blur + layered depth for a premium feel.
-struct GlassBackground: View {
-    var cornerRadius: CGFloat = 18
-
-    var body: some View {
-        ZStack {
-            // Layer 1 — macOS frosted glass (NSVisualEffectView)
-            VisualEffectBlur(material: .hudWindow, blendingMode: .behindWindow)
-                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-
-            // Layer 2 — dark tint so it reads well against any wallpaper
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(Color.black.opacity(0.55))
-
-            // Layer 3 — top-leading shine
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [Color.white.opacity(0.09), Color.clear],
-                        startPoint: .topLeading,
-                        endPoint: .center
-                    )
-                )
-                .blendMode(.plusLighter)
-
-            // Layer 4 — 1px border
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [Color.white.opacity(0.20), Color.white.opacity(0.05)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    ),
-                    lineWidth: 1
-                )
-        }
-    }
-}
-
 // MARK: - NSVisualEffectView bridge
 
 struct VisualEffectBlur: NSViewRepresentable {

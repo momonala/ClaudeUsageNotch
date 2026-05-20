@@ -337,17 +337,16 @@ private struct OnboardingPillPreview: View {
             withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
                 glowPulse = true
             }
-            // Cycle through demo values every 2 s
-            func cycle() {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    demoIndex = (demoIndex + 1) % demoValues.count
-                    withAnimation(.spring(response: 0.6, dampingFraction: 0.75)) {
-                        demoPercent = demoValues[demoIndex]
-                    }
-                    cycle()
+        }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                guard !Task.isCancelled else { break }
+                demoIndex = (demoIndex + 1) % demoValues.count
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.75)) {
+                    demoPercent = demoValues[demoIndex]
                 }
             }
-            cycle()
         }
     }
 }

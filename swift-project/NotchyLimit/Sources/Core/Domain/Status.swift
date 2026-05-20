@@ -4,7 +4,6 @@ import Foundation
 public enum AuthStatus: String, Codable, Hashable {
     case notConfigured
     case valid
-    case invalid
     case expired
 }
 

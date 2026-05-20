@@ -36,10 +36,10 @@ struct RetroMascot: View {
             // ── Antenna ─────────────────────────────────────────────────────
             VStack(spacing: 0) {
                 Circle()
-                    .fill(antennaDotColor)
+                    .fill(moodColor)
                     .frame(width: size * 0.17, height: size * 0.17)
                     .shadow(
-                        color: antennaDotColor.opacity(antennaGlow ? 0.95 : 0.3),
+                        color: moodColor.opacity(antennaGlow ? 0.95 : 0.3),
                         radius: antennaGlow ? size * 0.22 : size * 0.07
                     )
                     .scaleEffect(antennaGlow ? 1.15 : 0.92)
@@ -106,12 +106,12 @@ struct RetroMascot: View {
     @ViewBuilder
     private func eyeView() -> some View {
         Capsule()
-            .fill(eyeColor)
+            .fill(moodColor)
             .frame(
                 width:  size * (mood == .alarmed ? 0.15 : 0.12),
                 height: blink ? size * 0.02 : size * (mood == .alarmed ? 0.20 : 0.16)
             )
-            .shadow(color: eyeColor.opacity(0.5), radius: size * 0.06)
+            .shadow(color: moodColor.opacity(0.5), radius: size * 0.06)
     }
 
     @ViewBuilder
@@ -146,15 +146,7 @@ struct RetroMascot: View {
 
     // MARK: - Color helpers
 
-    private var antennaDotColor: Color {
-        switch mood {
-        case .happy:   return Theme.accentWarm
-        case .worried: return Theme.statusWarning
-        case .alarmed: return Theme.statusCritical
-        }
-    }
-
-    private var eyeColor: Color {
+    private var moodColor: Color {
         switch mood {
         case .happy:   return Theme.accentWarm
         case .worried: return Theme.statusWarning

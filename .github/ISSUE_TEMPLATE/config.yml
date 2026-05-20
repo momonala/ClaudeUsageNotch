@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Support NOTCHY
+    url: https://ko-fi.com/iamnsilva
+    about: Like NOTCHY? Buy me a coffee — keeps the project free and open-source.
+  - name: Questions & discussion
+    url: https://github.com/I-N-SILVA/NOTCHY/discussions
+    about: For usage questions, ideas, or anything that isn't a bug.

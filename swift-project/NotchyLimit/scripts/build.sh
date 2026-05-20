@@ -84,7 +84,6 @@ swiftc \
   "$SOURCES_DIR/Providers/Gemini/GeminiProvider.swift" \
   "$SOURCES_DIR/Services/AuthService.swift" \
   "$SOURCES_DIR/Services/NotificationService.swift" \
-  "$SOURCES_DIR/Services/NotificationThresholdConfig.swift" \
   "$SOURCES_DIR/Services/UsageCoordinator.swift" \
   "$SOURCES_DIR/Services/UsageService.swift" \
   "$SOURCES_DIR/UI/Theme/Theme.swift" \

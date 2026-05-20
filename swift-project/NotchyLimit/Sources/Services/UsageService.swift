@@ -14,8 +14,8 @@ public final class UsageService {
     public let errorPublisher    = PassthroughSubject<ProviderError, Never>()
 
     private var pollTask: Task<Void, Never>?
-    private(set) var intervalSeconds: TimeInterval = 300
-    private(set) var activeProviderId: ProviderId = .claude
+    private var intervalSeconds: TimeInterval = 300
+    private var activeProviderId: ProviderId = .claude
 
     private var consecutiveErrors: Int = 0
 
