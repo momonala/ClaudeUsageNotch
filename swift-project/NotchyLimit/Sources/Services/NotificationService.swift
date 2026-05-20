@@ -3,75 +3,74 @@ import AppKit
 
 /// Threshold-aware notification dispatcher.
 ///
-/// Delivery strategy: custom in-app banner (NotificationBannerController).
-/// This requires zero system permissions and works reliably for unsigned/local builds.
-/// `lastFired` is persisted to UserDefaults so restarts don't re-fire thresholds
-/// within the same reset window.
+/// Strategy: high-water mark per window.
+///
+/// For each usage window (session, weekly, model) we track the highest
+/// threshold we have already notified about. A notification fires only when
+/// the current usage climbs strictly above that mark. When usage drops back
+/// below the lowest configured threshold (window reset), the mark is cleared
+/// so the next rising edge fires again.
+///
+/// This replaces a previous key-based design that embedded `resets_at` in a
+/// deduplication key. Claude's API recalculates `resets_at` as "now + 5h" on
+/// every call, so the key drifted by the poll interval each fetch, causing
+/// notifications to fire on every single poll.
+///
+/// The mark is persisted in UserDefaults so app restarts within the same
+/// window do not re-fire already-seen thresholds.
 public final class NotificationService {
     public static let shared = NotificationService()
-    private init() { loadLastFired() }
+    private init() { loadMark() }
 
-    private let defaultsKey = "com.notchylimit.NotificationService.lastFired"
-    private var lastFired: [String: Double] = [:]
+    private let defaultsKey = "com.notchylimit.NotificationService.highWaterMark"
+
+    // "claude:session" → highest threshold already notified (0.0 = none)
+    private var mark: [String: Double] = [:]
 
     // MARK: - Public API
 
-    public func evaluate(snapshot: ServiceUsageSnapshot, thresholds: [Double], providerId: ProviderId) {
+    public func evaluate(snapshot: ServiceUsageSnapshot,
+                         thresholds: [Double],
+                         providerId: ProviderId) {
+        guard !thresholds.isEmpty else { return }
+
         var windows: [(UsageWindow, String)] = [(snapshot.primaryWindow, "session")]
-        if let weekly = snapshot.secondaryWindow  { windows.append((weekly, "weekly")) }
-        if let model  = snapshot.tertiaryWindow   { windows.append((model,  "model"))  }
+        if let w = snapshot.secondaryWindow { windows.append((w, "weekly")) }
+        if let w = snapshot.tertiaryWindow  { windows.append((w, "model"))  }
+
+        let sorted = thresholds.sorted()
+        let lowest = sorted.first!
 
         var dirty = false
-        for (window, label) in windows where window.percentUsed > 0 {
-            // Collect all thresholds newly crossed in this poll cycle (sorted low → high).
-            var newlyCrossed: [(threshold: Double, key: String)] = []
-            for threshold in thresholds.sorted() {
-                let key = fireKey(providerId: providerId, label: label,
-                                  threshold: threshold, window: window)
-                if window.percentUsed >= threshold && lastFired[key] == nil {
-                    newlyCrossed.append((threshold, key))
-                }
-            }
 
-            // Mark all of them fired, but only notify once — for the highest.
-            for (threshold, key) in newlyCrossed {
-                lastFired[key] = threshold
+        for (window, label) in windows where window.percentUsed > 0 {
+            let key = "\(providerId.rawValue):\(label)"
+            var current = mark[key] ?? 0
+
+            // Reset on window rollover: usage has fallen back below the lowest
+            // threshold, meaning the window cycled. Clear the mark so the next
+            // rising edge fires fresh notifications.
+            if window.percentUsed < lowest && current > 0 {
+                mark[key] = 0
+                current = 0
                 dirty = true
             }
-            if let highest = newlyCrossed.last {
-                fire(
-                    title: "\(providerId.displayName) \(label) \(Int(highest.threshold * 100))% used",
-                    body: usageBody(window: window, label: label)
-                )
-            }
-        }
-        if dirty { saveLastFired() }
-    }
 
-    // MARK: - Key generation
+            // Find the highest threshold the current usage has crossed.
+            guard let highest = sorted.last(where: { window.percentUsed >= $0 }) else { continue }
 
-    /// Builds a stable deduplication key for a threshold + window pair.
-    ///
-    /// WHY hourly bucketing: Claude's usage endpoint recalculates `resets_at` as
-    /// "now + 5 hours" on every API call. Using the raw `timeIntervalSince1970`
-    /// as the key component means the key drifts by the poll interval on every
-    /// fetch — the threshold appears unfired on every poll and notifications fire
-    /// continuously. Truncating to the nearest hour produces a key that is stable
-    /// for the full duration of any window (5-hour session, 7-day weekly) while
-    /// still generating a new key once the window actually rolls over.
-    ///
-    /// WHY daily fallback: a nil `resetAt` previously hardcoded to 0, meaning
-    /// "fire once, never again across all time." A daily bucket fires at most once
-    /// per calendar day, which is more useful than either extreme.
-    private func fireKey(providerId: ProviderId, label: String,
-                         threshold: Double, window: UsageWindow) -> String {
-        let bucket: Int
-        if let resetAt = window.resetAt {
-            bucket = Int(resetAt.timeIntervalSince1970 / 3600)
-        } else {
-            bucket = Int(Date().timeIntervalSince1970 / 86400)
+            // Only fire if we have crossed above the previously recorded mark.
+            guard highest > current else { continue }
+
+            mark[key] = highest
+            dirty = true
+            fire(
+                title: "\(providerId.displayName) \(label) \(Int(highest * 100))% used",
+                body: usageBody(window: window, label: label)
+            )
         }
-        return "\(providerId.rawValue):\(label):\(threshold):\(bucket)"
+
+        if dirty { saveMark() }
     }
 
     public func sendTest() {
@@ -80,12 +79,12 @@ public final class NotificationService {
 
     // MARK: - Persistence
 
-    private func saveLastFired() {
-        UserDefaults.standard.set(lastFired, forKey: defaultsKey)
+    private func saveMark() {
+        UserDefaults.standard.set(mark, forKey: defaultsKey)
     }
 
-    private func loadLastFired() {
-        lastFired = UserDefaults.standard.dictionary(forKey: defaultsKey) as? [String: Double] ?? [:]
+    private func loadMark() {
+        mark = UserDefaults.standard.dictionary(forKey: defaultsKey) as? [String: Double] ?? [:]
     }
 
     // MARK: - Delivery
@@ -93,7 +92,7 @@ public final class NotificationService {
     private func usageBody(window: UsageWindow, label: String) -> String {
         let pct = Int(window.percentUsed * 100)
         if let reset = window.timeToResetString() {
-            return "\(pct)% of \(label) limit — resets \(reset)."
+            return "\(pct)% of \(label) limit. Resets \(reset)."
         }
         return "\(pct)% of your \(label) limit used."
     }

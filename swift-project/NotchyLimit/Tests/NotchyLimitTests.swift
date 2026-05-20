@@ -70,55 +70,89 @@ final class ClaudeUsageMappingTests: XCTestCase {
     }
 }
 
-// MARK: - NotificationService.evaluate() Tests
+// MARK: - NotificationService high-water mark tests
 
 final class NotificationServiceEvaluateTests: XCTestCase {
 
-    private let defaultsKey = "com.notchylimit.NotificationService.lastFired"
+    private let defaultsKey = "com.notchylimit.NotificationService.highWaterMark"
+    private let thresholds: [Double] = [0.25, 0.5, 0.75, 0.9]
 
     override func setUp() {
         super.setUp()
         UserDefaults.standard.removeObject(forKey: defaultsKey)
     }
 
-    // 5. Jumping from 0% to 75% fires exactly one notification (for 75%),
-    //    not three separate ones for 25%, 50%, and 75%.
-    func test_evaluate_skippedThresholdsFiredOnce() {
-        let service = NotificationService.shared
-        let resetAt = Date().addingTimeInterval(3600)
-
-        let window = UsageWindow(
-            type: .session,
-            percentUsed: 0.76,       // jumped straight past 25% and 50%
-            resetAt: resetAt,
-            lastUpdated: Date()
-        )
-        let snapshot = ServiceUsageSnapshot(
+    private func snapshot(percent: Double) -> ServiceUsageSnapshot {
+        ServiceUsageSnapshot(
             providerId: .claude,
-            primaryWindow: window,
+            primaryWindow: UsageWindow(type: .session, percentUsed: percent,
+                                       lastUpdated: Date()),
             secondaryWindow: nil,
             tertiaryWindow: nil,
             capturedAt: Date()
         )
+    }
 
-        service.evaluate(snapshot: snapshot, thresholds: [0.25, 0.5, 0.75, 0.9], providerId: .claude)
+    private func mark() -> [String: Double] {
+        UserDefaults.standard.dictionary(forKey: defaultsKey) as? [String: Double] ?? [:]
+    }
 
-        let fired = UserDefaults.standard.dictionary(forKey: defaultsKey) as? [String: Double] ?? [:]
-        // Keys use hourly buckets, not raw timestamps.
-        let bucket = Int(resetAt.timeIntervalSince1970 / 3600)
+    // 5a. Skipping thresholds: jumping from 0% to 76% records the 75% mark
+    //     and does not fire separately for 25% or 50%.
+    func test_skippedThresholds_recordsHighestOnly() {
+        let service = NotificationService.shared
+        service.evaluate(snapshot: snapshot(percent: 0.76),
+                         thresholds: thresholds, providerId: .claude)
 
-        // All three crossed thresholds must be marked fired (no future re-fire).
-        XCTAssertNotNil(fired["claude:session:0.25:\(bucket)"], "25% should be marked fired")
-        XCTAssertNotNil(fired["claude:session:0.5:\(bucket)"],  "50% should be marked fired")
-        XCTAssertNotNil(fired["claude:session:0.75:\(bucket)"], "75% should be marked fired")
+        XCTAssertEqual(mark()["claude:session"], 0.75,
+                       "mark should be 0.75 — the highest crossed threshold")
+    }
 
-        // 90% was NOT crossed — must not be in the fired set.
-        XCTAssertNil(fired["claude:session:0.9:\(bucket)"], "90% must not be marked fired")
+    // 5b. Repeated polls at the same usage level fire nothing extra.
+    func test_repeatedEvaluate_doesNotReFire() {
+        let service = NotificationService.shared
+        service.evaluate(snapshot: snapshot(percent: 0.76),
+                         thresholds: thresholds, providerId: .claude)
+        let markAfterFirst = mark()
 
-        // A second evaluate at the same usage must not alter the fired set.
-        service.evaluate(snapshot: snapshot, thresholds: [0.25, 0.5, 0.75, 0.9], providerId: .claude)
-        let firedAfterSecondEval = UserDefaults.standard.dictionary(forKey: defaultsKey) as? [String: Double] ?? [:]
-        XCTAssertEqual(fired.count, firedAfterSecondEval.count, "second evaluate must not add new entries")
+        service.evaluate(snapshot: snapshot(percent: 0.76),
+                         thresholds: thresholds, providerId: .claude)
+        XCTAssertEqual(mark(), markAfterFirst,
+                       "mark must not change on a second evaluate at the same usage")
+    }
+
+    // 5c. Crossing a higher threshold on a later poll fires once more.
+    func test_newHigher_threshold_fires() {
+        let service = NotificationService.shared
+        service.evaluate(snapshot: snapshot(percent: 0.76),
+                         thresholds: thresholds, providerId: .claude)
+        XCTAssertEqual(mark()["claude:session"], 0.75)
+
+        service.evaluate(snapshot: snapshot(percent: 0.92),
+                         thresholds: thresholds, providerId: .claude)
+        XCTAssertEqual(mark()["claude:session"], 0.9,
+                       "mark should advance to 0.9 when usage crosses 90%")
+    }
+
+    // 5d. Window reset: usage drops below the lowest threshold → mark clears →
+    //     next rising edge fires fresh notifications.
+    func test_windowReset_clearsMark() {
+        let service = NotificationService.shared
+        service.evaluate(snapshot: snapshot(percent: 0.76),
+                         thresholds: thresholds, providerId: .claude)
+        XCTAssertEqual(mark()["claude:session"], 0.75)
+
+        // Simulate window reset — usage back near zero.
+        service.evaluate(snapshot: snapshot(percent: 0.05),
+                         thresholds: thresholds, providerId: .claude)
+        XCTAssertEqual(mark()["claude:session"], 0,
+                       "mark should clear to 0 when usage drops below lowest threshold")
+
+        // Next rising edge should fire again.
+        service.evaluate(snapshot: snapshot(percent: 0.76),
+                         thresholds: thresholds, providerId: .claude)
+        XCTAssertEqual(mark()["claude:session"], 0.75,
+                       "mark should advance again after window reset")
     }
 
     // 6. KeychainStore round-trip: write → read → delete.
