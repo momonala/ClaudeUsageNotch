@@ -47,6 +47,7 @@ struct ExpandedPanelView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     HeaderRow(appState: appState, controller: controller)
                     SessionCard(appState: appState)
+                    PaceRow(appState: appState)
 
                     if let weekly = appState.latestSnapshot?.secondaryWindow {
                         WeeklyCard(window: weekly)

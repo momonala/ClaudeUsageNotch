@@ -40,7 +40,15 @@ public final class UsageCoordinator {
             .sink { [weak self] err in
                 guard let self = self else { return }
                 if err.isAuthIssue {
+                    let wasValid = self.appState.authStatus == .valid
                     self.appState.authStatus = (err == .missingCredentials) ? .notConfigured : .expired
+                    // Only notify on the transition from valid → expired so we don't spam.
+                    if wasValid && err == .unauthorized {
+                        self.notifications.send(
+                            title: "Claude cookie expired",
+                            body: "Open Notchy → Settings → Replace cookie to reconnect."
+                        )
+                    }
                 }
                 self.appState.syncStatus = .error(err)
             }

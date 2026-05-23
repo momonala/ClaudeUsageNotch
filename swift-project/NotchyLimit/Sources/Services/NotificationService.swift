@@ -77,6 +77,10 @@ public final class NotificationService {
         if dirty { saveMark() }
     }
 
+    public func send(title: String, body: String) {
+        fire(title: title, body: body)
+    }
+
     public func sendTest() {
         fire(title: "Notchy Limit", body: "Notifications are working.")
     }
