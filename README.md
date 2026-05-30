@@ -1,6 +1,6 @@
 # NOTCHY
 
-> Your MacBook notch, now showing your Claude AI usage limits live.
+> Your MacBook notch (or menu bar), now showing your AI usage limits live — Claude, Codex, Gemini & more.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](swift-project/NotchyLimit/LICENSE)
 [![macOS 12+](https://img.shields.io/badge/macOS-12.0%2B-blue)](https://www.apple.com/macos/)
@@ -13,16 +13,18 @@
   <img src="assets/demo.gif" alt="NOTCHY running on a MacBook Pro" width="680" />
 </p>
 
-NOTCHY is a free, open-source macOS utility that turns the MacBook hardware notch into a real-time Claude usage monitor. A minimal pill blends with the notch and shows your session percentage at a glance. Hover to expand into a full panel with session usage, weekly quota, time until reset, and threshold alerts. Everything runs locally with zero telemetry.
+NOTCHY is a free, open-source macOS utility that turns the MacBook hardware notch (or the menu bar) into a real-time AI usage monitor. A minimal pill blends with the notch and shows your usage at a glance. Hover to expand into a full panel with session usage, weekly quota, time until reset, and threshold alerts. Everything runs locally with zero telemetry.
+
+**Tracks 8 providers:** **Claude** (Claude Code / Claude.ai — real 5h + weekly), **Codex** (ChatGPT plan — real 5h + weekly), **Gemini** (Code Assist quota), **OpenAI** (API spend), **OpenRouter** (credits), **DeepSeek** (balance), **ElevenLabs** (characters), and **Perplexity**. Claude / Codex / Gemini need **no key** — Notchy reads your existing CLI login automatically.
 
 ---
 
 ## Why NOTCHY?
 
 - **The notch is wasted real estate.** Apple uses it for the camera. macOS uses it for nothing. NOTCHY puts your most-checked number there.
-- **Claude limit anxiety is real.** Stop refreshing `claude.ai/settings/usage`. The percentage is always on screen.
+- **AI limit anxiety is real.** Stop refreshing usage dashboards across Claude, ChatGPT, Gemini and friends. Your binding limit is always on screen.
 - **No tab, no Electron, no 400MB.** It's a native Swift app under 10MB. Hover-to-expand like Dynamic Island.
-- **Local-first, zero telemetry.** Talks to `claude.ai` only. Cookie lives in Keychain. Read every line yourself.
+- **Local-first, zero telemetry.** Talks only to the providers you configure. Tokens live in the Keychain / your CLI's own files. Read every line yourself.
 - **Free forever.** MIT licensed. No paywalls, no upsells, no account.
 
 ---
@@ -39,18 +41,18 @@ NOTCHY is a free, open-source macOS utility that turns the MacBook hardware notc
 
 ## Features
 
+- **8 providers** — Claude, Codex, Gemini, OpenAI, OpenRouter, DeepSeek, ElevenLabs, Perplexity
+- **No key for Claude / Codex / Gemini** — auto-detects your existing CLI login (Keychain / `~/.codex` / `~/.gemini`)
 - Dynamic Island-style pill that blends with the physical hardware notch
-- Arc progress ring with colour-matched glow (green, amber, red)
-- Mood-reactive retro mascot, calm at 0-74%, worried at 75-89%, alarmed at 90%+
-- Hover to expand, click to pin, click anywhere outside to dismiss
-- Hero layout with giant usage %, reset countdown, and rolling counter on open
-- Session card (5-hour window) and weekly card (7-day quota)
-- In-app banners at 25, 50, 75, and 90% with no system permission required
-- Right-click context menu with Refresh, Settings, Test notification, and Quit
-- 5-minute auto-refresh with exponential backoff on errors
-- Cookie stored in macOS Keychain, never in UserDefaults, never logged
-- Local-first: talks only to `claude.ai`, zero telemetry
-- Provider-extensible with a clean `UsageProvider` protocol (Gemini stub included)
+- **Menu-bar mode** for non-notch Macs (or run both) — a clean popover listing every provider at once
+- **One provider in the notch** (with its icon); switch which one from the expanded panel
+- Arc progress ring + mood-reactive mascot (calm → worried → alarmed)
+- Hero layout: giant usage %, reset countdown, rolling counter; session + weekly cards; credit-balance / "Active" states for providers without a quota %
+- **Outage badges** — reads provider status pages and flags active incidents
+- In-app banners at 25/50/75/90% — no system permission required
+- 5-minute auto-refresh with exponential backoff; settings persist
+- Tokens in the macOS Keychain (or your CLI's own files), never logged; local-first, zero telemetry
+- Provider-extensible with a clean `UsageProvider` protocol
 - MIT licensed, read every line yourself
 
 ---
@@ -70,51 +72,49 @@ NOTCHY is a free, open-source macOS utility that turns the MacBook hardware notc
 
 ## Install
 
-### Option A: Build from source (no Xcode required)
+### Option A: Homebrew (recommended)
 
 ```bash
-# Install Xcode Command Line Tools (one-time)
-xcode-select --install
+brew install --cask I-N-SILVA/notchy/notchy
+```
 
-# Clone
+The [cask](https://github.com/I-N-SILVA/homebrew-notchy) clears the macOS quarantine for you, so it launches with **no Gatekeeper prompt**. Update with `brew upgrade --cask notchy`.
+
+### Option B: Download the release DMG
+
+Grab `NotchyLimit-Installer.dmg` from the [latest release](https://github.com/I-N-SILVA/NOTCHY/releases/latest), open it, and drag **NotchyLimit** to Applications. The build is **unsigned** (no Apple Developer ID), so on first launch: **right-click the app → Open → Open**, or run `xattr -dr com.apple.quarantine /Applications/NotchyLimit.app`.
+
+<p align="center">
+  <img src="swift-project/NotchyLimit/docs/install.gif" alt="First launch: right-click → Open → Open" width="560" />
+</p>
+
+### Option C: Build from source (no Xcode required)
+
+```bash
+xcode-select --install
 git clone https://github.com/I-N-SILVA/NOTCHY.git
 cd NOTCHY/swift-project/NotchyLimit
-
-# Build
-bash scripts/build.sh
-
-# Run
-open build/NotchyLimit.app
+bash scripts/build.sh && open build/NotchyLimit.app
 ```
 
-The script compiles with `swiftc`, assembles the `.app` bundle, generates the `.icns` icon from included PNGs, and strips the quarantine attribute. No full Xcode install, no code signing, no Apple developer account required.
+`build.sh` compiles with `swiftc`, assembles + ad-hoc signs the `.app`, and builds the icon — no full Xcode, no code signing, no developer account. (For development: `brew install xcodegen && xcodegen generate && open NotchyLimit.xcodeproj`.)
 
-### Option B: With Xcode (for development)
-
-```bash
-brew install xcodegen
-cd NOTCHY/swift-project/NotchyLimit
-xcodegen generate
-open NotchyLimit.xcodeproj   # then press Cmd+R
-```
+> Notchy is a menu-bar agent — **no Dock icon**. It lives in the notch / menu bar.
 
 ---
 
-## First launch: getting your session token
+## First launch: connecting providers
 
-Notchy reads Claude's internal usage endpoint using your session cookie. The process takes about 30 seconds.
+Claude, Codex, and Gemini need **no key** — Notchy reads the login the official CLI already stored. Everything else takes an API key you paste once (kept in the Keychain, only ever sent to that provider).
 
-1. Open [claude.ai](https://claude.ai) and log in
-2. Open DevTools with `Cmd + Option + I`, then click the Network tab
-3. Refresh the page and find a request named `usage`
-4. Under Request Headers, copy the entire `Cookie` value
-5. Paste it into Notchy's onboarding screen and click Validate
+| Provider | How to connect |
+|---|---|
+| **Claude** | Use **Claude Code** / the Claude CLI — auto-detected (`Claude Code-credentials` Keychain item or `~/.claude/credentials.json`). macOS asks once → **Always Allow**. *(No CLI? Paste a claude.ai session cookie instead.)* |
+| **Codex** | `npm i -g @openai/codex` → `codex login`. Reads `~/.codex/auth.json`. |
+| **Gemini** | Sign in with the `gemini` CLI (Code Assist). Reads `~/.gemini/oauth_creds.json`. *(Or paste a Gemini API key for a "Connected" status.)* |
+| **OpenAI / OpenRouter / DeepSeek / ElevenLabs / Perplexity** | Paste an API key in onboarding. |
 
-The cookie is stored in the macOS **Keychain**, never on disk, never logged.
-
-> **Note:** This uses an undocumented Claude endpoint that may change. If it breaks, open an [Issue](https://github.com/I-N-SILVA/NOTCHY/issues).
-
-Full setup guide with screenshots: [docs/COOKIE_SETUP.md](swift-project/NotchyLimit/docs/COOKIE_SETUP.md)
+> **Note:** these use **undocumented/internal** provider endpoints that may change. If one breaks, open an [Issue](https://github.com/I-N-SILVA/NOTCHY/issues).
 
 ---
 
@@ -138,21 +138,28 @@ swift-project/NotchyLimit/Sources/
 ├── Core/
 │   ├── Domain/            ProviderId, UsageWindow, ServiceUsageSnapshot, Status
 │   └── State/             AppState, NotchState
-├── Providers/
+├── Providers/            One folder each, all conform to UsageProvider
 │   ├── UsageProvider.swift   Protocol + ProviderRegistry
-│   ├── Claude/            ClaudeProvider, ClaudeCredential, Endpoint, DTOs
-│   └── Gemini/            Stub (coming soon)
-├── Services/              UsageService, NotificationService, AuthService
-├── Platform/              KeychainStore, ScreenUtils, NotchDetector
+│   ├── Claude/            OAuth (Keychain/file) + cookie → api.anthropic.com / claude.ai
+│   ├── Codex/            ~/.codex/auth.json → chatgpt.com/backend-api/wham/usage
+│   ├── Gemini/           ~/.gemini OAuth → cloudcode-pa Code Assist quota
+│   ├── OpenAI/           API key → billing spend
+│   ├── OpenRouter/       API key → credits
+│   ├── DeepSeek/         API key → balance
+│   ├── ElevenLabs/       API key → character usage
+│   └── Perplexity/       API key → connected status
+├── Services/              UsageService, UsageCoordinator, AuthService,
+│                          NotificationService, IncidentMonitor (status pages)
+├── Platform/              KeychainStore, DisplayMode, ScreenUtils, NotchDetector
 └── UI/
     ├── NotchWindowController  NSPanel, hover timer, click-outside monitor
+    ├── MenuBar/           NSStatusItem glyph + multi-provider popover
     ├── Compact/           Pill view
-    ├── Expanded/          Full panel (session card, weekly card, actions)
-    ├── Onboarding/        5-step setup with live pill preview
-    ├── Settings/          Notifications, launch at login, providers
+    ├── Expanded/          Full panel + provider switcher
+    ├── Onboarding/        Adaptive setup (CLI-detected vs API key)
+    ├── Settings/          Display toggles, notifications, providers
     ├── Diagnostics/       Sync status, raw errors
-    └── Theme/             Tokens, GlassBackground, NotchPillShape,
-                           RetroMascot, StatusRingView
+    └── Theme/             Tokens, GlassBackground, RetroMascot, StatusRingView
 ```
 
 ### How the notch blend works
@@ -165,7 +172,7 @@ The panel anchors at `screen.frame.maxY` (top of screen). Its height equals `saf
 
 - Cookie stored in macOS **Keychain**, never in UserDefaults, never logged
 - No telemetry, no analytics, no remote servers
-- Network calls go only to `claude.ai` (and whichever providers you configure)
+- Network calls go only to the providers you configure (e.g. `api.anthropic.com`, `chatgpt.com`, `cloudcode-pa.googleapis.com`)
 - MIT licensed, read every line yourself
 
 ---
@@ -174,11 +181,12 @@ The panel anchors at `screen.frame.maxY` (top of screen). Its height equals `saf
 
 PRs welcome. Good first issues:
 
-- **Gemini provider** — stub is in place, needs a real implementation
-- **ChatGPT provider** — OpenAI usage API integration
+- **More providers** — Grok, Mistral, Moonshot/Kimi, Groq (follow the `UsageProvider` pattern)
+- **Cursor / Windsurf** — usage via browser-cookie extraction
+- **Signing + notarization** — wire `scripts/sign_and_notarize.sh` once a Developer ID is available
+- **Gemini → Antigravity** — migrate the Code Assist path before Google retires it (2026-06-18)
 - **Intel build** — verify and document the x86_64 target
 - **Sparkle auto-update** — add `Sparkle.framework` update checking
-- **Cookie helper** — browser extension to auto-grab the cookie
 
 See [CONTRIBUTING.md](swift-project/NotchyLimit/CONTRIBUTING.md) for guidelines.
 
@@ -186,7 +194,7 @@ See [CONTRIBUTING.md](swift-project/NotchyLimit/CONTRIBUTING.md) for guidelines.
 
 ## Disclaimer
 
-This app uses an **undocumented** Claude endpoint. It is not affiliated with or endorsed by Anthropic. The endpoint may change without notice. Use at your own risk.
+This app reads **undocumented/internal** usage endpoints of each provider. It is not affiliated with or endorsed by Anthropic, OpenAI, Google, or any provider. These endpoints may change without notice. Use at your own risk.
 
 ---
 
@@ -204,7 +212,7 @@ NOTCHY is built and maintained by one person, in the open, for free. If it saves
   </a>
 </p>
 
-Every dollar goes back into the project: new providers (ChatGPT, Gemini), Sparkle auto-update, a one-click cookie helper, and keeping everything free and open-source forever. See [SPONSORS.md](SPONSORS.md) for the full list of backers.
+Every dollar goes back into the project: even more providers, code signing + notarization, Sparkle auto-update, and keeping everything free and open-source forever. See [SPONSORS.md](SPONSORS.md) for the full list of backers.
 
 Not in a position to sponsor? **Star the repo** ⭐ — it's free and genuinely helps with discoverability.
 
