@@ -91,7 +91,6 @@ swiftc \
   "$SOURCES_DIR/Providers/OpenRouter/OpenRouterProvider.swift" \
   "$SOURCES_DIR/Providers/OpenAI/OpenAICredential.swift" \
   "$SOURCES_DIR/Providers/OpenAI/OpenAIEndpoint.swift" \
-  "$SOURCES_DIR/Providers/OpenAI/OpenAIUsageDTO.swift" \
   "$SOURCES_DIR/Providers/OpenAI/OpenAIProvider.swift" \
   "$SOURCES_DIR/Services/AuthService.swift" \
   "$SOURCES_DIR/Services/IncidentMonitor.swift" \

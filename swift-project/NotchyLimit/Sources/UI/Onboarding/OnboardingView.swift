@@ -296,26 +296,11 @@ struct OnboardingView: View {
             Text("Paste your OpenAI API key")
                 .font(.title3.weight(.semibold))
                 .foregroundColor(Theme.textPrimary)
-            Text("Find it at platform.openai.com → API keys. Notchy uses it to read your monthly billing usage vs. your configured spend limit.")
+            Text("Find it at platform.openai.com → API keys.")
                 .font(Theme.captionFont)
                 .foregroundColor(Theme.textSecondary)
 
-            HStack(alignment: .top, spacing: 8) {
-                Image(systemName: "info.circle.fill")
-                    .foregroundColor(Theme.accentCool)
-                    .font(.system(size: 12))
-                    .padding(.top, 1)
-                Text("The key is stored in the macOS Keychain and only ever sent to api.openai.com. Your key must have billing read access.")
-                    .font(Theme.captionFont)
-                    .foregroundColor(Theme.textSecondary)
-            }
-            .padding(10)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Theme.accentCool.opacity(0.06))
-                    .overlay(RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(Theme.accentCool.opacity(0.20)))
-            )
+            statusOnlyNote("OpenAI no longer exposes per-key spend to API keys, so Notchy shows a Connected status — not a quota %. The key is stored in the macOS Keychain and only ever sent to api.openai.com.")
 
             SecureCookieEditor(text: $credentialInput, placeholder: "sk-...")
                 .frame(height: 60)
@@ -413,11 +398,17 @@ struct OnboardingView: View {
         )
     }
 
+    private var validateHeadline: String {
+        if validating { return "Validating…" }
+        if validateError != nil { return "Couldn't validate" }
+        return "Credentials validated ✓"
+    }
+
     private var validateStep: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(validating ? "Validating…" : "Credentials validated ✓")
+            Text(validateHeadline)
                 .font(.title3.weight(.semibold))
-                .foregroundColor(Theme.textPrimary)
+                .foregroundColor(validateError == nil ? Theme.textPrimary : Theme.statusCritical)
             Text("Checking that the credentials can reach \(selectedProvider.displayName)'s usage endpoint.")
                 .font(Theme.captionFont)
                 .foregroundColor(Theme.textSecondary)

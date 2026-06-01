@@ -10,11 +10,26 @@ private let logger = Logger(subsystem: "com.notchylimit.NotchyLimit", category: 
 /// Security posture:
 ///  - `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` — readable only while
 ///    the screen is unlocked; never leaves the device via iCloud backup.
-///  - `SecAccessCreate` with the current process as the sole trusted
-///    application — any other process attempting to read the item will
-///    trigger a macOS user-confirmation prompt.
+///  - Access is governed by the default ACL: the app that created an item can
+///    read it back without a prompt **once it has a stable code signature**.
+///
+/// Prompt behaviour: macOS keys keychain access to the app's code-signing
+/// identity. A signed + notarized build reads its own items silently (and any
+/// one-time "Always Allow" sticks). Unsigned/ad-hoc dev builds present a
+/// changing identity, so macOS may still prompt — but the in-memory cache below
+/// collapses that to at most one prompt per credential per launch instead of
+/// one on every usage poll.
 public final class KeychainStore {
     private let service: String
+
+    /// In-memory cache of decrypted items, keyed by account. The first read of
+    /// each credential hits the Keychain (and may prompt on unsigned builds);
+    /// every subsequent read in the same launch is served from memory, so the
+    /// 5-minute usage poll never re-triggers a Keychain prompt. Writes/deletes
+    /// keep the cache coherent.
+    private var cache: [String: Data] = [:]
+    private let lock = NSLock()
+
     public init(service: String) { self.service = service }
 
     public func set(account: String, data: Data) {
@@ -27,25 +42,31 @@ public final class KeychainStore {
         ]
         SecItemDelete(query as CFDictionary)
 
-        query[kSecValueData as String]     = data
+        query[kSecValueData as String]      = data
         query[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
 
-        // Bind the item to this application.
-        // SecTrustedApplicationCreateFromPath(nil, ...) = the currently running
-        // binary. Other processes require user confirmation to access the item.
-        // Note: SecAccessCreate is deprecated (macOS 10.10) but remains the
-        // only reliable ACL mechanism for non-sandboxed apps on macOS 12+.
-        if let access = makeAppBoundAccess(label: label) {
-            query[kSecAttrAccess as String] = access
-        }
+        // No custom `SecAccessCreate` ACL: the legacy trusted-application ACL
+        // (deprecated since macOS 10.10) is the path most sensitive to a
+        // changing code identity, so it actively *worsened* re-prompting on
+        // ad-hoc builds. The default ACL ties the item to the creating app's
+        // signature, which is what we want for a signed release.
 
         let status = SecItemAdd(query as CFDictionary, nil)
-        if status != errSecSuccess {
+        if status == errSecSuccess {
+            lock.lock(); cache[account] = data; lock.unlock()
+        } else {
             logger.error("Keychain write failed: OSStatus \(status, privacy: .public)")
         }
     }
 
     public func get(account: String) -> Data? {
+        lock.lock()
+        if let cached = cache[account] {
+            lock.unlock()
+            return cached
+        }
+        lock.unlock()
+
         let query: [String: Any] = [
             kSecClass as String:       kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -54,8 +75,11 @@ public final class KeychainStore {
             kSecMatchLimit as String:  kSecMatchLimitOne,
         ]
         var item: AnyObject?
-        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess else { return nil }
-        return item as? Data
+        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
+              let data = item as? Data else { return nil }
+
+        lock.lock(); cache[account] = data; lock.unlock()
+        return data
     }
 
     @discardableResult
@@ -66,24 +90,7 @@ public final class KeychainStore {
             kSecAttrAccount as String: account,
         ]
         let status = SecItemDelete(query as CFDictionary)
+        lock.lock(); cache[account] = nil; lock.unlock()
         return status == errSecSuccess || status == errSecItemNotFound
-    }
-
-    // MARK: - Private
-
-    private func makeAppBoundAccess(label: String) -> SecAccess? {
-        var selfRef: SecTrustedApplication?
-        guard SecTrustedApplicationCreateFromPath(nil, &selfRef) == errSecSuccess,
-              let trusted = selfRef else {
-            logger.warning("Could not create trusted-application reference — item will use default ACL")
-            return nil
-        }
-        var access: SecAccess?
-        let status = SecAccessCreate(label as CFString, [trusted] as CFArray, &access)
-        guard status == errSecSuccess else {
-            logger.warning("SecAccessCreate failed: OSStatus \(status, privacy: .public)")
-            return nil
-        }
-        return access
     }
 }
