@@ -70,94 +70,25 @@ final class ClaudeUsageMappingTests: XCTestCase {
     }
 }
 
-// MARK: - OpenAIUsageMapper Tests
+// MARK: - OpenAI status-only snapshot tests
 
-final class OpenAIUsageMappingTests: XCTestCase {
+// OpenAI is a connected-status provider (issue #9): its old billing dashboard
+// endpoints reject standard `sk-` API keys, so Notchy verifies the key is live
+// and reports an "Active" status rather than a fabricated quota %.
+final class OpenAIStatusOnlyTests: XCTestCase {
 
-    private func sub(hard: Double, accessUntil: TimeInterval? = nil) -> OpenAISubscriptionDTO {
-        OpenAISubscriptionDTO(hardLimitUSD: hard, softLimitUSD: hard * 0.8, accessUntil: accessUntil)
-    }
-
-    private func usage(cents: Double) -> OpenAIUsageDTO {
-        OpenAIUsageDTO(totalUsageCents: cents)
-    }
-
-    // 7. Happy path: $60 spent against $120 hard limit = 50%.
-    func test_openai_happyPath_fiftyPercent() throws {
-        let snapshot = try OpenAIUsageMapper.snapshot(
-            subscription: sub(hard: 120.0),
-            usage: usage(cents: 6000)   // $60.00
-        )
+    func test_openai_connectedSnapshot_isStatusOnly() {
+        let snapshot = ServiceUsageSnapshot.connected(providerId: .openai)
         XCTAssertEqual(snapshot.providerId, .openai)
-        XCTAssertEqual(snapshot.primaryWindow.type, .monthly)
-        XCTAssertEqual(snapshot.primaryWindow.percentUsed, 0.5, accuracy: 0.001)
-        XCTAssertEqual(snapshot.primaryWindow.usedAmount ?? 0, 60.0, accuracy: 0.01)
-        XCTAssertEqual(snapshot.primaryWindow.limitAmount ?? 0, 120.0, accuracy: 0.01)
+        XCTAssertTrue(snapshot.isStatusOnly)
+        XCTAssertFalse(snapshot.showsPercentBar)
+        XCTAssertEqual(snapshot.shortLabel, "Active")
+    }
+
+    func test_openai_connectedSnapshot_hasNoSecondaryWindows() {
+        let snapshot = ServiceUsageSnapshot.connected(providerId: .openai)
         XCTAssertNil(snapshot.secondaryWindow)
-    }
-
-    // 8. Zero hard limit → decoding error (avoid division by zero).
-    func test_openai_zeroHardLimit_throws() {
-        XCTAssertThrowsError(try OpenAIUsageMapper.snapshot(
-            subscription: sub(hard: 0),
-            usage: usage(cents: 100)
-        )) { error in
-            guard case ProviderError.decoding = error else {
-                return XCTFail("Expected ProviderError.decoding, got \(error)")
-            }
-        }
-    }
-
-    // 9. Nil hard limit → decoding error.
-    func test_openai_nilHardLimit_throws() {
-        let noLimit = OpenAISubscriptionDTO(hardLimitUSD: nil, softLimitUSD: nil, accessUntil: nil)
-        XCTAssertThrowsError(try OpenAIUsageMapper.snapshot(
-            subscription: noLimit,
-            usage: usage(cents: 100)
-        ))
-    }
-
-    // 10. Zero usage → 0% utilization.
-    func test_openai_zeroUsage_zeroPercent() throws {
-        let snapshot = try OpenAIUsageMapper.snapshot(
-            subscription: sub(hard: 100.0),
-            usage: usage(cents: 0)
-        )
-        XCTAssertEqual(snapshot.primaryWindow.percentUsed, 0.0, accuracy: 0.001)
-    }
-
-    // 11. Over-limit usage → percentUsed > 1.0 (not clamped — let UI decide).
-    func test_openai_overLimit_exceedsOne() throws {
-        let snapshot = try OpenAIUsageMapper.snapshot(
-            subscription: sub(hard: 50.0),
-            usage: usage(cents: 6000)   // $60 against $50 limit
-        )
-        XCTAssertGreaterThan(snapshot.primaryWindow.percentUsed, 1.0)
-    }
-
-    // 12. accessUntil present → resetAt is populated.
-    func test_openai_accessUntil_populatesResetAt() throws {
-        let future: TimeInterval = Date().timeIntervalSince1970 + 86400
-        let snapshot = try OpenAIUsageMapper.snapshot(
-            subscription: sub(hard: 100, accessUntil: future),
-            usage: usage(cents: 1000)
-        )
-        XCTAssertNotNil(snapshot.primaryWindow.resetAt)
-        XCTAssertEqual(
-            snapshot.primaryWindow.resetAt!.timeIntervalSince1970,
-            future,
-            accuracy: 1.0
-        )
-    }
-
-    // 13. Nil usage cents treated as 0 (API may omit it).
-    func test_openai_nilUsageCents_treatedAsZero() throws {
-        let noUsage = OpenAIUsageDTO(totalUsageCents: nil)
-        let snapshot = try OpenAIUsageMapper.snapshot(
-            subscription: sub(hard: 100),
-            usage: noUsage
-        )
-        XCTAssertEqual(snapshot.primaryWindow.percentUsed, 0.0, accuracy: 0.001)
+        XCTAssertNil(snapshot.tertiaryWindow)
     }
 }
 
