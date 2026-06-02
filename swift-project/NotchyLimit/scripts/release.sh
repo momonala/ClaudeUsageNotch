@@ -13,7 +13,7 @@
 #   PROJECT_DIR  Swift project dir holding scripts/build.sh + Info.plist
 #   APP_NAME     .app bundle name        (default NotchyLimit)
 #   DMG_NAME     DMG basename            (default NotchyLimit-Installer)
-#   REPO         owner/name for releases (default I-N-SILVA/NOTCHY)
+#   REPO         owner/name for releases (default I-N-SILVA/NOTCHYLIMIT)
 #   TAP_REPO     owner/homebrew-name     (default I-N-SILVA/homebrew-notchy)
 #   CASK         cask file basename      (default notchy)
 #
@@ -41,7 +41,7 @@ done
 PROJECT_DIR="${PROJECT_DIR:-/Users/bhujoy/notchy/NOTCHY/swift-project/NotchyLimit}"
 APP_NAME="${APP_NAME:-NotchyLimit}"
 DMG_NAME="${DMG_NAME:-NotchyLimit-Installer}"
-REPO="${REPO:-I-N-SILVA/NOTCHY}"
+REPO="${REPO:-I-N-SILVA/NOTCHYLIMIT}"
 TAP_REPO="${TAP_REPO:-I-N-SILVA/homebrew-notchy}"
 CASK="${CASK:-notchy}"
 INFO_PLIST="$PROJECT_DIR/Sources/Resources/Info.plist"
