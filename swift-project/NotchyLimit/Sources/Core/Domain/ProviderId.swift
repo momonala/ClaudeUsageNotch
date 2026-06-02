@@ -8,7 +8,7 @@ public enum ProviderId: String, Codable, Hashable, CaseIterable {
     case openai      // OpenAI API (billing-based usage monitoring)
     case openrouter  // OpenRouter — credits used vs. credits purchased (%)
     case gemini      // Google Gemini — Code Assist quota (%) or connected-only
-    case perplexity  // Perplexity — connected status only (no usage endpoint)
+    case perplexity  // Perplexity — real usage via desktop-app token, else connected-only
     case deepseek    // DeepSeek — remaining credit balance (no %)
     case elevenlabs  // ElevenLabs — character usage vs. monthly limit (%)
 
@@ -31,7 +31,7 @@ public enum ProviderId: String, Codable, Hashable, CaseIterable {
         case .codex:       return "chevron.left.forwardslash.chevron.right"
         case .openai:      return "circle.hexagongrid"
         case .openrouter:  return "arrow.triangle.branch"
-        case .gemini:      return "star.four.pointed"
+        case .gemini:      return "sparkles"   // NOTE: "star.four.pointed" is not a valid SF Symbol on macOS 12–15, so it rendered blank (issue #11)
         case .perplexity:  return "magnifyingglass.circle"
         case .deepseek:    return "water.waves"
         case .elevenlabs:  return "waveform"

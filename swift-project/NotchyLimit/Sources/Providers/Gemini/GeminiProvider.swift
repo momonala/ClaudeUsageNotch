@@ -82,6 +82,47 @@ struct GeminiOAuthCredential {
     }
 }
 
+// MARK: - Antigravity credential (successor to Gemini CLI Code Assist)
+
+/// Reads the Google OAuth access token that **Antigravity** (Google's successor
+/// to Gemini CLI / Code Assist) stores in its VS Code-style state database.
+///
+/// Google is sunsetting Gemini CLI / Code Assist for individuals on 2026-06-18;
+/// Antigravity is the replacement and keeps using the same `cloudcode-pa` quota
+/// surface. This lets Notchy keep showing Gemini quota after that date when the
+/// user has moved to Antigravity.
+///
+/// Caveat: the stored token is a short-lived `ya29.` access token with no
+/// refresh token exposed on disk (the app refreshes it internally), so it's only
+/// usable while Antigravity has been running recently. The provider treats a
+/// rejection as "fall back" rather than an error, so a stale token never
+/// regresses the UI.
+struct GeminiAntigravityCredential {
+    static func stateDBPath() -> String {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Antigravity/User/globalStorage/state.vscdb").path
+    }
+
+    static func isAvailable() -> Bool {
+        FileManager.default.fileExists(atPath: stateDBPath())
+    }
+
+    /// Returns the `ya29.` access token from `antigravityAuthStatus`, or nil.
+    static func readAccessToken() -> String? {
+        guard let rows = SQLiteReader.query(stateDBPath(),
+              "SELECT value FROM ItemTable WHERE key = 'antigravityAuthStatus'"),
+              let first = rows.first?.first else { return nil }
+        let data: Data?
+        if let s = first as? String { data = s.data(using: .utf8) }
+        else if let d = first as? Data { data = d }
+        else { data = nil }
+        guard let data,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let token = json["apiKey"] as? String, token.hasPrefix("ya29.") else { return nil }
+        return token
+    }
+}
+
 // MARK: - Endpoints
 
 enum GeminiEndpoint {
@@ -162,10 +203,20 @@ final class GeminiProvider: UsageProvider {
     }
 
     func fetchUsage() async throws -> ServiceUsageSnapshot {
+        // 1) Gemini CLI / Code Assist (works until Google's 2026-06-18 sunset).
         if GeminiOAuthCredential.isAvailable(), let cred = GeminiOAuthCredential.readFromDisk() {
-            return try await fetchCodeAssistUsage(cred)
+            do { return try await fetchCodeAssistUsage(cred) }
+            catch ProviderError.unauthorized { /* token dead — try Antigravity next */ }
         }
-        // API-key fallback → connected-only.
+        // 2) Antigravity (successor). Reuses the same cloudcode-pa flow with the
+        //    token Antigravity stores; no refresh token on disk, so a stale token
+        //    just falls through rather than erroring.
+        if let token = GeminiAntigravityCredential.readAccessToken() {
+            let cred = GeminiOAuthCredential(accessToken: token, refreshToken: nil, idToken: nil, expiryDateMs: nil)
+            do { return try await fetchCodeAssistUsage(cred) }
+            catch ProviderError.unauthorized { /* stale Antigravity token — fall through */ }
+        }
+        // 3) API-key fallback → connected-only.
         if let apiCred: GeminiCredential = AuthService.shared.loadCredential(for: .gemini), !apiCred.apiKey.isEmpty {
             try await validateAPIKey(apiCred.apiKey)
             return .connected(providerId: .gemini)

@@ -104,9 +104,7 @@ struct OnboardingView: View {
             if p.isAvailable { selectedProvider = p }
         } label: {
             HStack {
-                Image(systemName: p.iconSymbol)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(isSelected ? Theme.accentWarm : Theme.textSecondary)
+                ProviderIconView(id: p, size: 18, fallbackColor: isSelected ? Theme.accentWarm : Theme.textSecondary)
                     .frame(width: 22)
                 Text(p.displayName)
                     .foregroundColor(Theme.textPrimary)
@@ -300,7 +298,7 @@ struct OnboardingView: View {
                 .font(Theme.captionFont)
                 .foregroundColor(Theme.textSecondary)
 
-            statusOnlyNote("OpenAI no longer exposes per-key spend to API keys, so Notchy shows a Connected status — not a quota %. The key is stored in the macOS Keychain and only ever sent to api.openai.com.")
+            statusOnlyNote("An API key only confirms a Connected status — OpenAI exposes no per-key quota to standard keys. Want a real usage %? Pick the Codex tile instead: run `codex login` and Notchy reads your ChatGPT-plan session (5h) + weekly limits, just like Claude. The key is stored in the macOS Keychain and only ever sent to api.openai.com.")
 
             SecureCookieEditor(text: $credentialInput, placeholder: "sk-...")
                 .frame(height: 60)
@@ -342,7 +340,7 @@ struct OnboardingView: View {
                 .font(Theme.captionFont)
                 .foregroundColor(Theme.textSecondary)
 
-            statusOnlyNote("Perplexity has no usage endpoint, so Notchy shows a Connected status — not a spend %. The key is stored in the macOS Keychain and only ever sent to api.perplexity.ai.")
+            statusOnlyNote("The API key only confirms a Connected status. For real usage (queries left / spend), install the Perplexity macOS app and sign in — Notchy then reads your live limits from it. The key is stored in the macOS Keychain and only ever sent to api.perplexity.ai.")
 
             SecureCookieEditor(text: $credentialInput, placeholder: "pplx-...")
                 .frame(height: 60)

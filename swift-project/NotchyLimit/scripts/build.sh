@@ -73,6 +73,7 @@ swiftc \
   "$SOURCES_DIR/Core/State/AppState.swift" \
   "$SOURCES_DIR/Core/State/NotchState.swift" \
   "$SOURCES_DIR/Platform/KeychainStore.swift" \
+  "$SOURCES_DIR/Platform/SQLiteReader.swift" \
   "$SOURCES_DIR/Platform/NotchDetector.swift" \
   "$SOURCES_DIR/Platform/ScreenUtils.swift" \
   "$SOURCES_DIR/Platform/DisplayMode.swift" \
@@ -98,6 +99,7 @@ swiftc \
   "$SOURCES_DIR/Services/UsageCoordinator.swift" \
   "$SOURCES_DIR/Services/UsageService.swift" \
   "$SOURCES_DIR/UI/Theme/Theme.swift" \
+  "$SOURCES_DIR/UI/Theme/BrandIcon.swift" \
   "$SOURCES_DIR/UI/Theme/GlassBackground.swift" \
   "$SOURCES_DIR/UI/Theme/RetroMascot.swift" \
   "$SOURCES_DIR/UI/Theme/StatusRingView.swift" \
@@ -143,6 +145,11 @@ sips -z 512  512  "$ASSETS_DIR/AppIcon-512.png"  --out "$ICONSET/icon_256x256@2x
 sips -z 512  512  "$ASSETS_DIR/AppIcon-512.png"  --out "$ICONSET/icon_512x512.png"    >/dev/null
 sips -z 1024 1024 "$ASSETS_DIR/AppIcon-1024.png" --out "$ICONSET/icon_512x512@2x.png" >/dev/null
 iconutil -c icns "$ICONSET" -o "$APP_CONTENTS/Resources/AppIcon.icns"
+
+# Brand provider logos (loaded at runtime via Bundle.main → BrandIcon)
+if [ -d "$SOURCES_DIR/Resources/BrandIcons" ]; then
+  cp "$SOURCES_DIR/Resources/BrandIcons/"*.png "$APP_CONTENTS/Resources/" 2>/dev/null || true
+fi
 
 # Strip quarantine attribute so macOS doesn't block launch
 xattr -cr "$APP_BUNDLE" 2>/dev/null || true

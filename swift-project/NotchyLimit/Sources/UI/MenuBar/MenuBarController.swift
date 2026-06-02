@@ -290,9 +290,13 @@ private struct MenuBarPopoverView: View {
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
                             .fill(tint.opacity(0.16))
                             .frame(width: 30, height: 30)
-                        Image(systemName: incident?.level.glyph ?? id.iconSymbol)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(tint)
+                        if let incident {
+                            Image(systemName: incident.level.glyph)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(tint)
+                        } else {
+                            ProviderIconView(id: id, size: 18, fallbackColor: tint)
+                        }
                     }
 
                     VStack(alignment: .leading, spacing: 1) {

@@ -39,8 +39,7 @@ struct SettingsView: View {
 
                 ForEach(ProviderId.allCases.filter { !$0.isAvailable }, id: \.self) { p in
                     HStack {
-                        Image(systemName: p.iconSymbol)
-                            .foregroundColor(Theme.textSecondary)
+                        ProviderIconView(id: p, size: 16, fallbackColor: Theme.textSecondary)
                             .frame(width: 22)
                         Text(p.displayName).foregroundColor(Theme.textSecondary)
                         Spacer()
@@ -62,9 +61,7 @@ struct SettingsView: View {
 
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Image(systemName: p.iconSymbol)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(Theme.accentWarm)
+                ProviderIconView(id: p, size: 16, fallbackColor: Theme.accentWarm)
                     .frame(width: 22)
                 Text(p.displayName)
                     .font(.system(.subheadline, design: .rounded).weight(.semibold))
