@@ -55,8 +55,6 @@ struct NotchGlassBackground: View {
             VisualEffectBlur(material: .hudWindow, blendingMode: .behindWindow)
                 .clipShape(shape)
             shape.fill(Color.black.opacity(0.65))
-            // Subtle status colour wash
-            shape.fill(tintColor.opacity(0.055))
             shape.fill(
                 LinearGradient(
                     colors: [Color.white.opacity(0.08), Color.clear],
@@ -68,7 +66,7 @@ struct NotchGlassBackground: View {
         .overlay(
             shape.stroke(
                 LinearGradient(
-                    colors: [tintColor.opacity(0.35), Color.white.opacity(0.06)],
+                    colors: [Color.white.opacity(0.10), Color.white.opacity(0.03)],
                     startPoint: .top, endPoint: .bottom
                 ),
                 lineWidth: 0.75

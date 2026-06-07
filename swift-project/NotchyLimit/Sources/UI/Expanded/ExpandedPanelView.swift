@@ -13,8 +13,7 @@ struct ExpandedPanelView: View {
     let controller: NotchWindowController
     @State private var appeared = false
 
-    private var statusColor: Color { appState.sessionStatus.color }
-    private var notchH: CGFloat    { ScreenUtils.notchScreen().safeAreaInsets.top }
+    private var notchH: CGFloat { ScreenUtils.notchScreen().safeAreaInsets.top }
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -23,8 +22,7 @@ struct ExpandedPanelView: View {
 
             // Glass card — the 300 pt visible portion below the notch.
             ZStack(alignment: .topTrailing) {
-                NotchGlassBackground(topRadius: 10, bottomRadius: 20, tintColor: statusColor)
-                    .shadow(color: statusColor.opacity(0.18), radius: 18, y: 6)
+                NotchGlassBackground(topRadius: 10, bottomRadius: 20, tintColor: .clear)
                     .shadow(color: .black.opacity(0.55), radius: 28, y: 10)
 
                 // Pinned badge — appears when user has clicked to lock the panel open

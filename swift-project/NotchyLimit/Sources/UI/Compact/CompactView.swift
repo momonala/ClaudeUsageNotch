@@ -10,8 +10,7 @@ import SwiftUI
 /// notch grew a thin glowing status strip — identical to the Dynamic Island.
 struct CompactView: View {
     @ObservedObject var appState: AppState
-    @State private var appeared   = false
-    @State private var glowPulse  = false
+    @State private var appeared = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -30,17 +29,6 @@ struct CompactView: View {
                     Image(systemName: incident.level.glyph)
                         .font(.system(size: 10, weight: .bold))
                         .foregroundColor(incident.level.tint)
-                }
-
-                // Status dot with ambient pulse
-                ZStack {
-                    Circle()
-                        .fill(statusColor.opacity(glowPulse ? 0.32 : 0.12))
-                        .frame(width: 12, height: 12)
-                        .blur(radius: 3)
-                    Circle()
-                        .fill(statusColor)
-                        .frame(width: 5, height: 5)
                 }
 
                 if appState.activeShowsPercentBar {
@@ -76,9 +64,6 @@ struct CompactView: View {
         .opacity(appeared ? 1 : 0)
         .onAppear {
             withAnimation(.easeIn(duration: 0.22)) { appeared = true }
-            withAnimation(.easeInOut(duration: 1.9).repeatForever(autoreverses: true).delay(0.6)) {
-                glowPulse = true
-            }
         }
         .help(appState.sessionResetString ?? "Notchy Limit")
     }
