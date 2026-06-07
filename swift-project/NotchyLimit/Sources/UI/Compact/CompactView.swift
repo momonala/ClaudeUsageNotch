@@ -32,21 +32,34 @@ struct CompactView: View {
                 }
 
                 if appState.activeShowsPercentBar {
-                    // Animated progress bar
-                    CompactProgressBar(progress: appState.sessionPercent, color: statusColor)
-                        .frame(height: 3)
-
-                    // Percentage — or reset countdown when the session is blocked
-                    if appState.isAtSessionLimit {
-                        Text(appState.sessionResetShortString ?? "LIMIT")
-                            .font(.system(size: 9, weight: .bold, design: .monospaced))
-                            .foregroundColor(.white)
-                            .frame(minWidth: 40, alignment: .trailing)
-                    } else {
-                        Text("\(Int((appState.sessionPercent * 100).rounded()))%")
-                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.88))
-                            .frame(minWidth: 25, alignment: .trailing)
+                    VStack(spacing: 3) {
+                        // Session row
+                        HStack(spacing: 6) {
+                            CompactProgressBar(progress: appState.sessionPercent, color: statusColor)
+                                .frame(height: 3)
+                            if appState.isAtSessionLimit {
+                                Text(appState.sessionResetShortString ?? "LIMIT")
+                                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                    .foregroundColor(.white)
+                                    .frame(minWidth: 40, alignment: .trailing)
+                            } else {
+                                Text("\(Int((appState.sessionPercent * 100).rounded()))%")
+                                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                                    .foregroundColor(.white.opacity(0.88))
+                                    .frame(minWidth: 25, alignment: .trailing)
+                            }
+                        }
+                        // Weekly row
+                        if let weekly = appState.latestSnapshot?.secondaryWindow {
+                            HStack(spacing: 6) {
+                                CompactProgressBar(progress: weekly.percentUsed, color: weeklyColor)
+                                    .frame(height: 3)
+                                Text("\(Int((weekly.percentUsed * 100).rounded()))%")
+                                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                                    .foregroundColor(.white.opacity(0.88))
+                                    .frame(minWidth: 25, alignment: .trailing)
+                            }
+                        }
                     }
                 } else {
                     // Balance ("$110.00") or connected-only ("Active") — no fake bar.
@@ -57,7 +70,7 @@ struct CompactView: View {
                 }
             }
             .padding(.horizontal, 10)
-            .frame(height: 22)
+            .frame(height: 28)
         }
         // Colour glow below the island echoes the current usage status.
         .shadow(color: statusColor.opacity(appeared ? 0.40 : 0), radius: 10, y: 5)
@@ -69,4 +82,7 @@ struct CompactView: View {
     }
 
     private var statusColor: Color { appState.sessionStatus.color }
+    private var weeklyColor: Color {
+        (appState.latestSnapshot?.secondaryWindow?.status ?? .healthy).color
+    }
 }
