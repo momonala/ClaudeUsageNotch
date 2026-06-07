@@ -6,7 +6,6 @@ struct StatusDot: View {
         Circle()
             .fill(status.color)
             .frame(width: 8, height: 8)
-            .shadow(color: status.color.opacity(0.6), radius: 4)
     }
 }
 
@@ -52,10 +51,10 @@ struct IncidentBanner: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(incident.level.tint.opacity(0.10))
-                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(incident.level.tint.opacity(0.30), lineWidth: 0.75))
+            RoundedRectangle(cornerRadius: Theme.cardCornerRadius, style: .continuous)
+                .fill(incident.level.tint.opacity(Theme.cardFillOpacity))
+                .overlay(RoundedRectangle(cornerRadius: Theme.cardCornerRadius, style: .continuous)
+                    .strokeBorder(incident.level.tint.opacity(Theme.cardStrokeOpacity), lineWidth: Theme.cardStrokeWidth))
         )
     }
 }

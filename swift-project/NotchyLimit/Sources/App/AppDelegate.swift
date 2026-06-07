@@ -3,19 +3,17 @@ import AppKit
 import Combine
 import ServiceManagement
 
-/// Root application controller. Wires AppState, NotchWindowController, MenuBarController,
+/// Root application controller. Wires AppState, NotchWindowController,
 /// and the polling pipeline.
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let appState = AppState()
     var notchController: NotchWindowController?
-    var menuBarController: MenuBarController?
     var coordinator: UsageCoordinator?
     var cancellables = Set<AnyCancellable>()
 
     // Standalone aux windows — work in every display mode (incl. menu-bar-only).
     private var onboardingWindow: NSWindow?
     private var settingsWindow: NSWindow?
-    private var diagnosticsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSLog("[NotchyLimit] launched — v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?")")
@@ -38,13 +36,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             .sink { [weak self] enabled in self?.setLaunchAtLogin(enabled) }
             .store(in: &cancellables)
 
-        // Apply initial display mode, then react to changes.
-        applyDisplayMode(appState.displayMode)
-        appState.$displayMode
-            .dropFirst()
-            .receive(on: RunLoop.main)
-            .sink { [weak self] mode in self?.applyDisplayMode(mode) }
-            .store(in: &cancellables)
+        notchController = NotchWindowController(appState: appState)
+        notchController?.present()
 
         // Present aux screens as standalone windows whenever their flag flips.
         appState.$showOnboarding.removeDuplicates().receive(on: RunLoop.main)
@@ -53,10 +46,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         appState.$showSettings.removeDuplicates().receive(on: RunLoop.main)
             .sink { [weak self] show in self?.presentAux(.settings, show: show) }
             .store(in: &cancellables)
-        appState.$showDiagnostics.removeDuplicates().receive(on: RunLoop.main)
-            .sink { [weak self] show in self?.presentAux(.diagnostics, show: show) }
-            .store(in: &cancellables)
-
         if !AuthService.shared.hasAnyConfiguredProvider() {
             appState.showOnboarding = true
         }
@@ -64,14 +53,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     // MARK: - Aux windows (Onboarding / Settings / Diagnostics)
 
-    private enum AuxKind { case onboarding, settings, diagnostics }
+    private enum AuxKind { case onboarding, settings }
 
     private func presentAux(_ kind: AuxKind, show: Bool) {
         let current: NSWindow? = {
             switch kind {
-            case .onboarding:  return onboardingWindow
-            case .settings:    return settingsWindow
-            case .diagnostics: return diagnosticsWindow
+            case .onboarding: return onboardingWindow
+            case .settings:   return settingsWindow
             }
         }()
 
@@ -94,10 +82,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             size = NSSize(width: 420, height: 480); title = "Welcome to Notchy"
         case .settings:
             content = NSHostingView(rootView: SettingsView(appState: appState))
-            size = NSSize(width: 460, height: 540); title = "Notchy Settings"
-        case .diagnostics:
-            content = NSHostingView(rootView: DiagnosticsView(appState: appState))
-            size = NSSize(width: 420, height: 360); title = "Diagnostics"
+            size = NSSize(width: 460, height: 440); title = "Notchy Settings"
         }
 
         let window = NSWindow(
@@ -114,9 +99,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.center()
 
         switch kind {
-        case .onboarding:  onboardingWindow = window
-        case .settings:    settingsWindow = window
-        case .diagnostics: diagnosticsWindow = window
+        case .onboarding: onboardingWindow = window
+        case .settings:   settingsWindow = window
         }
 
         NSApp.activate(ignoringOtherApps: true)
@@ -126,65 +110,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         guard let w = notification.object as? NSWindow else { return }
         switch w {
-        case onboardingWindow:  onboardingWindow = nil;  appState.showOnboarding = false
-        case settingsWindow:    settingsWindow = nil;    appState.showSettings = false
-        case diagnosticsWindow: diagnosticsWindow = nil; appState.showDiagnostics = false
+        case onboardingWindow: onboardingWindow = nil; appState.showOnboarding = false
+        case settingsWindow:   settingsWindow = nil;   appState.showSettings = false
         default: break
         }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         coordinator?.stop()
-        menuBarController?.teardown()
     }
 
     @objc func quit() {
         NSApplication.shared.terminate(nil)
     }
 
-    // MARK: - Display mode
-
-    private func applyDisplayMode(_ mode: DisplayMode) {
-        // Notch
-        if mode.shouldShowNotch() {
-            if notchController == nil {
-                notchController = NotchWindowController(appState: appState)
-                notchController?.present()
-            }
-        } else {
-            notchController?.teardown()   // explicitly remove the panel from screen
-            notchController = nil
-        }
-
-        // Menu bar
-        if mode.shouldShowMenuBar() {
-            if menuBarController == nil {
-                menuBarController = MenuBarController(appState: appState)
-                menuBarController?.setup()
-            }
-        } else {
-            menuBarController?.teardown()
-            menuBarController = nil
-        }
-    }
-
     // MARK: - Launch at login
 
     private func syncLaunchAtLoginState() {
-        if #available(macOS 13.0, *) {
-            appState.launchAtLogin = SMAppService.mainApp.status == .enabled
-        }
+        appState.launchAtLogin = SMAppService.mainApp.status == .enabled
     }
 
     private func setLaunchAtLogin(_ enabled: Bool) {
-        if #available(macOS 13.0, *) {
-            do {
-                if enabled { try SMAppService.mainApp.register()   }
-                else       { try SMAppService.mainApp.unregister() }
-            } catch {
-                NSLog("[NotchyLimit] Launch at login toggle failed: \(error.localizedDescription)")
-                appState.launchAtLogin = !enabled
-            }
+        do {
+            if enabled { try SMAppService.mainApp.register()   }
+            else       { try SMAppService.mainApp.unregister() }
+        } catch {
+            NSLog("[NotchyLimit] Launch at login toggle failed: \(error.localizedDescription)")
+            appState.launchAtLogin = !enabled
         }
     }
 }

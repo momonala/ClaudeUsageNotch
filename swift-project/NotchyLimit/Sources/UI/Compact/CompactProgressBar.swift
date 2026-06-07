@@ -8,29 +8,20 @@ struct CompactProgressBar: View {
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                // Track
                 Capsule()
-                    .fill(Color.white.opacity(0.08))
-                // Fill
+                    .fill(Color.white.opacity(Theme.progressTrackOpacity))
                 Capsule()
-                    .fill(
-                        LinearGradient(
-                            colors: [color.opacity(0.75), color],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
+                    .fill(color)
                     .frame(width: max(4, min(1, animatedProgress) * geo.size.width))
-                    .shadow(color: color.opacity(0.55), radius: 5, y: 0)
             }
         }
         .onAppear {
-            withAnimation(.spring(response: 0.7, dampingFraction: 0.7)) {
+            withAnimation(.spring(response: Theme.springResponse, dampingFraction: Theme.springDamping)) {
                 animatedProgress = progress
             }
         }
-        .onChange(of: progress) { newValue in
-            withAnimation(.spring(response: 0.55, dampingFraction: 0.72)) {
+        .onChange(of: progress) { _, newValue in
+            withAnimation(.spring(response: Theme.springResponse, dampingFraction: Theme.springDamping)) {
                 animatedProgress = newValue
             }
         }

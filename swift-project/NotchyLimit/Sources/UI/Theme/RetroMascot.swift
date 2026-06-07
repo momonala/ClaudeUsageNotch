@@ -98,7 +98,7 @@ struct RetroMascot: View {
         .scaleEffect(appeared ? breatheScale : 0.4)
         .opacity(appeared ? 1 : 0)
         .onAppear { startAnimations() }
-        .onChange(of: mood) { _ in updateMoodAnimations() }
+        .onChange(of: mood) { updateMoodAnimations() }
         .task(id: mood) { await blinkLoop() }
         .task(id: mood) { await eyeScanLoop() }
     }

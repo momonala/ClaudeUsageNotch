@@ -1,6 +1,5 @@
 import Foundation
 
-/// Process-wide registry of available providers.
 public final class ProviderRegistry {
     public static let shared = ProviderRegistry()
     private init() {}
@@ -9,13 +8,6 @@ public final class ProviderRegistry {
 
     public func bootstrap() {
         register(ClaudeProvider())
-        register(CodexProvider())
-        register(OpenAIProvider())
-        register(OpenRouterProvider())
-        register(GeminiProvider())
-        register(PerplexityProvider())
-        register(DeepSeekProvider())
-        register(ElevenLabsProvider())
     }
 
     public func register(_ provider: UsageProvider) {

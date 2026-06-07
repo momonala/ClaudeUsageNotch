@@ -2,12 +2,9 @@ import SwiftUI
 
 /// Expanded notch panel.
 ///
-/// Panel frame is `notchH + 300` tall, anchored at screen top.
+/// Panel frame is `notchH + 184` tall, anchored at screen top.
 /// The top `notchH` points are pure black and overlap the hardware notch.
-/// Everything visible lives in the lower 300 pt glass card.
-///
-/// Content reveal is delayed by 0.14 s so it fades in after the
-/// stretchy width animation settles (phase 1 of the frame morph).
+/// A 28 pt transparent gap separates the notch from the 156 pt glass card.
 struct ExpandedPanelView: View {
     @ObservedObject var appState: AppState
     let controller: NotchWindowController
@@ -17,15 +14,11 @@ struct ExpandedPanelView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            // Black notch-overlap fill — blends with hardware above.
-            Color.black.frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            // Glass card — the 300 pt visible portion below the notch.
+            // Glass card — 156 pt visible portion, with a 12 pt transparent gap above it.
             ZStack(alignment: .topTrailing) {
-                NotchGlassBackground(topRadius: 10, bottomRadius: 20, tintColor: .clear)
+                NotchGlassBackground(topRadius: 10, bottomRadius: 20)
                     .shadow(color: .black.opacity(0.55), radius: 28, y: 10)
 
-                // Pinned badge — appears when user has clicked to lock the panel open
                 if appState.notchState == .expandedPinned {
                     HStack(spacing: 3) {
                         Image(systemName: "pin.fill")
@@ -42,22 +35,15 @@ struct ExpandedPanelView: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.85, anchor: .topTrailing)))
                 }
 
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 8) {
                     HeaderRow(appState: appState, controller: controller)
 
-                    // Provider switcher — only shown when 2+ providers are active.
-                    if appState.isMultiProvider {
-                        ProviderSwitcherRow(appState: appState)
-                    }
-
-                    // Outage banner for the active provider, if any.
                     if let incident = appState.activeIncident {
                         IncidentBanner(providerName: appState.activeProviderId.displayName,
                                        incident: incident)
                     }
 
                     SessionCard(appState: appState)
-                    PaceRow(appState: appState)
 
                     if let weekly = appState.latestSnapshot?.secondaryWindow {
                         WeeklyCard(window: weekly)
@@ -69,21 +55,27 @@ struct ExpandedPanelView: View {
                     }
 
                     Spacer(minLength: 0)
-                    ActionsRow(appState: appState, controller: controller)
-                    FooterRow()
                 }
-                .padding(16)
+                .padding(.top, 12)
+                .padding([.horizontal, .bottom], 12)
             }
-            .frame(width: 380, height: 300)
-            // Grows downward from the notch — anchored at top edge.
+            .frame(width: 380, height: 156)
             .scaleEffect(appeared ? 1 : 0.90, anchor: .top)
             .opacity(appeared ? 1 : 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // Delay content reveal so it syncs with phase-2 of the frame stretch.
+        // Only paint black behind the hardware notch zone — the card manages its own background.
+        // This prevents a harsh black rectangle showing through the card's rounded corners.
+        .background(
+            VStack(spacing: 0) {
+                Color.black.frame(height: notchH)
+                Spacer()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        )
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
-                withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
+                withAnimation(.spring(response: Theme.springResponse, dampingFraction: Theme.springDamping)) {
                     appeared = true
                 }
             }
@@ -94,12 +86,13 @@ struct ExpandedPanelView: View {
     }
 }
 
-/// AppKit shim to catch the Escape key while the panel is up.
 struct KeyEventCatcher: NSViewRepresentable {
     var handler: (String) -> Void
     func makeNSView(context: Context) -> NSView {
         let v = KeyView()
         v.handler = handler
+        v.wantsLayer = true
+        v.layer?.backgroundColor = .clear
         DispatchQueue.main.async { v.window?.makeFirstResponder(v) }
         return v
     }

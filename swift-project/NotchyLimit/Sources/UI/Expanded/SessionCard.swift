@@ -1,110 +1,75 @@
 import SwiftUI
 
-/// Hero session card. Dominates the top of the expanded panel.
-///
-/// Left: StatusRingView arc showing session %.
-/// Right: Giant percentage number (hero) + reset countdown + pace label.
-/// Background tinted by status colour so the whole card "is" the status.
 struct SessionCard: View {
     @ObservedObject var appState: AppState
     @State private var displayedPercent: Int = 0
     @State private var animationEpoch: Int = 0
 
     var body: some View {
-        HStack(alignment: .center, spacing: 16) {
-            // Ring + mascot composited as one widget.
-            // The mascot face sits centered inside the arc ring —
-            // the ring becomes its mood aura.
-            ZStack {
-                StatusRingView(
-                    progress: appState.sessionPercent,
-                    color: statusColor,
-                    size: 72
-                )
-                RetroMascot(size: 32, usagePercent: appState.sessionPercent)
-            }
+        let pct   = appState.sessionPercent
+        let color = statusColor
 
-            VStack(alignment: .leading, spacing: 3) {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(windowTitle)
+                    .font(Theme.cardTitleFont)
+                    .foregroundColor(Theme.textPrimary)
                 if appState.activeIsBalance {
-                    // Provider reports remaining credit — show the amount, not a %.
                     Text(appState.activeShortLabel)
-                        .font(.system(size: 34, weight: .black, design: .rounded))
-                        .foregroundColor(statusColor)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.5)
-                    Text("Credit remaining")
-                        .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                        .foregroundColor(Theme.textPrimary)
-                    Text("\(appState.activeProviderId.displayName) reports balance, not a usage %")
-                        .font(Theme.captionFont)
-                        .foregroundColor(statusColor.opacity(0.75))
+                        .font(Theme.cardTitleFont)
+                        .foregroundColor(color)
+                    Text("Credit balance — usage % not provided")
+                        .font(Theme.cardSubtitleFont)
+                        .foregroundColor(Theme.textSecondary)
                 } else if appState.activeIsStatusOnly {
-                    // Provider exposes no quota — show connectivity, not a number.
                     Text("Connected")
-                        .font(.system(size: 30, weight: .black, design: .rounded))
-                        .foregroundColor(statusColor)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                    Text("\(appState.activeProviderId.displayName) is reachable")
-                        .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                        .foregroundColor(Theme.textPrimary)
-                    Text("No usage quota is exposed by this provider")
-                        .font(Theme.captionFont)
-                        .foregroundColor(statusColor.opacity(0.75))
+                        .font(Theme.cardTitleFont)
+                        .foregroundColor(color)
+                    Text("No usage quota exposed")
+                        .font(Theme.cardSubtitleFont)
+                        .foregroundColor(Theme.textSecondary)
                 } else {
-                    // Hero number — rolls to new value like a counter
-                    Text("\(displayedPercent)%")
-                        .font(.system(size: 44, weight: .black, design: .rounded))
-                        .foregroundColor(statusColor)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                        .onAppear { animateTo(Int((appState.sessionPercent * 100).rounded())) }
-                        .onChange(of: appState.sessionPercent) { newVal in
-                            animateTo(Int((newVal * 100).rounded()))
-                        }
-
-                    // Reset countdown — the thing people actually want to see
-                    if let reset = appState.sessionResetString {
-                        Text(reset)
-                            .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                            .foregroundColor(Theme.textPrimary)
-                    }
-
-                    // Pace context
-                    Text(paceLabel)
-                        .font(Theme.captionFont)
-                        .foregroundColor(statusColor.opacity(0.75))
+                    CompactProgressBar(progress: pct, color: color)
+                        .frame(height: Theme.barHeightExpanded)
+                    Text(appState.sessionResetString ?? " ")
+                        .font(Theme.cardSubtitleFont)
+                        .foregroundColor(Theme.textSecondary)
                 }
             }
-
-            Spacer(minLength: 0)
+            Spacer()
+            if !appState.activeIsBalance && !appState.activeIsStatusOnly {
+                Text("\(displayedPercent)%")
+                    .font(Theme.cardValueFont)
+                    .foregroundColor(color)
+                    .onAppear { animateTo(Int((pct * 100).rounded())) }
+                    .onChange(of: pct) { _, newValue in animateTo(Int((newValue * 100).rounded())) }
+            }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(statusColor.opacity(0.08))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(statusColor.opacity(0.22), lineWidth: 1)
-                )
-        )
+        .padding(.horizontal, Theme.cardPaddingH)
+        .padding(.vertical, Theme.cardPaddingV)
+        .statusCardStyle(color: color)
     }
 
     private var statusColor: Color { appState.sessionStatus.color }
 
-    /// Animate the displayed integer from its current value to `target`,
-    /// stepping every ~16 ms so it feels like a rolling counter.
-    /// The epoch check cancels any in-flight animation when a new value arrives.
+    private var windowTitle: String {
+        switch appState.latestSnapshot?.primaryWindow.type {
+        case .monthly:              return "This month"
+        case .daily:                return "Today"
+        case .weekly, .weeklyModel: return "This week"
+        default:                    return "This session"
+        }
+    }
+
     private func animateTo(_ target: Int) {
-        let start    = displayedPercent
-        let delta    = target - start
+        let start = displayedPercent
+        let delta = target - start
         guard delta != 0 else { return }
         let steps    = max(abs(delta), 1)
         let interval = min(0.6 / Double(steps), 0.04)
         var current  = start
         animationEpoch += 1
-        let epoch    = animationEpoch
+        let epoch = animationEpoch
         func step() {
             guard current != target, animationEpoch == epoch else { return }
             current += delta > 0 ? 1 : -1
@@ -112,24 +77,5 @@ struct SessionCard: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + interval) { step() }
         }
         step()
-    }
-
-    private var paceLabel: String {
-        if appState.isAtSessionLimit { return limitLabel }
-        switch appState.sessionStatus {
-        case .critical: return "Heavy usage — consider pausing"
-        case .warning:  return "Approaching limit"
-        case .healthy:  return "On track"
-        case .unknown:  return "Waiting for first sync…"
-        }
-    }
-
-    private var limitLabel: String {
-        switch appState.latestSnapshot?.primaryWindow.type {
-        case .monthly:  return "Monthly limit reached"
-        case .daily:    return "Daily limit reached"
-        case .weekly, .weeklyModel: return "Weekly limit reached"
-        default:        return "Session limit reached"
-        }
     }
 }

@@ -60,7 +60,7 @@ echo ""
 echo "==> Compiling $APP_NAME with swiftc (no Xcode required)"
 swiftc \
   -sdk "$SDK" \
-  -target arm64-apple-macosx12.0 \
+  -target arm64-apple-macosx26.0 \
   -O \
   -module-name "$APP_NAME" \
   -o "$APP_CONTENTS/MacOS/$APP_NAME" \
@@ -76,7 +76,6 @@ swiftc \
   "$SOURCES_DIR/Platform/SQLiteReader.swift" \
   "$SOURCES_DIR/Platform/NotchDetector.swift" \
   "$SOURCES_DIR/Platform/ScreenUtils.swift" \
-  "$SOURCES_DIR/Platform/DisplayMode.swift" \
   "$SOURCES_DIR/Providers/UsageProvider.swift" \
   "$SOURCES_DIR/Providers/ProviderRegistry.swift" \
   "$SOURCES_DIR/Providers/Claude/ClaudeCredential.swift" \
@@ -84,15 +83,6 @@ swiftc \
   "$SOURCES_DIR/Providers/Claude/ClaudeUsageDTO.swift" \
   "$SOURCES_DIR/Providers/Claude/ClaudeOAuthCredential.swift" \
   "$SOURCES_DIR/Providers/Claude/ClaudeProvider.swift" \
-  "$SOURCES_DIR/Providers/Codex/CodexProvider.swift" \
-  "$SOURCES_DIR/Providers/Gemini/GeminiProvider.swift" \
-  "$SOURCES_DIR/Providers/Perplexity/PerplexityProvider.swift" \
-  "$SOURCES_DIR/Providers/DeepSeek/DeepSeekProvider.swift" \
-  "$SOURCES_DIR/Providers/ElevenLabs/ElevenLabsProvider.swift" \
-  "$SOURCES_DIR/Providers/OpenRouter/OpenRouterProvider.swift" \
-  "$SOURCES_DIR/Providers/OpenAI/OpenAICredential.swift" \
-  "$SOURCES_DIR/Providers/OpenAI/OpenAIEndpoint.swift" \
-  "$SOURCES_DIR/Providers/OpenAI/OpenAIProvider.swift" \
   "$SOURCES_DIR/Services/AuthService.swift" \
   "$SOURCES_DIR/Services/IncidentMonitor.swift" \
   "$SOURCES_DIR/Services/NotificationService.swift" \
@@ -102,24 +92,17 @@ swiftc \
   "$SOURCES_DIR/UI/Theme/BrandIcon.swift" \
   "$SOURCES_DIR/UI/Theme/GlassBackground.swift" \
   "$SOURCES_DIR/UI/Theme/RetroMascot.swift" \
-  "$SOURCES_DIR/UI/Theme/StatusRingView.swift" \
   "$SOURCES_DIR/UI/Compact/StatusDot.swift" \
   "$SOURCES_DIR/UI/Compact/CompactProgressBar.swift" \
   "$SOURCES_DIR/UI/Compact/CompactView.swift" \
   "$SOURCES_DIR/UI/Compact/ConstellationView.swift" \
-  "$SOURCES_DIR/UI/MenuBar/MenuBarController.swift" \
   "$SOURCES_DIR/UI/NotchWindowController.swift" \
   "$SOURCES_DIR/UI/Expanded/HeaderRow.swift" \
   "$SOURCES_DIR/UI/Expanded/SessionCard.swift" \
-  "$SOURCES_DIR/UI/Expanded/PaceRow.swift" \
   "$SOURCES_DIR/UI/Expanded/WeeklyCard.swift" \
-  "$SOURCES_DIR/UI/Expanded/ActionsRow.swift" \
-  "$SOURCES_DIR/UI/Expanded/FooterRow.swift" \
-  "$SOURCES_DIR/UI/Expanded/ProviderSwitcherRow.swift" \
   "$SOURCES_DIR/UI/Expanded/ExpandedPanelView.swift" \
   "$SOURCES_DIR/UI/Onboarding/OnboardingView.swift" \
   "$SOURCES_DIR/UI/Settings/SettingsView.swift" \
-  "$SOURCES_DIR/UI/Diagnostics/DiagnosticsView.swift" \
   "$SOURCES_DIR/UI/NotificationBanner.swift"
 
 echo "==> Assembling .app bundle"

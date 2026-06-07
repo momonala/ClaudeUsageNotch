@@ -28,7 +28,7 @@ final class NotchWindowController: NSObject {
     private var compactSize:  NSSize {
         NSSize(width: 220, height: notchH + 22)
     }
-    private var expandedSize: NSSize { NSSize(width: 380, height: notchH + 300) }
+    private var expandedSize: NSSize { NSSize(width: 380, height: notchH + 184) }
 
     init(appState: AppState) {
         self.appState = appState
@@ -242,8 +242,13 @@ struct RootNotchView: View {
                     }
             case .expandedHover, .expandedPinned:
                 ExpandedPanelView(appState: appState, controller: controller)
+                    .transition(.asymmetric(
+                        insertion: .identity,
+                        removal: .opacity.combined(with: .scale(scale: 0.92, anchor: .top))
+                    ))
             }
         }
+        .animation(.spring(response: 0.22, dampingFraction: 0.78), value: appState.notchState)
         // Settings / Onboarding / Diagnostics are presented as standalone windows
         // by AppDelegate so they work in every display mode (incl. menu-bar-only).
     }

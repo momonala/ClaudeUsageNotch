@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 
 // MARK: - NotchPillShape
 
@@ -36,61 +35,21 @@ struct NotchPillShape: Shape {
 
 // MARK: - NotchGlassBackground
 
-/// Glass background using `NotchPillShape` so the expanded panel's top corners
-/// echo the notch's inner corner radius and sit flush against it.
+/// Solid-black background for the expanded panel.
 ///
-/// `tintColor` bleeds the current status colour into the panel border and the
-/// very faint wash behind the glass — giving visual cohesion without being loud.
+/// Top corners echo the notch's inner radius so the panel sits flush against
+/// the hardware; bottom corners are fully rounded. Pure black blends seamlessly
+/// with the physical notch housing.
 struct NotchGlassBackground: View {
     var topRadius: CGFloat    = 12
     var bottomRadius: CGFloat = 20
-    var tintColor: Color      = .clear
 
     private var shape: NotchPillShape {
         NotchPillShape(topRadius: topRadius, bottomRadius: bottomRadius)
     }
 
     var body: some View {
-        ZStack {
-            VisualEffectBlur(material: .hudWindow, blendingMode: .behindWindow)
-                .clipShape(shape)
-            shape.fill(Color.black.opacity(0.65))
-            shape.fill(
-                LinearGradient(
-                    colors: [Color.white.opacity(0.08), Color.clear],
-                    startPoint: .topLeading, endPoint: .center
-                )
-            )
-            .blendMode(.plusLighter)
-        }
-        .overlay(
-            shape.stroke(
-                LinearGradient(
-                    colors: [Color.white.opacity(0.10), Color.white.opacity(0.03)],
-                    startPoint: .top, endPoint: .bottom
-                ),
-                lineWidth: 0.75
-            )
-        )
+        shape.fill(Color.black)
     }
 }
 
-// MARK: - NSVisualEffectView bridge
-
-struct VisualEffectBlur: NSViewRepresentable {
-    var material: NSVisualEffectView.Material
-    var blendingMode: NSVisualEffectView.BlendingMode
-
-    func makeNSView(context: Context) -> NSVisualEffectView {
-        let v = NSVisualEffectView()
-        v.material = material
-        v.blendingMode = blendingMode
-        v.state = .active
-        return v
-    }
-
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
-        nsView.material = material
-        nsView.blendingMode = blendingMode
-    }
-}

@@ -25,14 +25,10 @@ public final class AppState: ObservableObject {
     /// UI show "Sign in again" for a configured-but-failing provider.
     @Published public var providerErrors: [ProviderId: ProviderError] = [:]
 
-    // ── Display mode ───────────────────────────────────────────────────────
-    @Published public var displayMode: DisplayMode = .auto { didSet { persist() } }
-
     // ── UI state ──────────────────────────────────────────────────────────
     @Published public var notchState: NotchState = .compactIdle
     @Published public var showOnboarding: Bool = false
     @Published public var showSettings: Bool = false
-    @Published public var showDiagnostics: Bool = false
 
     // ── Settings ──────────────────────────────────────────────────────────
     @Published public var pollIntervalSeconds: TimeInterval = 300 { didSet { persist() } }
@@ -119,7 +115,6 @@ public final class AppState: ObservableObject {
     // MARK: - Persistence
 
     private enum Key {
-        static let displayMode      = "notchy.displayMode"
         static let activeProvider   = "notchy.activeProvider"
         static let enabledProviders = "notchy.enabledProviders"
         static let pollInterval     = "notchy.pollIntervalSeconds"
@@ -132,9 +127,6 @@ public final class AppState: ObservableObject {
         defer { isLoading = false }
 
         let d = UserDefaults.standard
-        if let raw = d.string(forKey: Key.displayMode), let mode = DisplayMode(rawValue: raw) {
-            displayMode = mode
-        }
         if let raw = d.string(forKey: Key.activeProvider), let p = ProviderId(rawValue: raw) {
             activeProviderId = p
         }
@@ -157,7 +149,6 @@ public final class AppState: ObservableObject {
     private func persist() {
         guard !isLoading else { return }
         let d = UserDefaults.standard
-        d.set(displayMode.rawValue, forKey: Key.displayMode)
         d.set(activeProviderId.rawValue, forKey: Key.activeProvider)
         d.set(enabledProviders.map(\.rawValue), forKey: Key.enabledProviders)
         d.set(pollIntervalSeconds, forKey: Key.pollInterval)

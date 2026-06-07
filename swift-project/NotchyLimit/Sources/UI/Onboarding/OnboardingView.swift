@@ -1,12 +1,9 @@
 import SwiftUI
 import AppKit
 
-/// Multi-step onboarding.
+/// Multi-step onboarding for Claude.
 ///
-/// Flow adapts based on what's available:
-///   - Claude CLI credentials detected → skips cookie step, uses OAuth automatically.
-///   - User selects OpenAI → asks for API key instead of cookie.
-///   - User selects Claude without CLI → asks for session cookie (same as v0.1).
+/// If Claude CLI credentials are present on disk, the cookie step is skipped and OAuth is used automatically.
 struct OnboardingView: View {
     @ObservedObject var appState: AppState
     private func close() { appState.showOnboarding = false }
@@ -147,60 +144,18 @@ struct OnboardingView: View {
     /// True when this step shows a key/cookie text field the user must fill.
     private func needsTextInput(_ p: ProviderId) -> Bool {
         if usesDetectedOAuth(p) { return false }
-        if p == .codex { return false }   // login-only, no manual entry
         return true
     }
 
     @ViewBuilder
     private var credentialStep: some View {
-        switch selectedProvider {
-        case .claude:
-            if usesDetectedOAuth(.claude) { oauthDetectedStep(.claude) }
-            else { claudeCookieStep }
-        case .codex:
-            if usesDetectedOAuth(.codex) { oauthDetectedStep(.codex) }
-            else { codexLoginStep }
-        case .gemini:
-            if usesDetectedOAuth(.gemini) { oauthDetectedStep(.gemini) }
-            else { geminiKeyStep }
-        case .openai:
-            openAIKeyStep
-        case .openrouter:
-            apiKeyStep(
-                title: "Paste your OpenRouter API key",
-                hint: "Find it at openrouter.ai → Keys.",
-                note: "Notchy reads your credits used vs. credits purchased. The key is stored in the macOS Keychain and only ever sent to openrouter.ai.",
-                placeholder: "sk-or-..."
-            )
-        case .perplexity:
-            perplexityKeyStep
-        case .deepseek:
-            apiKeyStep(
-                title: "Paste your DeepSeek API key",
-                hint: "Find it at platform.deepseek.com → API keys.",
-                note: "DeepSeek reports a remaining credit balance (not a usage %), so Notchy shows your balance. The key is stored in the macOS Keychain and only ever sent to api.deepseek.com.",
-                placeholder: "sk-..."
-            )
-        case .elevenlabs:
-            apiKeyStep(
-                title: "Paste your ElevenLabs API key",
-                hint: "Find it at elevenlabs.io → Profile → API key.",
-                note: "Notchy reads your monthly character usage vs. your plan limit. The key is stored in the macOS Keychain and only ever sent to api.elevenlabs.io.",
-                placeholder: "your-xi-api-key"
-            )
-        }
+        if usesDetectedOAuth(.claude) { oauthDetectedStep }
+        else { claudeCookieStep }
     }
 
-    /// Detected-CLI-credential confirmation, shared by Claude / Codex / Gemini.
     @ViewBuilder
-    private func oauthDetectedStep(_ p: ProviderId) -> some View {
-        let info: (tool: String, path: String, scope: String) = {
-            switch p {
-            case .codex:  return ("Codex CLI", "~/.codex/auth.json", "Reads your ChatGPT-plan session (5h) + weekly limits")
-            case .gemini: return ("Gemini CLI", "~/.gemini/oauth_creds.json", "Reads your Code Assist per-model quota")
-            default:      return ("Claude CLI", "~/.claude/credentials.json", "Scoped OAuth token — not your full session cookie")
-            }
-        }()
+    private var oauthDetectedStep: some View {
+        let info = (tool: "Claude CLI", path: "~/.claude/credentials.json", scope: "Scoped OAuth token — not your full session cookie")
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 Image(systemName: "checkmark.shield.fill")
@@ -227,26 +182,6 @@ struct OnboardingView: View {
                 featureRow("shield.fill", info.scope, Theme.statusHealthy)
                 featureRow("key.fill", "Token lives in \(info.path)", Theme.textSecondary)
                 featureRow("arrow.clockwise", "Auto-refreshed — no action needed", Theme.textSecondary)
-            }
-        }
-    }
-
-    /// Shown when Codex isn't logged in yet — there's no key to paste.
-    private var codexLoginStep: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Sign in with the Codex CLI")
-                .font(.title3.weight(.semibold))
-                .foregroundColor(Theme.textPrimary)
-            Text("Notchy reads your ChatGPT-plan usage (5-hour + weekly windows) from the token the Codex CLI stores locally — no key to paste.")
-                .font(Theme.captionFont)
-                .foregroundColor(Theme.textSecondary)
-            VStack(alignment: .leading, spacing: 6) {
-                featureRow("1.circle.fill", "Install: npm i -g @openai/codex", Theme.textSecondary)
-                featureRow("2.circle.fill", "Run: codex login (sign in with ChatGPT)", Theme.textSecondary)
-                featureRow("3.circle.fill", "Come back and continue", Theme.statusHealthy)
-            }
-            if let err = validateError {
-                Text(err).font(Theme.captionFont).foregroundColor(Theme.statusCritical)
             }
         }
     }
@@ -287,113 +222,6 @@ struct OnboardingView: View {
                 Text(err).font(Theme.captionFont).foregroundColor(Theme.statusCritical)
             }
         }
-    }
-
-    private var openAIKeyStep: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Paste your OpenAI API key")
-                .font(.title3.weight(.semibold))
-                .foregroundColor(Theme.textPrimary)
-            Text("Find it at platform.openai.com → API keys.")
-                .font(Theme.captionFont)
-                .foregroundColor(Theme.textSecondary)
-
-            statusOnlyNote("An API key only confirms a Connected status — OpenAI exposes no per-key quota to standard keys. Want a real usage %? Pick the Codex tile instead: run `codex login` and Notchy reads your ChatGPT-plan session (5h) + weekly limits, just like Claude. The key is stored in the macOS Keychain and only ever sent to api.openai.com.")
-
-            SecureCookieEditor(text: $credentialInput, placeholder: "sk-...")
-                .frame(height: 60)
-                .background(RoundedRectangle(cornerRadius: 8).fill(Theme.surface))
-
-            if let err = validateError {
-                Text(err).font(Theme.captionFont).foregroundColor(Theme.statusCritical)
-            }
-        }
-    }
-
-    private var geminiKeyStep: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Paste your Gemini API key")
-                .font(.title3.weight(.semibold))
-                .foregroundColor(Theme.textPrimary)
-            Text("Get one free at aistudio.google.com → API keys.")
-                .font(Theme.captionFont)
-                .foregroundColor(Theme.textSecondary)
-
-            statusOnlyNote("Google's Gemini API exposes no usage endpoint, so Notchy shows a Connected status — not a quota %. The key is stored in the macOS Keychain and only ever sent to Google.")
-
-            SecureCookieEditor(text: $credentialInput, placeholder: "AIza...")
-                .frame(height: 60)
-                .background(RoundedRectangle(cornerRadius: 8).fill(Theme.surface))
-
-            if let err = validateError {
-                Text(err).font(Theme.captionFont).foregroundColor(Theme.statusCritical)
-            }
-        }
-    }
-
-    private var perplexityKeyStep: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Paste your Perplexity API key")
-                .font(.title3.weight(.semibold))
-                .foregroundColor(Theme.textPrimary)
-            Text("Find it at perplexity.ai → Settings → API.")
-                .font(Theme.captionFont)
-                .foregroundColor(Theme.textSecondary)
-
-            statusOnlyNote("The API key only confirms a Connected status. For real usage (queries left / spend), install the Perplexity macOS app and sign in — Notchy then reads your live limits from it. The key is stored in the macOS Keychain and only ever sent to api.perplexity.ai.")
-
-            SecureCookieEditor(text: $credentialInput, placeholder: "pplx-...")
-                .frame(height: 60)
-                .background(RoundedRectangle(cornerRadius: 8).fill(Theme.surface))
-
-            if let err = validateError {
-                Text(err).font(Theme.captionFont).foregroundColor(Theme.statusCritical)
-            }
-        }
-    }
-
-    /// Generic API-key entry step for straightforward Bearer/header-key providers.
-    @ViewBuilder
-    private func apiKeyStep(title: String, hint: String, note: String, placeholder: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.title3.weight(.semibold))
-                .foregroundColor(Theme.textPrimary)
-            Text(hint)
-                .font(Theme.captionFont)
-                .foregroundColor(Theme.textSecondary)
-
-            statusOnlyNote(note)
-
-            SecureCookieEditor(text: $credentialInput, placeholder: placeholder)
-                .frame(height: 60)
-                .background(RoundedRectangle(cornerRadius: 8).fill(Theme.surface))
-
-            if let err = validateError {
-                Text(err).font(Theme.captionFont).foregroundColor(Theme.statusCritical)
-            }
-        }
-    }
-
-    /// Honest disclosure used by providers that can only report connectivity.
-    @ViewBuilder
-    private func statusOnlyNote(_ text: String) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "info.circle.fill")
-                .foregroundColor(Theme.accentCool)
-                .font(.system(size: 12))
-                .padding(.top, 1)
-            Text(text)
-                .font(Theme.captionFont)
-                .foregroundColor(Theme.textSecondary)
-        }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Theme.accentCool.opacity(0.06))
-                .overlay(RoundedRectangle(cornerRadius: 8)
-                    .strokeBorder(Theme.accentCool.opacity(0.20)))
-        )
     }
 
     private var validateHeadline: String {
@@ -535,38 +363,7 @@ struct OnboardingView: View {
 
     private func saveCredential() -> String? {
         let trimmed = credentialInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        switch selectedProvider {
-        case .codex:
-            return nil   // CLI OAuth — nothing to save
-        case .claude:
-            return AuthService.shared.saveClaudeCredential(
-                ClaudeCredential(cookie: trimmed)
-            )
-        case .openai:
-            return AuthService.shared.saveOpenAICredential(
-                OpenAICredential(apiKey: trimmed)
-            )
-        case .openrouter:
-            return AuthService.shared.saveOpenRouterCredential(
-                OpenRouterCredential(apiKey: trimmed)
-            )
-        case .gemini:
-            return AuthService.shared.saveGeminiCredential(
-                GeminiCredential(apiKey: trimmed)
-            )
-        case .perplexity:
-            return AuthService.shared.savePerplexityCredential(
-                PerplexityCredential(apiKey: trimmed)
-            )
-        case .deepseek:
-            return AuthService.shared.saveDeepSeekCredential(
-                DeepSeekCredential(apiKey: trimmed)
-            )
-        case .elevenlabs:
-            return AuthService.shared.saveElevenLabsCredential(
-                ElevenLabsCredential(apiKey: trimmed)
-            )
-        }
+        return AuthService.shared.saveClaudeCredential(ClaudeCredential(cookie: trimmed))
     }
 
     // MARK: - Helper sub-views
@@ -670,7 +467,6 @@ private struct SecureCookieEditor: NSViewRepresentable {
 
 private struct OnboardingPillPreview: View {
     @State private var demoPercent: Double = 0.42
-    @State private var glowPulse = false
     private let demoValues: [Double] = [0.42, 0.71, 0.88, 0.42]
     @State private var demoIndex = 0
 
@@ -679,41 +475,28 @@ private struct OnboardingPillPreview: View {
         let color = status.color
 
         HStack(spacing: 7) {
-            ZStack {
-                Circle()
-                    .fill(color.opacity(glowPulse ? 0.32 : 0.12))
-                    .frame(width: 12, height: 12)
-                    .blur(radius: 3)
-                Circle().fill(color).frame(width: 5, height: 5)
-            }
+            Circle().fill(color).frame(width: 5, height: 5)
             ZStack(alignment: .leading) {
                 Capsule().fill(Color.white.opacity(0.08))
                 Capsule()
-                    .fill(LinearGradient(colors: [color.opacity(0.75), color],
-                                        startPoint: .leading, endPoint: .trailing))
+                    .fill(color)
                     .frame(width: max(4, CGFloat(demoPercent) * 80))
             }
             .frame(width: 80, height: 3)
             Text("\(Int((demoPercent * 100).rounded()))%")
-                .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                .foregroundColor(.white.opacity(0.88))
+                .font(Theme.notchFont)
+                .foregroundColor(Theme.textLabel)
                 .frame(minWidth: 25, alignment: .trailing)
         }
         .padding(.horizontal, 10)
         .frame(width: 220, height: 22)
         .background(NotchPillShape(topRadius: 0, bottomRadius: 12).fill(Color.black))
-        .shadow(color: color.opacity(0.4), radius: 8, y: 4)
-        .onAppear {
-            withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
-                glowPulse = true
-            }
-        }
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
                 guard !Task.isCancelled else { break }
                 demoIndex = (demoIndex + 1) % demoValues.count
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.75)) {
+                withAnimation(.spring(response: Theme.springResponse, dampingFraction: Theme.springDamping)) {
                     demoPercent = demoValues[demoIndex]
                 }
             }
