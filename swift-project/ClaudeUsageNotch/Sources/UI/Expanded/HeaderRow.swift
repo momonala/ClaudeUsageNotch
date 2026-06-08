@@ -9,15 +9,25 @@ struct HeaderRow: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Text(appState.activeProviderId.displayName)
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .foregroundColor(Theme.textPrimary)
+            // Provider name + pin indicator (U6)
+            HStack(spacing: 4) {
+                Text(appState.activeProviderId.displayName)
+                    .font(Theme.headerFont)
+                    .foregroundColor(Theme.textPrimary)
+                if appState.notchState == .expandedPinned {
+                    Image(systemName: "pin.fill")
+                        .font(.system(size: 8, weight: .semibold))
+                        .foregroundColor(Theme.textSecondary.opacity(0.6))
+                        .transition(.opacity.combined(with: .scale(scale: 0.7)))
+                }
+            }
+            .animation(.easeInOut(duration: 0.15), value: appState.notchState)
 
             Text("·")
                 .foregroundColor(Theme.textSecondary.opacity(0.5))
 
             Text(syncSubtitle)
-                .font(.system(size: 11, design: .rounded))
+                .font(Theme.headerFontRegular)
                 .foregroundColor(Theme.textSecondary)
                 .lineLimit(1)
 
@@ -32,6 +42,7 @@ struct HeaderRow: View {
                     .foregroundColor(Theme.textSecondary.opacity(0.6))
             }
             .buttonStyle(.borderless)
+            .accessibilityLabel("Settings")
             .padding(.trailing, 6)
 
             Button {
@@ -45,9 +56,8 @@ struct HeaderRow: View {
                     .animation(.easeInOut(duration: 0.18), value: quitHovered)
             }
             .buttonStyle(.borderless)
-            .onHover { hovering in
-                quitHovered = hovering
-            }
+            .accessibilityLabel("Quit Notchy Limit")
+            .onHover { hovering in quitHovered = hovering }
             .simultaneousGesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { _ in quitPressed = true }
@@ -66,10 +76,8 @@ struct HeaderRow: View {
     }
 
     private func relative(_ date: Date) -> String {
-        let secs = Int(Date().timeIntervalSince(date))
-        if secs < 60    { return "just now" }
-        if secs < 3600  { return "\(secs / 60)m ago" }
-        if secs < 86400 { return "\(secs / 3600)h ago" }
-        return "\(secs / 86400)d ago"
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .abbreviated
+        return f.localizedString(for: date, relativeTo: Date())
     }
 }

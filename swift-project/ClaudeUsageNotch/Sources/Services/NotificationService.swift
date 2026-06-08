@@ -34,9 +34,9 @@ public final class NotificationService {
                          providerId: ProviderId) {
         guard !thresholds.isEmpty else { return }
 
-        var windows: [(UsageWindow, String)] = [(snapshot.primaryWindow, "session")]
-        if let w = snapshot.secondaryWindow { windows.append((w, "weekly")) }
-        if let w = snapshot.tertiaryWindow  { windows.append((w, "model"))  }
+        var windows: [(UsageWindow, String)] = [(snapshot.sessionWindow, "session")]
+        if let w = snapshot.weeklyWindow       { windows.append((w, "weekly")) }
+        if let w = snapshot.weeklySonnetWindow { windows.append((w, "model"))  }
 
         let sorted = thresholds.sorted()
         let lowest = sorted.first!

@@ -23,6 +23,8 @@ struct RetroMascot: View {
     // Worry tilt
     @State private var headTilt: Double = 0
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     private var mood: Mood {
         if usagePercent >= 0.9  { return .alarmed }
         if usagePercent >= 0.75 { return .worried }
@@ -39,8 +41,8 @@ struct RetroMascot: View {
                     .fill(moodColor)
                     .frame(width: size * 0.17, height: size * 0.17)
                     .shadow(
-                        color: moodColor.opacity(antennaGlow ? 0.95 : 0.3),
-                        radius: antennaGlow ? size * 0.22 : size * 0.07
+                        color: moodColor.opacity(antennaGlow ? 0.40 : 0.15),
+                        radius: antennaGlow ? size * 0.08 : size * 0.03
                     )
                     .scaleEffect(antennaGlow ? 1.15 : 0.92)
                 Rectangle()
@@ -52,22 +54,11 @@ struct RetroMascot: View {
 
             // ── Head ────────────────────────────────────────────────────────
             RoundedRectangle(cornerRadius: size * 0.19, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [Color.white.opacity(0.20), Color.white.opacity(0.05)],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    )
-                )
+                .fill(Color.white.opacity(0.12))
                 .frame(width: size * 0.92, height: size * 0.80)
                 .overlay(
                     RoundedRectangle(cornerRadius: size * 0.19, style: .continuous)
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [Color.white.opacity(0.22), Color.white.opacity(0.06)],
-                                startPoint: .top, endPoint: .bottom
-                            ),
-                            lineWidth: 1.2
-                        )
+                        .strokeBorder(Color.white.opacity(0.18), lineWidth: 1.2)
                 )
                 .rotationEffect(.degrees(headTilt))
 
@@ -98,6 +89,7 @@ struct RetroMascot: View {
         .scaleEffect(appeared ? breatheScale : 0.4)
         .opacity(appeared ? 1 : 0)
         .onAppear { startAnimations() }
+        .onDisappear { breatheScale = 1.0 }
         .onChange(of: mood) { updateMoodAnimations() }
         .task(id: mood) { await blinkLoop() }
         .task(id: mood) { await eyeScanLoop() }
@@ -128,17 +120,14 @@ struct RetroMascot: View {
     private var mouthView: some View {
         switch mood {
         case .happy:
-            // Slight smile arc
             Arc(startAngle: .degrees(10), endAngle: .degrees(170), clockwise: false)
                 .stroke(Theme.accentCool, style: StrokeStyle(lineWidth: size * 0.05, lineCap: .round))
                 .frame(width: size * 0.26, height: size * 0.10)
         case .worried:
-            // Flat line
             Capsule()
                 .fill(Theme.textSecondary.opacity(0.8))
                 .frame(width: size * 0.22, height: size * 0.04)
         case .alarmed:
-            // Open O mouth
             Circle()
                 .stroke(Theme.statusCritical.opacity(0.9),
                         style: StrokeStyle(lineWidth: size * 0.05))
@@ -159,16 +148,15 @@ struct RetroMascot: View {
     // MARK: - Animation setup
 
     private func startAnimations() {
-        // Entry spring bounce
         withAnimation(.spring(response: 0.5, dampingFraction: 0.55, blendDuration: 0)) {
             appeared = true
         }
         startBreathing()
         startAntennaAnimations()
-        // blink and eyeScan loops are driven by .task(id: mood) modifiers
     }
 
     private func startBreathing() {
+        guard !reduceMotion else { return }
         let duration: Double = mood == .alarmed ? 0.7 : (mood == .worried ? 1.4 : 2.8)
         withAnimation(.easeInOut(duration: duration).repeatForever(autoreverses: true)) {
             breatheScale = mood == .alarmed ? 1.06 : 1.025
@@ -176,25 +164,20 @@ struct RetroMascot: View {
     }
 
     private func startAntennaAnimations() {
-        // Glow pulse
         let glowDuration: Double = mood == .alarmed ? 0.45 : (mood == .worried ? 0.9 : 1.6)
         withAnimation(.easeInOut(duration: glowDuration).repeatForever(autoreverses: true)) {
             antennaGlow.toggle()
         }
-        // Sway
         let swayDuration: Double = mood == .alarmed ? 0.6 : 2.2
         withAnimation(.easeInOut(duration: swayDuration).repeatForever(autoreverses: true)) {
             antennaSway = mood == .alarmed ? 1.0 : 0.4
         }
-        // Head tilt when worried/alarmed
         let tilt: Double = mood == .alarmed ? -4 : (mood == .worried ? -2 : 0)
         withAnimation(.easeInOut(duration: 0.6)) {
             headTilt = tilt
         }
     }
 
-    // Cancellable blink loop — runs as a .task(id: mood) so it restarts cleanly on
-    // mood change without accumulating parallel chains like the old recursive approach.
     private func blinkLoop() async {
         let interval = UInt64((mood == .alarmed ? 1.2 : mood == .worried ? 2.2 : 3.5) * 1_000_000_000)
         defer { withAnimation(.easeInOut(duration: 0.09)) { blink = false } }
@@ -216,7 +199,6 @@ struct RetroMascot: View {
         }
     }
 
-    // Cancellable eye-scan loop — same pattern as blinkLoop.
     private func eyeScanLoop() async {
         guard mood == .happy else { return }
         defer { withAnimation(.easeInOut(duration: 0.3)) { eyeShift = 0 } }
@@ -237,7 +219,6 @@ struct RetroMascot: View {
         antennaSway  = 0
         startBreathing()
         startAntennaAnimations()
-        // blink and eyeScan tasks restart automatically via .task(id: mood)
     }
 }
 

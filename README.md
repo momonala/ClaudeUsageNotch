@@ -187,11 +187,7 @@ Snapshots are not persisted — the app fetches fresh on launch.
 
 ---
 
-## Known constraints
-
-- Only Claude is implemented. `ProviderId` is `CaseIterable` with one case; `ProviderRegistry.bootstrap()` registers only `ClaudeProvider`.
-- The app is unsigned in Mode A builds. Distributing a Mode A binary produces "app is damaged" errors on other machines. Use Mode B + `sign_and_notarize.sh` for distribution.
-- `IncidentMonitor` polls Anthropic's status page; the response shape may change without notice.
+Note:
 - Claude's usage endpoints are undocumented and may break on API changes.
 
 ---

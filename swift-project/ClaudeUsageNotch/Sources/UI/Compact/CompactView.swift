@@ -35,7 +35,11 @@ struct CompactView: View {
                     VStack(spacing: 3) {
                         // Session row
                         HStack(spacing: 6) {
-                            CompactProgressBar(progress: appState.sessionPercent, color: statusColor)
+                            CompactProgressBar(
+                                progress: appState.sessionPercent,
+                                color: statusColor,
+                                expectedProgress: appState.activeSnapshot?.sessionWindow.expectedProgress()
+                            )
                                 .frame(height: Theme.barHeightNotch)
                             if appState.isAtSessionLimit {
                                 Text(appState.sessionResetShortString ?? "LIMIT")
@@ -50,9 +54,13 @@ struct CompactView: View {
                             }
                         }
                         // Weekly row
-                        if let weekly = appState.latestSnapshot?.secondaryWindow {
+                        if let weekly = appState.activeSnapshot?.weeklyWindow {
                             HStack(spacing: 6) {
-                                CompactProgressBar(progress: weekly.percentUsed, color: weeklyColor)
+                                CompactProgressBar(
+                                    progress: weekly.percentUsed,
+                                    color: weeklyColor,
+                                    expectedProgress: weekly.expectedProgress()
+                                )
                                     .frame(height: Theme.barHeightNotch)
                                 Text("\(Int((weekly.percentUsed * 100).rounded()))%")
                                     .font(Theme.notchFont)
@@ -81,6 +89,6 @@ struct CompactView: View {
 
     private var statusColor: Color { appState.sessionStatus.color }
     private var weeklyColor: Color {
-        (appState.latestSnapshot?.secondaryWindow?.status ?? .healthy).color
+        (appState.activeSnapshot?.weeklyWindow?.status ?? .healthy).color
     }
 }

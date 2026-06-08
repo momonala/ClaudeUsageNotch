@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Theme tokens. All design constants live here — do not inline values in views.
 enum Theme {
-    // Base background tones (deep near-black with subtle warmth).
+    // Base background tones
     static let background      = Color(red: 0.04, green: 0.04, blue: 0.05)
     static let surface         = Color.white.opacity(0.06)
     static let surfaceElevated = Color.white.opacity(0.10)
@@ -11,15 +11,15 @@ enum Theme {
     static let textSecondary   = Color.white.opacity(0.62)
     static let textLabel       = Color.white.opacity(0.88)
 
-    // Accents — system blue primary + desaturated teal for maintenance state.
+    // Accents — system blue primary + system teal for maintenance state.
     static let accentWarm = Color(nsColor: .systemBlue)
-    static let accentCool = Color(red: 0.35, green: 0.75, blue: 0.82)
+    static let accentCool = Color(nsColor: .systemTeal)
 
-    // Status colors (color-coded thresholds).
-    static let statusHealthy  = Color(red: 0.33, green: 0.84, blue: 0.55)
-    static let statusWarning  = Color(red: 1.00, green: 0.78, blue: 0.20)
-    static let statusCritical = Color(red: 1.00, green: 0.40, blue: 0.38)
-    static let statusUnknown  = Color.white.opacity(0.35)
+    // Status colors — semantic system colors, adapt to increased contrast and appearance.
+    static let statusHealthy  = Color(nsColor: .systemGreen)
+    static let statusWarning  = Color(nsColor: .systemOrange)
+    static let statusCritical = Color(nsColor: .systemRed)
+    static let statusUnknown  = Color(nsColor: .secondaryLabelColor)
 
     // MARK: - Typography
 
@@ -31,6 +31,11 @@ enum Theme {
     // Compact notch strip
     static let notchFont     = Font.system(size: 9, weight: .semibold, design: .monospaced)
     static let notchFontBold = Font.system(size: 9, weight: .bold,     design: .monospaced)
+    static let notchFontTiny = Font.system(size: 8, weight: .semibold, design: .monospaced)
+
+    // Expanded panel header
+    static let headerFont = Font.system(size: 11, weight: .semibold, design: .rounded)
+    static let headerFontRegular = Font.system(size: 11, design: .rounded)
 
     // Status cards (expanded panel)
     static let cardTitleFont    = Font.system(size: 12, weight: .semibold, design: .rounded)
@@ -44,14 +49,19 @@ enum Theme {
     static let iconBgSize:          CGFloat = 34
     static let iconCornerRadius:    CGFloat = 8
 
+    // MARK: - Layout
+
+    /// Height of the visible strip below the hardware notch in compact mode.
+    static let compactStripHeight: CGFloat = 22
+
     // MARK: - Progress bar
 
     static let progressTrackOpacity: Double = 0.08
-
-    /// Bar height for all rows in the expanded hover panel.
     static let barHeightExpanded: CGFloat = 5
-    /// Bar height for all rows in the compact notch strip.
-    static let barHeightNotch: CGFloat = 3
+    static let barHeightNotch:    CGFloat = 3
+    /// Vertical marker showing where usage "should" be based on elapsed window time.
+    static let paceMarkerColor: Color = Color(nsColor: .white)
+    static let paceMarkerWidth: CGFloat = 1.5
 
     // MARK: - Status card
 
@@ -66,6 +76,19 @@ enum Theme {
 
     static let springResponse: Double = 0.55
     static let springDamping:  Double = 0.72
+}
+
+// MARK: - Status color mapping (kept here so domain stays SwiftUI-free)
+
+extension UsageStatus {
+    var color: Color {
+        switch self {
+        case .healthy:  return Theme.statusHealthy
+        case .warning:  return Theme.statusWarning
+        case .critical: return Theme.statusCritical
+        case .unknown:  return Theme.statusUnknown
+        }
+    }
 }
 
 // MARK: - View helpers

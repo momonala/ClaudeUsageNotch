@@ -12,8 +12,11 @@ enum BrandIcon {
 
     static func image(for id: ProviderId) -> NSImage? {
         if let cached = cache[id] { return cached }
-        guard let url = Bundle.main.url(forResource: "brand-\(id.rawValue)", withExtension: "png"),
-              let image = NSImage(contentsOf: url) else { return nil }
+        let name = "brand-\(id.rawValue)"
+        // Xcode nests BrandIcons/; swiftc build.sh copies flat into Resources/.
+        let url = Bundle.main.url(forResource: name, withExtension: "png", subdirectory: "BrandIcons")
+            ?? Bundle.main.url(forResource: name, withExtension: "png")
+        guard let url, let image = NSImage(contentsOf: url) else { return nil }
         cache[id] = image
         return image
     }
@@ -27,17 +30,23 @@ struct ProviderIconView: View {
     var size: CGFloat = 16
     /// Tint applied only to the SF Symbol fallback; brand PNGs render as-is.
     var fallbackColor: Color? = nil
+    /// VoiceOver label. Pass `nil` (default) to mark the icon as decorative.
+    var accessibilityLabel: String? = nil
 
     var body: some View {
-        if let ns = BrandIcon.image(for: id) {
-            Image(nsImage: ns)
-                .resizable()
-                .interpolation(.high)
-                .scaledToFit()
-                .frame(width: size, height: size)
-        } else {
-            let symbol = Image(systemName: id.iconSymbol).font(.system(size: size * 0.9))
-            if let c = fallbackColor { symbol.foregroundColor(c) } else { symbol }
+        Group {
+            if let ns = BrandIcon.image(for: id) {
+                Image(nsImage: ns)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(width: size, height: size)
+            } else {
+                let symbol = Image(systemName: id.iconSymbol).font(.system(size: size * 0.9))
+                if let c = fallbackColor { symbol.foregroundColor(c) } else { symbol }
+            }
         }
+        .accessibilityHidden(accessibilityLabel == nil)
+        .accessibilityLabel(accessibilityLabel ?? "")
     }
 }

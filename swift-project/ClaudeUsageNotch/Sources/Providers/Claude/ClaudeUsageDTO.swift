@@ -26,8 +26,8 @@ struct ClaudeUsageDTO: Decodable {
         let resetsAt: String?
 
         enum CodingKeys: String, CodingKey {
-            case utilization = "utilization"
-            case resetsAt    = "resets_at"
+            case utilization
+            case resetsAt = "resets_at"
         }
     }
 }
@@ -37,10 +37,7 @@ struct ClaudeBootstrapDTO: Decodable {
 
     struct Account: Decodable {
         let lastActiveOrgId: String?
-
-        enum CodingKeys: String, CodingKey {
-            case lastActiveOrgId = "lastActiveOrgId"
-        }
+        // lastActiveOrgId matches JSON key — no CodingKeys needed
     }
 }
 
@@ -77,9 +74,9 @@ enum ClaudeUsageMapper {
 
         return ServiceUsageSnapshot(
             providerId: .claude,
-            primaryWindow: session,
-            secondaryWindow: weekly,
-            tertiaryWindow: weeklySonnet,
+            sessionWindow: session,
+            weeklyWindow: weekly,
+            weeklySonnetWindow: weeklySonnet,
             capturedAt: capturedAt
         )
     }

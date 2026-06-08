@@ -3,8 +3,10 @@ import Combine
 
 /// Glues UsageService → AppState → NotificationService.
 /// Owns no UI; only updates published state and fires notifications.
+@MainActor
 public final class UsageCoordinator {
     private let appState: AppState
+    private let appSettings: AppSettings
     private let authService: AuthService
     private let usageService: UsageService
     private let notifications: NotificationService
@@ -12,23 +14,19 @@ public final class UsageCoordinator {
 
     public init(
         appState: AppState,
+        appSettings: AppSettings,
         authService: AuthService,
         usageService: UsageService,
         notifications: NotificationService
     ) {
         self.appState = appState
+        self.appSettings = appSettings
         self.authService = authService
         self.usageService = usageService
         self.notifications = notifications
     }
 
-    /// Ensures every provider with a stored credential (or Claude OAuth) is in
-    /// `enabledProviders`, so a configured provider always survives relaunch even
-    /// if it wasn't persisted. Preserves the user's existing order.
     private func reconcileEnabledProviders() {
-        // Keep only providers we actually have credentials for (preserves order),
-        // then add any configured provider not already listed. This drops stale
-        // defaults like an unconfigured Claude so it doesn't sit at "Waiting…".
         var enabled = appState.enabledProviders.filter { isConfigured($0) }
         for id in ProviderId.allCases where isConfigured(id) && !enabled.contains(id) {
             enabled.append(id)
@@ -36,17 +34,14 @@ public final class UsageCoordinator {
         if enabled != appState.enabledProviders {
             appState.enabledProviders = enabled
         }
-        // Ensure the active (notch) provider is one that's actually enabled.
         if !enabled.contains(appState.activeProviderId), let first = enabled.first {
             appState.activeProviderId = first
-            appState.latestSnapshot = appState.snapshots[first]
         }
     }
 
     public func start() {
         reconcileEnabledProviders()
 
-        // Pipe snapshots into both the legacy `latestSnapshot` and the multi-provider dict.
         usageService.snapshotPublisher
             .receive(on: RunLoop.main)
             .sink { [weak self] snapshot in
@@ -54,9 +49,8 @@ public final class UsageCoordinator {
                 self.appState.snapshots[snapshot.providerId] = snapshot
                 self.appState.providerErrors[snapshot.providerId] = nil
                 if snapshot.providerId == self.appState.activeProviderId {
-                    self.appState.latestSnapshot = snapshot
-                    self.appState.authStatus     = .valid
-                    self.appState.syncStatus     = .ok(at: Date())
+                    self.appState.authStatus = .valid
+                    self.appState.syncStatus = .ok(at: Date())
                 }
                 self.handleNotifications(for: snapshot)
             }
@@ -66,7 +60,7 @@ public final class UsageCoordinator {
             .receive(on: RunLoop.main)
             .sink { [weak self] (providerId, err) in
                 guard let self else { return }
-                self.appState.providerErrors[providerId] = err   // track per provider
+                self.appState.providerErrors[providerId] = err
                 guard providerId == self.appState.activeProviderId else { return }
                 if err.isAuthIssue {
                     let wasValid = self.appState.authStatus == .valid
@@ -82,19 +76,27 @@ public final class UsageCoordinator {
             }
             .store(in: &cancellables)
 
-        // Outage monitoring — independent of auth, so poll all enabled providers.
-        IncidentMonitor.shared.onIncident = { [weak self] providerId, incident in
-            self?.appState.incidents[providerId] = incident
-        }
+        IncidentMonitor.shared.incidentPublisher
+            .receive(on: RunLoop.main)
+            .sink { [weak self] (providerId, incident) in
+                self?.appState.incidents[providerId] = incident
+            }
+            .store(in: &cancellables)
         IncidentMonitor.shared.start(providers: appState.enabledProviders)
 
-        // Begin polling for all enabled providers that have credentials.
+        // Propagate poll interval changes from Settings to the service automatically.
+        appSettings.$pollIntervalSeconds
+            .dropFirst()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] interval in self?.usageService.updateInterval(interval) }
+            .store(in: &cancellables)
+
         let configured = appState.enabledProviders.filter { isConfigured($0) }
         if configured.isEmpty {
             appState.authStatus = .notConfigured
         } else {
             appState.authStatus = .valid
-            usageService.start(providers: configured, interval: appState.pollIntervalSeconds)
+            usageService.start(providers: configured, interval: appSettings.pollIntervalSeconds)
         }
     }
 
@@ -110,7 +112,7 @@ public final class UsageCoordinator {
         }
         appState.authStatus = .valid
         usageService.start(providers: appState.enabledProviders.filter { isConfigured($0) },
-                           interval: appState.pollIntervalSeconds)
+                           interval: appSettings.pollIntervalSeconds)
         IncidentMonitor.shared.start(providers: appState.enabledProviders)
     }
 
@@ -123,7 +125,6 @@ public final class UsageCoordinator {
         appState.enabledProviders.removeAll { $0 == providerId }
         appState.snapshots.removeValue(forKey: providerId)
         appState.incidents.removeValue(forKey: providerId)
-        if providerId == appState.activeProviderId { appState.latestSnapshot = nil }
         usageService.stop(providerId: providerId)
         IncidentMonitor.shared.start(providers: appState.enabledProviders)
     }
@@ -131,14 +132,13 @@ public final class UsageCoordinator {
     // MARK: - Helpers
 
     private func isConfigured(_ providerId: ProviderId) -> Bool {
-        if authService.cliOAuthAvailable(for: providerId) { return true }
-        return authService.hasCredential(for: providerId)
+        authService.cliOAuthAvailable(for: providerId) || authService.hasCredential(for: providerId)
     }
 
     private func handleNotifications(for snapshot: ServiceUsageSnapshot) {
-        guard appState.notificationsEnabled else { return }
+        guard appSettings.notificationsEnabled else { return }
         notifications.evaluate(snapshot: snapshot,
-                               thresholds: appState.thresholds,
+                               thresholds: appSettings.thresholds,
                                providerId: snapshot.providerId)
     }
 }

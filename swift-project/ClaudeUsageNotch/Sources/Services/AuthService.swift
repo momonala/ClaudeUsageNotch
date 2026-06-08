@@ -15,14 +15,11 @@ public final class AuthService {
 
     /// Returns true if any credential exists OR a CLI OAuth token is on disk.
     public func hasAnyConfiguredProvider() -> Bool {
-        if ProviderId.allCases.contains(where: { cliOAuthAvailable(for: $0) }) { return true }
-        return ProviderId.allCases.contains { hasCredential(for: $0) }
+        ProviderId.allCases.contains { cliOAuthAvailable(for: $0) || hasCredential(for: $0) }
     }
 
-    public func cliOAuthAvailable(for providerId: ProviderId) -> Bool {
-        switch providerId {
-        case .claude: return ClaudeOAuthCredential.isAvailable()
-        }
+    public func cliOAuthAvailable(for _: ProviderId) -> Bool {
+        ClaudeOAuthCredential.isAvailable()
     }
 
     public func clearCredential(for providerId: ProviderId) {

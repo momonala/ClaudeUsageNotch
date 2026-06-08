@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @ObservedObject var appState: AppState
+    @ObservedObject var appSettings: AppSettings
 
     var body: some View {
         ZStack {
@@ -32,7 +32,7 @@ struct SettingsView: View {
     private var settingsRows: some View {
         VStack(alignment: .leading, spacing: 0) {
             row {
-                Toggle("", isOn: $appState.notificationsEnabled)
+                Toggle("", isOn: $appSettings.notificationsEnabled)
                     .toggleStyle(.switch)
                     .tint(Theme.accentWarm)
                     .labelsHidden()
@@ -51,13 +51,13 @@ struct SettingsView: View {
                     .controlSize(.small)
                     .font(.system(size: 12, design: .rounded))
             }
-            .disabled(!appState.notificationsEnabled)
-            .opacity(appState.notificationsEnabled ? 1 : 0.4)
+            .disabled(!appSettings.notificationsEnabled)
+            .opacity(appSettings.notificationsEnabled ? 1 : 0.4)
 
             rowDivider
 
             row {
-                Picker("", selection: $appState.pollIntervalSeconds) {
+                Picker("", selection: $appSettings.pollIntervalSeconds) {
                     Text("1 min").tag(TimeInterval(60))
                     Text("5 min").tag(TimeInterval(300))
                     Text("15 min").tag(TimeInterval(900))
@@ -65,16 +65,13 @@ struct SettingsView: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .frame(width: 160)
-                .onChange(of: appState.pollIntervalSeconds) { _, newValue in
-                    UsageService.shared.updateInterval(newValue)
-                }
                 rowLabel("Poll every")
             }
 
             rowDivider
 
             row {
-                Toggle("", isOn: $appState.launchAtLogin)
+                Toggle("", isOn: $appSettings.launchAtLogin)
                     .toggleStyle(.switch)
                     .tint(Theme.accentWarm)
                     .labelsHidden()
@@ -111,10 +108,10 @@ struct SettingsView: View {
     private var thresholdButtons: some View {
         HStack(spacing: 4) {
             ForEach([0.25, 0.5, 0.75, 0.9, 1.0], id: \.self) { t in
-                let on = appState.thresholds.contains(t)
+                let on = appSettings.thresholds.contains(t)
                 Button("\(Int(t * 100))%") {
-                    if on { appState.thresholds.removeAll { $0 == t } }
-                    else  { appState.thresholds.append(t) }
+                    if on { appSettings.thresholds.removeAll { $0 == t } }
+                    else  { appSettings.thresholds.append(t) }
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)

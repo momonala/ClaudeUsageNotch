@@ -10,30 +10,15 @@ struct ExpandedPanelView: View {
     let controller: NotchWindowController
     @State private var appeared = false
 
-    private var notchH: CGFloat { ScreenUtils.notchScreen().safeAreaInsets.top }
-
     var body: some View {
+        let notchH = ScreenUtils.notchHeight
+
         ZStack(alignment: .bottom) {
             // Glass card — 156 pt visible portion, with a 12 pt transparent gap above it.
-            ZStack(alignment: .topTrailing) {
-                NotchGlassBackground(topRadius: 10, bottomRadius: 20)
+            ZStack(alignment: .topLeading) {
+                NotchPillShape(topRadius: 10, bottomRadius: 20)
+                    .fill(Color.black)
                     .shadow(color: .black.opacity(0.55), radius: 28, y: 10)
-
-                if appState.notchState == .expandedPinned {
-                    HStack(spacing: 3) {
-                        Image(systemName: "pin.fill")
-                            .font(.system(size: 8, weight: .semibold))
-                        Text("Pinned")
-                            .font(.system(size: 9, weight: .semibold, design: .rounded))
-                    }
-                    .foregroundColor(Theme.textSecondary.opacity(0.7))
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(Theme.surface))
-                    .padding(.top, 8)
-                    .padding(.trailing, 10)
-                    .transition(.opacity.combined(with: .scale(scale: 0.85, anchor: .topTrailing)))
-                }
 
                 VStack(alignment: .leading, spacing: 8) {
                     HeaderRow(appState: appState, controller: controller)
@@ -45,10 +30,10 @@ struct ExpandedPanelView: View {
 
                     SessionCard(appState: appState)
 
-                    if let weekly = appState.latestSnapshot?.secondaryWindow {
+                    if let weekly = appState.activeSnapshot?.weeklyWindow {
                         WeeklyCard(window: weekly)
                     }
-                    if let weeklySonnet = appState.latestSnapshot?.tertiaryWindow {
+                    if let weeklySonnet = appState.activeSnapshot?.weeklySonnetWindow {
                         WeeklyCard(window: weeklySonnet,
                                    title: "Weekly Sonnet",
                                    subtitle: "Pro plan")
@@ -65,7 +50,6 @@ struct ExpandedPanelView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // Only paint black behind the hardware notch zone — the card manages its own background.
-        // This prevents a harsh black rectangle showing through the card's rounded corners.
         .background(
             VStack(spacing: 0) {
                 Color.black.frame(height: notchH)
@@ -73,11 +57,10 @@ struct ExpandedPanelView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         )
-        .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
-                withAnimation(.spring(response: Theme.springResponse, dampingFraction: Theme.springDamping)) {
-                    appeared = true
-                }
+        .task {
+            try? await Task.sleep(nanoseconds: 140_000_000)
+            withAnimation(.spring(response: Theme.springResponse, dampingFraction: Theme.springDamping)) {
+                appeared = true
             }
         }
         .background(KeyEventCatcher { key in

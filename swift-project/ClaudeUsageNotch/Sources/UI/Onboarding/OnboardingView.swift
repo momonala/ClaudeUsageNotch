@@ -6,6 +6,8 @@ import AppKit
 /// If Claude CLI credentials are present on disk, the cookie step is skipped and OAuth is used automatically.
 struct OnboardingView: View {
     @ObservedObject var appState: AppState
+    @ObservedObject var appSettings: AppSettings
+    let onCredentialsSaved: () -> Void
     private func close() { appState.showOnboarding = false }
 
     @State private var step: Step = .welcome
@@ -97,11 +99,10 @@ struct OnboardingView: View {
     @ViewBuilder
     private func providerRow(_ p: ProviderId) -> some View {
         let isSelected = selectedProvider == p
-        Button {
-            if p.isAvailable { selectedProvider = p }
-        } label: {
+        Button { selectedProvider = p } label: {
             HStack {
-                ProviderIconView(id: p, size: 18, fallbackColor: isSelected ? Theme.accentWarm : Theme.textSecondary)
+                ProviderIconView(id: p, size: 18, fallbackColor: isSelected ? Theme.accentWarm : Theme.textSecondary,
+                                accessibilityLabel: p.displayName)
                     .frame(width: 22)
                 Text(p.displayName)
                     .foregroundColor(Theme.textPrimary)
@@ -110,10 +111,10 @@ struct OnboardingView: View {
                     Text("CLI detected")
                         .font(Theme.captionFont)
                         .foregroundColor(Theme.statusHealthy)
-                } else {
-                    Text(p.isAvailable ? (isSelected ? "Selected" : "") : "Coming soon")
+                } else if isSelected {
+                    Text("Selected")
                         .font(Theme.captionFont)
-                        .foregroundColor(p.isAvailable ? Theme.textSecondary : Theme.textSecondary.opacity(0.5))
+                        .foregroundColor(Theme.textSecondary)
                 }
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
@@ -131,20 +132,17 @@ struct OnboardingView: View {
             )
         }
         .buttonStyle(.borderless)
-        .opacity(p.isAvailable ? 1.0 : 0.5)
-        .disabled(!p.isAvailable)
     }
 
     /// True when the provider is authenticated from a CLI-written OAuth file
     /// that's present on disk — no credential entry needed.
     private func usesDetectedOAuth(_ p: ProviderId) -> Bool {
-        p.usesCLIOAuth && AuthService.shared.cliOAuthAvailable(for: p)
+        AuthService.shared.cliOAuthAvailable(for: p)
     }
 
     /// True when this step shows a key/cookie text field the user must fill.
     private func needsTextInput(_ p: ProviderId) -> Bool {
-        if usesDetectedOAuth(p) { return false }
-        return true
+        !usesDetectedOAuth(p)
     }
 
     @ViewBuilder
@@ -249,7 +247,7 @@ struct OnboardingView: View {
             Text("Notifications")
                 .font(.title3.weight(.semibold))
                 .foregroundColor(Theme.textPrimary)
-            Toggle("Alert me at 25/50/75/90% usage", isOn: $appState.notificationsEnabled)
+            Toggle("Alert me at 25/50/75/90% usage", isOn: $appSettings.notificationsEnabled)
                 .toggleStyle(.switch)
                 .foregroundColor(Theme.textPrimary)
             Text("You can change this any time from Settings.")
@@ -329,22 +327,13 @@ struct OnboardingView: View {
 
         Task {
             do {
-                guard let provider = ProviderRegistry.shared.provider(for: selectedProvider) else {
-                    await MainActor.run {
-                        validateError = "Provider not available. Restart the app."
-                        validating = false
-                    }
-                    return
-                }
+                let provider = ClaudeProvider()
                 try await provider.validateCredentials()
                 let snapshot = try await provider.fetchUsage()
                 await MainActor.run {
                     appState.snapshots[selectedProvider] = snapshot
-                    if selectedProvider == appState.activeProviderId || appState.latestSnapshot == nil {
-                        appState.latestSnapshot = snapshot
-                    }
                     appState.authStatus = .valid
-                    (NSApp.delegate as? AppDelegate)?.coordinator?.onCredentialsSaved(for: selectedProvider)
+                    onCredentialsSaved()
                     validating = false
                 }
             } catch let err as ProviderError {

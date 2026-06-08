@@ -34,38 +34,36 @@ public final class KeychainStore {
 
     public func set(account: String, data: Data) {
         let label = "\(service) — \(account)"
-        var query: [String: Any] = [
+        let searchQuery: [String: Any] = [
             kSecClass as String:       kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
-            kSecAttrLabel as String:   label,
         ]
-        SecItemDelete(query as CFDictionary)
+        let updateAttrs: [String: Any] = [
+            kSecValueData as String:      data,
+            kSecAttrLabel as String:      label,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+        ]
 
-        query[kSecValueData as String]      = data
-        query[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        // Try update first (avoids TOCTOU between delete + add).
+        var status = SecItemUpdate(searchQuery as CFDictionary, updateAttrs as CFDictionary)
+        if status == errSecItemNotFound {
+            var addQuery = searchQuery
+            addQuery[kSecValueData as String]      = data
+            addQuery[kSecAttrLabel as String]      = label
+            addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+            status = SecItemAdd(addQuery as CFDictionary, nil)
+        }
 
-        // No custom `SecAccessCreate` ACL: the legacy trusted-application ACL
-        // (deprecated since macOS 10.10) is the path most sensitive to a
-        // changing code identity, so it actively *worsened* re-prompting on
-        // ad-hoc builds. The default ACL ties the item to the creating app's
-        // signature, which is what we want for a signed release.
-
-        let status = SecItemAdd(query as CFDictionary, nil)
         if status == errSecSuccess {
-            lock.lock(); cache[account] = data; lock.unlock()
+            lock.withLock { cache[account] = data }
         } else {
             logger.error("Keychain write failed: OSStatus \(status, privacy: .public)")
         }
     }
 
     public func get(account: String) -> Data? {
-        lock.lock()
-        if let cached = cache[account] {
-            lock.unlock()
-            return cached
-        }
-        lock.unlock()
+        if let cached = lock.withLock({ cache[account] }) { return cached }
 
         let query: [String: Any] = [
             kSecClass as String:       kSecClassGenericPassword,
@@ -78,7 +76,7 @@ public final class KeychainStore {
         guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
               let data = item as? Data else { return nil }
 
-        lock.lock(); cache[account] = data; lock.unlock()
+        lock.withLock { cache[account] = data }
         return data
     }
 
@@ -90,7 +88,7 @@ public final class KeychainStore {
             kSecAttrAccount as String: account,
         ]
         let status = SecItemDelete(query as CFDictionary)
-        lock.lock(); cache[account] = nil; lock.unlock()
+        lock.withLock { cache[account] = nil }
         return status == errSecSuccess || status == errSecItemNotFound
     }
 }

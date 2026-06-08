@@ -9,31 +9,51 @@ import Combine
 /// resize. NSEvent.addGlobalMonitorForEvents only fires for OTHER apps' events,
 /// not our own panel's events. A polling timer is the only approach that works
 /// reliably at any window level regardless of activation state.
+@MainActor
 final class NotchWindowController: NSObject {
     private let panel: NSPanel
     private let appState: AppState
+    private let refreshAction: () -> Void
     private var hostingController: NSHostingController<RootNotchView>?
     private var cancellables = Set<AnyCancellable>()
     private var hoverTimer: Timer?
     private var isCurrentlyHovering = false
     private var clickOutsideMonitor: Any?
 
+    // MARK: - Layout constants
+
+    private enum Layout {
+        static let compactWidth: CGFloat     = 220
+        static let expandedWidth: CGFloat    = 380
+        /// Visible strip height below the hardware notch in compact mode.
+        static let compactStripHeight: CGFloat = Theme.compactStripHeight
+        static let expandedContentHeight: CGFloat = 184
+        static let hoverHitInset: CGFloat    = -4
+        static let hoverDelay: TimeInterval  = 0.15
+
+        static let expandPhase1Duration: TimeInterval = 0.16
+        static let expandPhase2Delay:    TimeInterval = 0.12
+        static let expandPhase2Duration: TimeInterval = 0.30
+        static let collapseDuration:     TimeInterval = 0.22
+    }
+
     // Panel heights include safeAreaInsets.top (the hardware notch height,
     // ~37 pt on MBP 14/16").  The panel is anchored at screen.frame.maxY so
     // the top portion sits inside the notch (invisible — black blends with
     // hardware) and only the lower "visible extension" is seen by the user.
     // This is identical to how the iOS Dynamic Island works.
-    private var notchH: CGFloat { ScreenUtils.notchScreen().safeAreaInsets.top }
-    // Single provider in the notch — a steady, compact pill width.
-    private var compactSize:  NSSize {
-        NSSize(width: 220, height: notchH + 22)
+    private var compactSize: NSSize {
+        NSSize(width: Layout.compactWidth, height: ScreenUtils.notchHeight + Layout.compactStripHeight)
     }
-    private var expandedSize: NSSize { NSSize(width: 380, height: notchH + 184) }
+    private var expandedSize: NSSize {
+        NSSize(width: Layout.expandedWidth, height: ScreenUtils.notchHeight + Layout.expandedContentHeight)
+    }
 
-    init(appState: AppState) {
+    init(appState: AppState, refreshAction: @escaping () -> Void) {
         self.appState = appState
+        self.refreshAction = refreshAction
         self.panel = NSPanel(
-            contentRect: NSRect(origin: .zero, size: NSSize(width: 220, height: 30)),
+            contentRect: NSRect(origin: .zero, size: NSSize(width: Layout.compactWidth, height: 30)),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -59,10 +79,6 @@ final class NotchWindowController: NSObject {
             .store(in: &cancellables)
     }
 
-    deinit {
-        teardown()
-    }
-
     /// Explicitly remove the notch panel from screen and stop all observers.
     /// Called when the display mode no longer includes the notch — relying on
     /// `deinit` alone is unreliable because AppKit can keep an on-screen window
@@ -81,7 +97,7 @@ final class NotchWindowController: NSObject {
     }
 
     func present() {
-        let root = RootNotchView(appState: appState, controller: self)
+        let root = RootNotchView(appState: appState, controller: self, refreshAction: refreshAction)
         let hosting = NSHostingController(rootView: root)
         hosting.view.wantsLayer = true
         self.hostingController = hosting
@@ -99,11 +115,12 @@ final class NotchWindowController: NSObject {
     private func startClickOutsideMonitor() {
         if let m = clickOutsideMonitor { NSEvent.removeMonitor(m) }
         clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDown) { [weak self] _ in
-            guard let self else { return }
-            guard self.appState.notchState == .expandedPinned else { return }
-            // If the click landed outside the panel, collapse.
-            if !self.panel.frame.contains(NSEvent.mouseLocation) {
-                DispatchQueue.main.async { self.appState.notchState = .compactIdle }
+            Task { @MainActor in
+                guard let self else { return }
+                guard self.appState.notchState == .expandedPinned else { return }
+                if !self.panel.frame.contains(NSEvent.mouseLocation) {
+                    self.appState.notchState = .compactIdle
+                }
             }
         }
     }
@@ -113,16 +130,14 @@ final class NotchWindowController: NSObject {
     private func startHoverTimer() {
         hoverTimer?.invalidate()
         let timer = Timer(timeInterval: 0.04, repeats: true) { [weak self] _ in
-            self?.pollHover()
+            Task { @MainActor in self?.pollHover() }
         }
         RunLoop.main.add(timer, forMode: .common)
         hoverTimer = timer
     }
 
     private func pollHover() {
-        // Expand the hit-rect slightly so the cursor moving to the expanded
-        // panel doesn't immediately trigger a hover-out during the resize.
-        let hitRect = panel.frame.insetBy(dx: -4, dy: -4)
+        let hitRect = panel.frame.insetBy(dx: Layout.hoverHitInset, dy: Layout.hoverHitInset)
         let hovering = hitRect.contains(NSEvent.mouseLocation)
         guard hovering != isCurrentlyHovering else { return }
         isCurrentlyHovering = hovering
@@ -136,7 +151,7 @@ final class NotchWindowController: NSObject {
         switch appState.notchState {
         case .compactIdle, .compactHover:
             appState.notchState = .compactHover
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+            DispatchQueue.main.asyncAfter(deadline: .now() + Layout.hoverDelay) { [weak self] in
                 guard let self else { return }
                 if self.appState.notchState == .compactHover {
                     self.appState.notchState = .expandedHover
@@ -173,31 +188,31 @@ final class NotchWindowController: NSObject {
         }
 
         let isExpanding = (state == .expandedHover || state == .expandedPinned)
-                       && panel.frame.height < (notchH + 80)  // currently compact
+                       && panel.frame.height < (ScreenUtils.notchHeight + 80)
 
         if isExpanding {
-            // Phase 1: stretch width first (pill → wide strip, ~0.16 s)
+            // Phase 1: stretch width first (pill → wide strip)
             let midSize   = NSSize(width: expandedSize.width, height: compactSize.height)
             let midOrigin = ScreenUtils.topCenteredOrigin(forPanelSize: midSize)
             NSAnimationContext.runAnimationGroup { ctx in
-                ctx.duration = 0.16
+                ctx.duration = Layout.expandPhase1Duration
                 ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
                 panel.animator().setFrame(NSRect(origin: midOrigin, size: midSize), display: true)
             }
-            // Phase 2: drop height after stretch settles (~0.12 s later)
+            // Phase 2: drop height after stretch settles
             let finalOrigin = ScreenUtils.topCenteredOrigin(forPanelSize: targetSize)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Layout.expandPhase2Delay) { [weak self] in
+                guard let self else { return }
                 NSAnimationContext.runAnimationGroup { ctx in
-                    ctx.duration = 0.30
+                    ctx.duration = Layout.expandPhase2Duration
                     ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
                     self.panel.animator().setFrame(NSRect(origin: finalOrigin, size: targetSize), display: true)
                 }
             }
         } else {
-            // Collapse or hidden: single smooth transition
             let origin = ScreenUtils.topCenteredOrigin(forPanelSize: targetSize)
             NSAnimationContext.runAnimationGroup { ctx in
-                ctx.duration = 0.22
+                ctx.duration = Layout.collapseDuration
                 ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
                 panel.animator().setFrame(NSRect(origin: origin, size: targetSize), display: true)
             }
@@ -210,6 +225,7 @@ final class NotchWindowController: NSObject {
 struct RootNotchView: View {
     @ObservedObject var appState: AppState
     let controller: NotchWindowController
+    let refreshAction: () -> Void
 
     var body: some View {
         Group {
@@ -217,29 +233,25 @@ struct RootNotchView: View {
             case .hidden:
                 Color.clear
             case .compactIdle, .compactHover:
-                // Always one provider in the notch (the active one). Switch which
-                // provider via the expanded panel's provider switcher.
                 CompactView(appState: appState)
                 .onTapGesture { controller.userClicked() }
                 .contextMenu {
-                        Button { (NSApp.delegate as? AppDelegate)?.coordinator?.refreshNow() } label: {
-                            Label("Refresh", systemImage: "arrow.clockwise")
-                        }
-                        Button { appState.showSettings = true } label: {
-                            Label("Settings", systemImage: "gearshape.fill")
-                        }
-                        Button {
-                            NotificationService.shared.sendTest()
-                        } label: {
-                            Label("Send test notification", systemImage: "bell.fill")
-                        }
-                        Divider()
-                        Button(role: .destructive) {
-                            NSApplication.shared.terminate(nil)
-                        } label: {
-                            Label("Quit Notchy Limit", systemImage: "power")
-                        }
+                    Button { refreshAction() } label: {
+                        Label("Refresh", systemImage: "arrow.clockwise")
                     }
+                    Button { appState.showSettings = true } label: {
+                        Label("Settings", systemImage: "gearshape.fill")
+                    }
+                    Button { NotificationService.shared.sendTest() } label: {
+                        Label("Send test notification", systemImage: "bell.fill")
+                    }
+                    Divider()
+                    Button(role: .destructive) {
+                        NSApplication.shared.terminate(nil)
+                    } label: {
+                        Label("Quit Notchy Limit", systemImage: "power")
+                    }
+                }
             case .expandedHover, .expandedPinned:
                 ExpandedPanelView(appState: appState, controller: controller)
                     .transition(.asymmetric(
@@ -249,7 +261,5 @@ struct RootNotchView: View {
             }
         }
         .animation(.spring(response: 0.22, dampingFraction: 0.78), value: appState.notchState)
-        // Settings / Onboarding / Diagnostics are presented as standalone windows
-        // by AppDelegate so they work in every display mode (incl. menu-bar-only).
     }
 }

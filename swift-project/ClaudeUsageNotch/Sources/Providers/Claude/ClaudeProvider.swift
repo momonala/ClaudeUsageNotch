@@ -9,16 +9,13 @@ import Foundation
 /// Both paths hit the same internal `/api/organizations/{org}/usage` endpoint.
 /// If OAuth resolves the org ID and the Bearer request succeeds, the cookie is
 /// never read from the keychain at all.
-final class ClaudeProvider: UsageProvider {
-    let id: ProviderId = .claude
-    let displayName: String = "Claude"
-    let requiresCookie: Bool = false   // OAuth makes cookie optional
-    let isAvailable: Bool = true
-
+final class ClaudeProvider {
     private let session: URLSession
+    private let authService: AuthService
 
-    init(session: URLSession = .shared) {
+    init(session: URLSession = .shared, authService: AuthService = .shared) {
         self.session = session
+        self.authService = authService
     }
 
     // MARK: - UsageProvider
@@ -109,7 +106,7 @@ final class ClaudeProvider: UsageProvider {
     }
 
     private func currentCookie() throws -> String {
-        guard let cred: ClaudeCredential = AuthService.shared.loadCredential(for: .claude),
+        guard let cred: ClaudeCredential = authService.loadCredential(for: .claude),
               !cred.cookie.isEmpty else {
             throw ProviderError.missingCredentials
         }

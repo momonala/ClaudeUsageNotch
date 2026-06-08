@@ -22,7 +22,14 @@ enum ScreenUtils {
             return builtIn
         }
         // 3. Main screen fallback.
-        return NSScreen.main ?? NSScreen.screens[0]
+        return NSScreen.main ?? NSScreen.screens.first!
+    }
+
+    /// Height of the hardware notch area (safeAreaInsets.top). 0 on non-notch screens.
+    static var notchHeight: CGFloat { notchScreen().safeAreaInsets.top }
+
+    static var hasHardwareNotch: Bool {
+        NSScreen.screens.contains { $0.safeAreaInsets.top > 0 }
     }
 
     /// Compute the top-center position for a panel of `size`.

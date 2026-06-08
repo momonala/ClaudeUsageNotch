@@ -3,25 +3,25 @@ import AppKit
 import Combine
 import ServiceManagement
 
-/// Root application controller. Wires AppState, NotchWindowController,
+/// Root application controller. Wires AppState, AppSettings, NotchWindowController,
 /// and the polling pipeline.
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
-    let appState = AppState()
+    let appState    = AppState()
+    let appSettings = AppSettings()
     var notchController: NotchWindowController?
     var coordinator: UsageCoordinator?
     var cancellables = Set<AnyCancellable>()
 
-    // Standalone aux windows — work in every display mode (incl. menu-bar-only).
     private var onboardingWindow: NSWindow?
     private var settingsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSLog("[ClaudeUsageNotch] launched — v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?")")
 
-        ProviderRegistry.shared.bootstrap()
-
         coordinator = UsageCoordinator(
             appState: appState,
+            appSettings: appSettings,
             authService: AuthService.shared,
             usageService: UsageService.shared,
             notifications: NotificationService.shared
@@ -30,38 +30,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         syncLaunchAtLoginState()
 
-        appState.$launchAtLogin
+        appSettings.$launchAtLogin
             .dropFirst()
             .receive(on: RunLoop.main)
             .sink { [weak self] enabled in self?.setLaunchAtLogin(enabled) }
             .store(in: &cancellables)
 
-        notchController = NotchWindowController(appState: appState)
+        notchController = NotchWindowController(
+            appState: appState,
+            refreshAction: { [weak self] in self?.coordinator?.refreshNow() }
+        )
         notchController?.present()
 
-        // Present aux screens as standalone windows whenever their flag flips.
         appState.$showOnboarding.removeDuplicates().receive(on: RunLoop.main)
             .sink { [weak self] show in self?.presentAux(.onboarding, show: show) }
             .store(in: &cancellables)
         appState.$showSettings.removeDuplicates().receive(on: RunLoop.main)
             .sink { [weak self] show in self?.presentAux(.settings, show: show) }
             .store(in: &cancellables)
+
         if !AuthService.shared.hasAnyConfiguredProvider() {
             appState.showOnboarding = true
         }
     }
 
-    // MARK: - Aux windows (Onboarding / Settings / Diagnostics)
+    // MARK: - Aux windows
 
     private enum AuxKind { case onboarding, settings }
 
     private func presentAux(_ kind: AuxKind, show: Bool) {
-        let current: NSWindow? = {
-            switch kind {
-            case .onboarding: return onboardingWindow
-            case .settings:   return settingsWindow
-            }
-        }()
+        let current: NSWindow? = switch kind {
+            case .onboarding: onboardingWindow
+            case .settings:   settingsWindow
+        }
 
         guard show else {
             current?.close()
@@ -78,11 +79,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let title: String
         switch kind {
         case .onboarding:
-            content = NSHostingView(rootView: OnboardingView(appState: appState))
-            size = NSSize(width: 420, height: 480); title = "Welcome to Notchy"
+            let view = OnboardingView(
+                appState: appState,
+                appSettings: appSettings,
+                onCredentialsSaved: { [weak self] in
+                    self?.coordinator?.onCredentialsSaved(for: .claude)
+                }
+            )
+            content = NSHostingView(rootView: view)
+            size = NSSize(width: 420, height: 480)
+            title = "Welcome to Notchy"
         case .settings:
-            content = NSHostingView(rootView: SettingsView(appState: appState))
-            size = NSSize(width: 460, height: 440); title = "Notchy Settings"
+            content = NSHostingView(rootView: SettingsView(appSettings: appSettings))
+            size = NSSize(width: 460, height: 440)
+            title = "Notchy Settings"
         }
 
         let window = NSWindow(
@@ -118,6 +128,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         coordinator?.stop()
+        notchController?.teardown()
     }
 
     @objc func quit() {
@@ -127,7 +138,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // MARK: - Launch at login
 
     private func syncLaunchAtLoginState() {
-        appState.launchAtLogin = SMAppService.mainApp.status == .enabled
+        appSettings.launchAtLogin = SMAppService.mainApp.status == .enabled
     }
 
     private func setLaunchAtLogin(_ enabled: Bool) {
@@ -136,7 +147,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             else       { try SMAppService.mainApp.unregister() }
         } catch {
             NSLog("[ClaudeUsageNotch] Launch at login toggle failed: \(error.localizedDescription)")
-            appState.launchAtLogin = !enabled
+            appSettings.launchAtLogin = !enabled
         }
     }
 }

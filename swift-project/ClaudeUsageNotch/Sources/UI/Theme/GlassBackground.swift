@@ -32,24 +32,3 @@ struct NotchPillShape: Shape {
         return p
     }
 }
-
-// MARK: - NotchGlassBackground
-
-/// Solid-black background for the expanded panel.
-///
-/// Top corners echo the notch's inner radius so the panel sits flush against
-/// the hardware; bottom corners are fully rounded. Pure black blends seamlessly
-/// with the physical notch housing.
-struct NotchGlassBackground: View {
-    var topRadius: CGFloat    = 12
-    var bottomRadius: CGFloat = 20
-
-    private var shape: NotchPillShape {
-        NotchPillShape(topRadius: topRadius, bottomRadius: bottomRadius)
-    }
-
-    var body: some View {
-        shape.fill(Color.black)
-    }
-}
-

@@ -1,5 +1,4 @@
 import Foundation
-import SwiftUI
 
 /// Which window inside a provider this usage belongs to.
 public enum UsageWindowType: String, Codable, Hashable {
@@ -18,16 +17,6 @@ public enum UsageStatus: String, Codable, Hashable {
     case warning   // approaching limit
     case critical  // at or past hard threshold
     case unknown   // no data yet
-
-    /// SwiftUI color for the status, honoring `Theme`.
-    public var color: Color {
-        switch self {
-        case .healthy:  return Theme.statusHealthy
-        case .warning:  return Theme.statusWarning
-        case .critical: return Theme.statusCritical
-        case .unknown:  return Theme.statusUnknown
-        }
-    }
 }
 
 /// A single rolling usage window inside a provider snapshot.
@@ -75,34 +64,51 @@ public struct UsageWindow: Codable, Hashable {
     /// Whether the window is at or past its limit.
     public var isAtLimit: Bool { percentUsed >= 1.0 }
 
+    /// Known rolling-window length for this type. Nil when pace can't be inferred.
+    public var windowDuration: TimeInterval? {
+        switch type {
+        case .session:              return 5 * 3600
+        case .weekly, .weeklyModel: return 7 * 24 * 3600
+        case .daily:                return 24 * 3600
+        case .monthly:              return 30 * 24 * 3600
+        case .connected, .balance:  return nil
+        }
+    }
+
+    /// How far through the rolling window we are by elapsed time (0…1).
+    /// E.g. 20% of a week elapsed → 0.2. Nil when reset time or duration is unknown.
+    public func expectedProgress(now: Date = Date()) -> Double? {
+        guard let resetAt, let duration = windowDuration, duration > 0 else { return nil }
+        let remaining = resetAt.timeIntervalSince(now)
+        let elapsed = duration - remaining
+        return min(1, max(0, elapsed / duration))
+    }
+
     /// Compact reset countdown for tight spaces, e.g. "1h 12m". Nil if no resetAt.
     public func timeToResetShortString(now: Date = Date()) -> String? {
-        guard let resetAt = resetAt else { return nil }
+        guard let resetAt else { return nil }
         let interval = resetAt.timeIntervalSince(now)
         if interval <= 0 { return "soon" }
-        let totalMinutes = Int(interval / 60)
-        let hours = totalMinutes / 60
-        let minutes = totalMinutes % 60
+        let (days, hours, minutes) = timeComponents(from: interval)
+        if days > 0 { return hours > 0 ? "\(days)d \(hours)h" : "\(days)d" }
         if hours > 0 { return minutes > 0 ? "\(hours)h \(minutes)m" : "\(hours)h" }
         return "\(max(minutes, 1))m"
     }
 
     /// Human-readable countdown to reset, e.g. "Resets in 1h 12m".
     public func timeToResetString(now: Date = Date()) -> String? {
-        guard let resetAt = resetAt else { return nil }
+        guard let resetAt else { return nil }
         let interval = resetAt.timeIntervalSince(now)
         if interval <= 0 { return "Resetting…" }
-        let totalMinutes = Int(interval / 60)
-        let hours = totalMinutes / 60
-        let minutes = totalMinutes % 60
-        if hours >= 24 {
-            let days = hours / 24
-            let rem = hours % 24
-            return rem > 0 ? "Resets in \(days)d \(rem)h" : "Resets in \(days)d"
-        }
-        if hours > 0 {
-            return "Resets in \(hours)h \(minutes)m"
-        }
+        let (days, hours, minutes) = timeComponents(from: interval)
+        if days > 0 { return hours > 0 ? "Resets in \(days)d \(hours)h" : "Resets in \(days)d" }
+        if hours > 0 { return "Resets in \(hours)h \(minutes)m" }
         return "Resets in \(max(minutes, 1))m"
+    }
+
+    private func timeComponents(from interval: TimeInterval) -> (days: Int, hours: Int, minutes: Int) {
+        let totalMinutes = Int(interval / 60)
+        let totalHours   = totalMinutes / 60
+        return (days: totalHours / 24, hours: totalHours % 24, minutes: totalMinutes % 60)
     }
 }

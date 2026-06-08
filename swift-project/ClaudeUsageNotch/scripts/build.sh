@@ -70,14 +70,11 @@ swiftc \
   "$SOURCES_DIR/Core/Domain/Status.swift" \
   "$SOURCES_DIR/Core/Domain/UsageWindow.swift" \
   "$SOURCES_DIR/Core/Domain/ServiceUsageSnapshot.swift" \
+  "$SOURCES_DIR/Core/State/AppSettings.swift" \
   "$SOURCES_DIR/Core/State/AppState.swift" \
   "$SOURCES_DIR/Core/State/NotchState.swift" \
   "$SOURCES_DIR/Platform/KeychainStore.swift" \
-  "$SOURCES_DIR/Platform/SQLiteReader.swift" \
-  "$SOURCES_DIR/Platform/NotchDetector.swift" \
   "$SOURCES_DIR/Platform/ScreenUtils.swift" \
-  "$SOURCES_DIR/Providers/UsageProvider.swift" \
-  "$SOURCES_DIR/Providers/ProviderRegistry.swift" \
   "$SOURCES_DIR/Providers/Claude/ClaudeCredential.swift" \
   "$SOURCES_DIR/Providers/Claude/ClaudeEndpoint.swift" \
   "$SOURCES_DIR/Providers/Claude/ClaudeUsageDTO.swift" \
@@ -114,7 +111,12 @@ cp "$SOURCES_DIR/Resources/Info.plist" "$APP_CONTENTS/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile AppIcon" "$APP_CONTENTS/Info.plist" 2>/dev/null || \
   /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$APP_CONTENTS/Info.plist"
 
-# App icon — build .icns from the PNG set using iconutil
+# Brand logos — must run before iconutil (which may fail) so the notch loads the right mark.
+if [ -f "$SOURCES_DIR/Resources/BrandIcons/brand-claude.png" ]; then
+  cp "$SOURCES_DIR/Resources/BrandIcons/brand-claude.png" "$APP_CONTENTS/Resources/"
+fi
+
+# App icon — build .icns from the PNG set using iconutil (best-effort)
 ICONSET="/tmp/$APP_NAME.iconset"
 rm -rf "$ICONSET" && mkdir -p "$ICONSET"
 sips -z 16   16   "$ASSETS_DIR/AppIcon-16.png"   --out "$ICONSET/icon_16x16.png"      >/dev/null
@@ -127,11 +129,10 @@ sips -z 256  256  "$ASSETS_DIR/AppIcon-256.png"  --out "$ICONSET/icon_256x256.pn
 sips -z 512  512  "$ASSETS_DIR/AppIcon-512.png"  --out "$ICONSET/icon_256x256@2x.png" >/dev/null
 sips -z 512  512  "$ASSETS_DIR/AppIcon-512.png"  --out "$ICONSET/icon_512x512.png"    >/dev/null
 sips -z 1024 1024 "$ASSETS_DIR/AppIcon-1024.png" --out "$ICONSET/icon_512x512@2x.png" >/dev/null
-iconutil -c icns "$ICONSET" -o "$APP_CONTENTS/Resources/AppIcon.icns"
-
-# Brand provider logos (loaded at runtime via Bundle.main → BrandIcon)
-if [ -d "$SOURCES_DIR/Resources/BrandIcons" ]; then
-  cp "$SOURCES_DIR/Resources/BrandIcons/"*.png "$APP_CONTENTS/Resources/" 2>/dev/null || true
+if iconutil -c icns "$ICONSET" -o "$APP_CONTENTS/Resources/AppIcon.icns" 2>/dev/null; then
+  echo "    AppIcon.icns OK"
+else
+  echo "    (iconutil skipped — dock icon may be missing)"
 fi
 
 # Strip quarantine attribute so macOS doesn't block launch

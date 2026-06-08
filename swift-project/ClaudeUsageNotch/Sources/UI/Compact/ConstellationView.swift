@@ -7,8 +7,7 @@ import SwiftUI
 /// provider's worst-window status, giving an instant health overview at a glance.
 struct ConstellationView: View {
     @ObservedObject var appState: AppState
-    @State private var appeared  = false
-    @State private var glowPulse = false
+    @State private var appeared = false
 
     private var activeSnaps: [(ProviderId, ServiceUsageSnapshot)] {
         appState.enabledProviders
@@ -33,9 +32,6 @@ struct ConstellationView: View {
         .opacity(appeared ? 1 : 0)
         .onAppear {
             withAnimation(.easeIn(duration: 0.22)) { appeared = true }
-            withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true).delay(0.6)) {
-                glowPulse = true
-            }
         }
         .help(toolTip)
     }
@@ -44,14 +40,13 @@ struct ConstellationView: View {
     private func providerIndicator(_ snap: ServiceUsageSnapshot, providerId: ProviderId) -> some View {
         let status = snap.combinedStatus
         let color  = status.color
-        let pct    = snap.primaryWindow.percentUsed
+        let pct    = snap.sessionWindow.percentUsed
         let incident = appState.incidents[providerId].flatMap { $0.level.isActive ? $0 : nil }
 
         HStack(spacing: 5) {
-            // Status glow dot — overlaid with a tiny warning glyph during an outage.
             ZStack {
                 Circle()
-                    .fill((incident?.level.tint ?? color).opacity(glowPulse ? 0.30 : 0.10))
+                    .fill((incident?.level.tint ?? color).opacity(0.20))
                     .frame(width: 10, height: 10)
                     .blur(radius: 2.5)
                 if let incident {
@@ -64,25 +59,20 @@ struct ConstellationView: View {
             }
 
             if !snap.showsPercentBar {
-                // Balance ("$110") or connected ("Active") — no bar.
                 Text(snap.shortLabel)
-                    .font(.system(size: 8, weight: .semibold, design: .monospaced))
+                    .font(Theme.notchFontTiny)
                     .foregroundColor(.white.opacity(0.82))
                     .frame(minWidth: 22, alignment: .trailing)
             } else {
-                // Mini progress bar
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.07))
-                    Capsule()
-                        .fill(LinearGradient(colors: [color.opacity(0.70), color],
-                                            startPoint: .leading, endPoint: .trailing))
-                        .frame(width: max(2, CGFloat(pct) * 52))
-                }
+                CompactProgressBar(
+                    progress: pct,
+                    color: color,
+                    expectedProgress: snap.sessionWindow.expectedProgress()
+                )
                 .frame(width: 52, height: 2.5)
 
-                // Percentage
                 Text("\(Int((pct * 100).rounded()))%")
-                    .font(.system(size: 8, weight: .semibold, design: .monospaced))
+                    .font(Theme.notchFontTiny)
                     .foregroundColor(.white.opacity(0.82))
                     .frame(minWidth: 22, alignment: .trailing)
             }

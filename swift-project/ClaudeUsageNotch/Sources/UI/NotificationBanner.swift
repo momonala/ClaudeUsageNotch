@@ -30,11 +30,9 @@ final class NotificationBannerController {
         let h: CGFloat = 72
         let margin: CGFloat = 14
 
-        // Resting position: top-right just below menu bar.
         let restX   = screen.frame.maxX - w - margin
         let menuH   = screen.frame.maxY - screen.visibleFrame.maxY
         let restY   = screen.frame.maxY - menuH - h - margin
-        // Start off-screen to the right.
         let offX    = screen.frame.maxX + margin
 
         let panel = NSPanel(
@@ -54,14 +52,12 @@ final class NotificationBannerController {
         panel.contentView = hosting.view
         panel.orderFrontRegardless()
 
-        // Slide in.
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.38
             ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
             panel.animator().setFrame(NSRect(x: restX, y: restY, width: w, height: h), display: true)
         }
 
-        // Auto-dismiss after 4 s.
         DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
             NSAnimationContext.runAnimationGroup { ctx in
                 ctx.duration = 0.28
@@ -74,6 +70,19 @@ final class NotificationBannerController {
             }
         }
     }
+}
+
+// MARK: - System-material background
+
+private struct VisualEffectBackground: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let v = NSVisualEffectView()
+        v.material    = .hudWindow
+        v.blendingMode = .behindWindow
+        v.state       = .active
+        return v
+    }
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
 }
 
 // MARK: - Banner SwiftUI view
@@ -110,13 +119,17 @@ private struct BannerView: View {
         .frame(width: 300, height: 72)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color(red: 0.09, green: 0.09, blue: 0.11).opacity(0.97))
+                .fill(Color.clear)
+                .background(
+                    VisualEffectBackground()
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                )
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .strokeBorder(Color.white.opacity(0.13), lineWidth: 1)
                 )
         )
-        .shadow(color: .black.opacity(0.45), radius: 20, y: 6)
+        .shadow(color: .black.opacity(0.3), radius: 12, y: 4)
         .scaleEffect(appeared ? 1 : 0.94)
         .opacity(appeared ? 1 : 0)
         .onAppear {

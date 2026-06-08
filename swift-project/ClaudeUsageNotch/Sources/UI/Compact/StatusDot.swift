@@ -42,7 +42,7 @@ struct IncidentBanner: View {
                 .foregroundColor(incident.level.tint)
             VStack(alignment: .leading, spacing: 1) {
                 Text("\(providerName) — \(incident.summary)")
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .font(Theme.headerFont)
                     .foregroundColor(Theme.textPrimary)
                     .lineLimit(2)
             }

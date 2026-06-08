@@ -22,7 +22,7 @@ struct WeeklyCard: View {
                             .foregroundColor(Theme.textSecondary)
                     }
                 }
-                CompactProgressBar(progress: pct, color: color)
+                CompactProgressBar(progress: pct, color: color, expectedProgress: window.expectedProgress())
                     .frame(height: Theme.barHeightExpanded)
                 Text(window.timeToResetString() ?? " ")
                     .font(Theme.cardSubtitleFont)

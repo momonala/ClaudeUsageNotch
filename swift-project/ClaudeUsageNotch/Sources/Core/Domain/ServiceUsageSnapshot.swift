@@ -4,22 +4,22 @@ import Foundation
 /// The notch UI consumes one of these and binds compact + expanded views to it.
 public struct ServiceUsageSnapshot: Codable, Hashable {
     public let providerId: ProviderId
-    public let primaryWindow: UsageWindow          // session
-    public let secondaryWindow: UsageWindow?       // weekly
-    public let tertiaryWindow: UsageWindow?        // weekly Sonnet (Pro only)
+    public let sessionWindow: UsageWindow           // 5-hour rolling session
+    public let weeklyWindow: UsageWindow?           // 7-day window
+    public let weeklySonnetWindow: UsageWindow?     // 7-day Sonnet sub-window (Pro only)
     public let capturedAt: Date
 
     public init(
         providerId: ProviderId,
-        primaryWindow: UsageWindow,
-        secondaryWindow: UsageWindow? = nil,
-        tertiaryWindow: UsageWindow? = nil,
+        sessionWindow: UsageWindow,
+        weeklyWindow: UsageWindow? = nil,
+        weeklySonnetWindow: UsageWindow? = nil,
         capturedAt: Date = Date()
     ) {
         self.providerId = providerId
-        self.primaryWindow = primaryWindow
-        self.secondaryWindow = secondaryWindow
-        self.tertiaryWindow = tertiaryWindow
+        self.sessionWindow = sessionWindow
+        self.weeklyWindow = weeklyWindow
+        self.weeklySonnetWindow = weeklySonnetWindow
         self.capturedAt = capturedAt
     }
 
@@ -27,13 +27,13 @@ public struct ServiceUsageSnapshot: Codable, Hashable {
     /// quota/usage endpoint (e.g. Gemini, Perplexity). The UI shows an "Active"
     /// indicator instead of a misleading 0% bar for these snapshots.
     public var isStatusOnly: Bool {
-        primaryWindow.type == .connected
+        sessionWindow.type == .connected
     }
 
     /// True when the provider reports a remaining credit balance instead of a
     /// percentage (e.g. DeepSeek). The UI shows the balance text, not a bar.
     public var isBalance: Bool {
-        primaryWindow.type == .balance
+        sessionWindow.type == .balance
     }
 
     /// True when this snapshot has a meaningful 0...1 usage percentage to chart.
@@ -44,8 +44,8 @@ public struct ServiceUsageSnapshot: Codable, Hashable {
     /// Short text for compact spaces: "42%", a balance like "$110.00", or "Active".
     public var shortLabel: String {
         if isStatusOnly { return "Active" }
-        if isBalance    { return primaryWindow.label ?? "—" }
-        return "\(Int((primaryWindow.percentUsed * 100).rounded()))%"
+        if isBalance    { return sessionWindow.label ?? "—" }
+        return "\(Int((sessionWindow.percentUsed * 100).rounded()))%"
     }
 
     /// Builds a status-only snapshot for a provider with no quota endpoint.
@@ -61,7 +61,7 @@ public struct ServiceUsageSnapshot: Codable, Hashable {
         )
         return ServiceUsageSnapshot(
             providerId: providerId,
-            primaryWindow: window,
+            sessionWindow: window,
             capturedAt: capturedAt
         )
     }
@@ -81,7 +81,7 @@ public struct ServiceUsageSnapshot: Codable, Hashable {
         )
         return ServiceUsageSnapshot(
             providerId: providerId,
-            primaryWindow: window,
+            sessionWindow: window,
             capturedAt: capturedAt
         )
     }
@@ -89,9 +89,9 @@ public struct ServiceUsageSnapshot: Codable, Hashable {
     /// The worst status across windows, used for the top-level pill color.
     public var combinedStatus: UsageStatus {
         let candidates: [UsageStatus] = [
-            primaryWindow.status,
-            secondaryWindow?.status ?? .healthy,
-            tertiaryWindow?.status ?? .healthy
+            sessionWindow.status,
+            weeklyWindow?.status ?? .healthy,
+            weeklySonnetWindow?.status ?? .healthy
         ]
         if candidates.contains(.critical) { return .critical }
         if candidates.contains(.warning)  { return .warning }

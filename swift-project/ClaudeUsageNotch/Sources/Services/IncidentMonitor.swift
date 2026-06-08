@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 // MARK: - Domain
 
@@ -91,14 +92,13 @@ final class StatusPageService {
 
 // MARK: - Monitor
 
-/// Polls the status pages of the enabled providers on a slow cadence and reports
-/// incidents back via `onIncident`. Independent of auth — outages are public.
+/// Polls the status pages of the enabled providers on a slow cadence and publishes
+/// incidents via `incidentPublisher`. Independent of auth — outages are public.
 final class IncidentMonitor {
     static let shared = IncidentMonitor()
     private init() {}
 
-    /// Called on the main actor whenever a provider's status is (re)read.
-    var onIncident: ((ProviderId, ServiceIncident) -> Void)?
+    let incidentPublisher = PassthroughSubject<(ProviderId, ServiceIncident), Never>()
 
     private var task: Task<Void, Never>?
     private var providers: [ProviderId] = []
@@ -107,7 +107,7 @@ final class IncidentMonitor {
     func start(providers: [ProviderId], interval: TimeInterval = 300) {
         stop()
         self.providers = providers.filter { $0.statusPageBaseURL != nil }
-        self.interval = max(120, interval)   // status pages don't need frequent polls
+        self.interval = max(120, interval)
         guard !self.providers.isEmpty else { return }
 
         task = Task { [weak self] in
@@ -128,9 +128,7 @@ final class IncidentMonitor {
         for provider in providers {
             guard let base = provider.statusPageBaseURL else { continue }
             guard let incident = await StatusPageService.shared.fetchIncident(baseURL: base) else { continue }
-            await MainActor.run { [weak self] in
-                self?.onIncident?(provider, incident)
-            }
+            incidentPublisher.send((provider, incident))
         }
     }
 }

@@ -9,12 +9,14 @@ import Combine
 ///
 /// Failure backoff: consecutive errors double the wait interval (cap: 1 hour).
 /// A 429 rate-limit forces at least 5-minute backoff regardless of the configured interval.
+@MainActor
 public final class UsageService {
     public static let shared = UsageService()
     private init() {}
 
+    private let provider = ClaudeProvider()
+
     public let snapshotPublisher = PassthroughSubject<ServiceUsageSnapshot, Never>()
-    /// Emits `(providerId, error)` tuples so the coordinator can react per provider.
     public let errorPublisher    = PassthroughSubject<(ProviderId, ProviderError), Never>()
 
     private var pollTasks: [ProviderId: Task<Void, Never>] = [:]
@@ -23,16 +25,10 @@ public final class UsageService {
 
     // MARK: - Lifecycle
 
-    /// Start (or restart) polling for all given providers.
     public func start(providers: [ProviderId], interval: TimeInterval) {
         stopAll()
         intervalSeconds = max(60, interval)
-        for p in providers where p.isAvailable { startProvider(p) }
-    }
-
-    /// Convenience for single-provider (backward-compat).
-    public func start(providerId: ProviderId, interval: TimeInterval) {
-        start(providers: [providerId], interval: interval)
+        for p in providers { startProvider(p) }
     }
 
     public func stopAll() {
@@ -54,9 +50,6 @@ public final class UsageService {
             for id in pollTasks.keys { Task { await fetchOnce(providerId: id) } }
         }
     }
-
-    /// Refresh all active providers.
-    public func refreshNow() { refreshNow(providerId: nil) }
 
     public func updateInterval(_ seconds: TimeInterval) {
         intervalSeconds = max(60, seconds)
@@ -84,41 +77,27 @@ public final class UsageService {
     private func backoffInterval(for providerId: ProviderId) -> TimeInterval {
         let errs = consecutiveErrors[providerId] ?? 0
         guard errs > 0 else { return intervalSeconds }
-        let backoff = intervalSeconds * pow(2.0, Double(min(errs, 6)))
-        return min(backoff, 3600)
+        return min(intervalSeconds * pow(2.0, Double(min(errs, 6))), 3600)
     }
 
     private func fetchOnce(providerId: ProviderId) async {
-        guard let provider = ProviderRegistry.shared.provider(for: providerId) else {
-            await publish(error: .unknown("No provider registered for \(providerId.rawValue)"), id: providerId)
-            return
-        }
         do {
             let snapshot = try await provider.fetchUsage()
             consecutiveErrors[providerId] = 0
-            await publish(snapshot: snapshot)
+            snapshotPublisher.send(snapshot)
         } catch let error as ProviderError {
             consecutiveErrors[providerId, default: 0] += 1
             if case .rateLimited = error {
+                let minBackoffExponent = Int(ceil(log2(300 / intervalSeconds + 1)))
                 consecutiveErrors[providerId] = max(
-                    consecutiveErrors[providerId]!,
-                    Int(ceil(log2(300 / intervalSeconds + 1)))
+                    consecutiveErrors[providerId, default: 0],
+                    minBackoffExponent
                 )
             }
-            await publish(error: error, id: providerId)
+            errorPublisher.send((providerId, error))
         } catch {
             consecutiveErrors[providerId, default: 0] += 1
-            await publish(error: .unknown("unexpected"), id: providerId)
+            errorPublisher.send((providerId, .unknown("unexpected")))
         }
-    }
-
-    @MainActor
-    private func publish(snapshot: ServiceUsageSnapshot) {
-        snapshotPublisher.send(snapshot)
-    }
-
-    @MainActor
-    private func publish(error: ProviderError, id: ProviderId) {
-        errorPublisher.send((id, error))
     }
 }

@@ -39,28 +39,28 @@ enum ClaudeEndpoint {
     /// Headers the official site sends. We replicate them to avoid being
     /// detected as a bot and getting served HTML instead of JSON.
     static func headers(cookie: String) -> [String: String] {
-        [
-            "Cookie":       cookie,
-            "Accept":       "*/*",
-            "Content-Type": "application/json",
-            "Origin":       "https://claude.ai",
-            "Referer":      "https://claude.ai",
-            "User-Agent":   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " +
-                            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        ]
+        var h = claudeAIBrowserHeaders
+        h["Cookie"]  = cookie
+        h["Accept"]  = "*/*"
+        return h
     }
 
     /// Headers for OAuth Bearer token auth (Claude CLI credential).
     /// Smaller blast radius than the session cookie — use this when available.
     static func bearerHeaders(token: String) -> [String: String] {
-        [
-            "Authorization": "Bearer \(token)",
-            "Accept":        "application/json",
-            "Content-Type":  "application/json",
-            "Origin":        "https://claude.ai",
-            "Referer":       "https://claude.ai",
-            "User-Agent":    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " +
-                             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        ]
+        var h = claudeAIBrowserHeaders
+        h["Authorization"] = "Bearer \(token)"
+        h["Accept"]        = "application/json"
+        return h
     }
+
+    // MARK: - Private
+
+    private static let claudeAIBrowserHeaders: [String: String] = [
+        "Content-Type": "application/json",
+        "Origin":       "https://claude.ai",
+        "Referer":      "https://claude.ai",
+        "User-Agent":   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " +
+                        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    ]
 }
