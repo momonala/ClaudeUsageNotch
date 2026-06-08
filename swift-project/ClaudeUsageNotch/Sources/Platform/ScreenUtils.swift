@@ -50,4 +50,23 @@ enum ScreenUtils {
         let originY = frame.maxY - size.height
         return NSPoint(x: originX, y: originY)
     }
+
+    // MARK: - Compact panel width
+
+    static let compactPanelWidthDefault: CGFloat = 220
+    /// Extra width when the session row shows a countdown instead of "%".
+    private static let compactCountdownWidthBump: CGFloat = 32
+    private static let compactPercentSlotWidth: CGFloat = 25
+
+    /// Widen the compact pill for session-limit countdowns (e.g. "2h 1m") so the
+    /// label sits further into the visible "ear" beside the hardware notch.
+    static func compactPanelWidth(atSessionLimit: Bool, countdownText: String?) -> CGFloat {
+        guard atSessionLimit else { return compactPanelWidthDefault }
+        let font = NSFont.monospacedSystemFont(ofSize: 9, weight: .bold)
+        let text = countdownText ?? "LIMIT"
+        let textWidth = ceil((text as NSString).size(withAttributes: [.font: font]).width)
+        let measuredExtra = max(0, textWidth + 12 - compactPercentSlotWidth)
+        let extra = max(measuredExtra, compactCountdownWidthBump)
+        return min(compactPanelWidthDefault + extra, 280)
+    }
 }

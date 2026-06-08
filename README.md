@@ -1,8 +1,8 @@
 # ClaudeUsageNotch
 
-A native macOS menubar app that shows Claude Code usage (session + weekly quota) live in the hardware notch. No Dock icon. No Electron. Under 10MB.
+A native macOS app that shows Claude Code usage (session + weekly quota) live in the hardware notch.
 
-The notch panel works like iOS Dynamic Island: the top portion of the panel sits inside the physical camera housing (black on black), and only the visible extension below the notch is rendered. Hover expands it; click pins it open.
+The notch panel works like iOS Dynamic Island: the top portion sits inside the physical camera housing (black on black), and only the visible extension below the notch is rendered. Hover expands it; click pins it open.
 
 ---
 
@@ -45,6 +45,7 @@ open ClaudeUsageNotch.xcodeproj
 ## Requirements
 
 - macOS 12.0+ (arm64; Intel works with target swap above)
+- MacBook with a hardware notch
 - Xcode CLI tools (`xcode-select --install`)
 - Full Xcode + `brew install xcodegen` for Mode B only
 
@@ -56,63 +57,55 @@ open ClaudeUsageNotch.xcodeproj
 Sources/
 ├── App/
 │   ├── ClaudeUsageNotchApp.swift  @main SwiftUI entry point
-│   └── AppDelegate.swift          Root controller; wires AppState, NotchWindowController, UsageCoordinator
+│   └── AppDelegate.swift          Wires AppState, NotchWindowController, UsageCoordinator
 │
 ├── Core/
 │   ├── Domain/
-│   │   ├── ProviderId.swift       Enum of supported providers (currently: .claude)
-│   │   ├── ServiceUsageSnapshot.swift  Single point-in-time snapshot from a provider
-│   │   ├── UsageWindow.swift      Session / weekly window with percent, reset time, status
-│   │   └── Status.swift           UsageStatus (.healthy/.warning/.critical), ProviderError, AuthStatus
+│   │   ├── ProviderId.swift       Supported providers (currently: .claude)
+│   │   ├── ServiceUsageSnapshot.swift
+│   │   ├── UsageWindow.swift      Session / weekly windows, pace, reset helpers
+│   │   └── Status.swift           UsageStatus, ProviderError, AuthStatus, SyncStatus
 │   └── State/
-│       ├── AppState.swift         Single ObservableObject source of truth; persists to UserDefaults
-│       └── NotchState.swift       Enum: compactIdle / expanded / etc.
+│       ├── AppState.swift         Runtime state; snapshots, notch state, incidents
+│       ├── AppSettings.swift      Persisted prefs: poll interval, thresholds, notifications
+│       └── NotchState.swift       compactIdle / expandedHover / expandedPinned / …
 │
 ├── Providers/
-│   ├── UsageProvider.swift        Protocol — implement this to add a provider
-│   ├── ProviderRegistry.swift     Singleton registry; bootstrap() registers concrete providers
 │   └── Claude/
-│       ├── ClaudeProvider.swift   Fetches session + weekly usage from api.anthropic.com
-│       ├── ClaudeCredential.swift Cookie-based credential (Keychain-backed)
-│       ├── ClaudeOAuthCredential.swift  CLI OAuth token (Keychain item or ~/.claude/credentials.json)
-│       ├── ClaudeEndpoint.swift   URL + header construction
-│       └── ClaudeUsageDTO.swift   Decodable DTOs for the usage response
+│       ├── ClaudeProvider.swift   OAuth + cookie auth; session + weekly fetch
+│       ├── ClaudeCredential.swift
+│       ├── ClaudeOAuthCredential.swift
+│       ├── ClaudeEndpoint.swift
+│       └── ClaudeUsageDTO.swift
 │
 ├── Services/
-│   ├── UsageService.swift         Per-provider polling Tasks; exponential backoff on errors
-│   ├── UsageCoordinator.swift     Connects UsageService → AppState → NotificationService
-│   ├── AuthService.swift          Credential read/write via KeychainStore; Claude OAuth detection
-│   ├── NotificationService.swift  In-app banners at configurable thresholds (default: 25/50/75/90%)
-│   └── IncidentMonitor.swift      Polls provider status pages; writes to AppState.incidents
+│   ├── UsageService.swift         Polling loop + exponential backoff
+│   ├── UsageCoordinator.swift     UsageService → AppState → NotificationService
+│   ├── AuthService.swift          Keychain + CLI OAuth detection
+│   ├── NotificationService.swift  In-app banners at configurable thresholds
+│   └── IncidentMonitor.swift      Polls Anthropic status page
 │
 ├── Platform/
-│   ├── KeychainStore.swift        Thin wrapper around SecItem* APIs
-│   ├── SQLiteReader.swift         Read-only SQLite access (used by some provider credential paths)
-│   ├── NotchDetector.swift        Detects whether the current Mac has a hardware notch
-│   └── ScreenUtils.swift          Finds the notch screen; reads safeAreaInsets.top
+│   ├── KeychainStore.swift
+│   └── ScreenUtils.swift          Notch screen detection, panel positioning, dynamic compact width
 │
 └── UI/
-    ├── NotchWindowController.swift  Owns the borderless NSPanel; hover/click state machine
+    ├── NotchWindowController.swift  Borderless NSPanel; hover timer; width animation
     ├── NotificationBanner.swift
     ├── Compact/
-    │   ├── CompactView.swift       Pill with dual progress bars (session + weekly)
-    │   ├── CompactProgressBar.swift
-    │   ├── ConstellationView.swift  Multi-provider dot cluster (future use)
-    │   └── StatusDot.swift
+    │   ├── CompactView.swift        Dual bars; countdown at session limit
+    │   ├── CompactProgressBar.swift Pace marker tick
+    │   ├── ConstellationView.swift  Multi-provider layout (not wired yet)
+    │   └── StatusDot.swift          IncidentBanner
     ├── Expanded/
-    │   ├── ExpandedPanelView.swift  Full hover panel
-    │   ├── HeaderRow.swift          Provider name + last-sync time
-    │   ├── SessionCard.swift        Animated %, progress bar, time-to-reset
-    │   └── WeeklyCard.swift         Rolling weekly quota (providers that expose it)
-    ├── Onboarding/
-    │   └── OnboardingView.swift     First-launch credential setup
-    ├── Settings/
-    │   └── SettingsView.swift       Poll interval, notifications, provider management
-    └── Theme/
-        ├── Theme.swift              Color tokens, typography
-        ├── BrandIcon.swift          Provider logos loaded from app bundle
-        ├── GlassBackground.swift
-        └── RetroMascot.swift
+    │   ├── ExpandedPanelView.swift
+    │   ├── HeaderRow.swift          Provider name, sync time, settings, quit
+    │   ├── SessionCard.swift
+    │   ├── WeeklyCard.swift
+    │   └── ResetSubtitleRow.swift   Countdown · reset time/date · expected usage
+    ├── Onboarding/OnboardingView.swift
+    ├── Settings/SettingsView.swift
+    └── Theme/                       Theme · BrandIcon · NotchPillShape · RetroMascot
 ```
 
 ---
@@ -123,72 +116,61 @@ Sources/
 AuthService (Keychain / CLI OAuth)
     │
     ▼
-UsageService.start(providers:interval:)
-    │  per-provider Task loop + exponential backoff
+UsageService (poll loop + backoff)
     │
-    ├─ snapshotPublisher ──► UsageCoordinator ──► AppState.snapshots / latestSnapshot
+    ├─ snapshotPublisher ──► UsageCoordinator ──► AppState.snapshots
     │                                         └──► NotificationService.evaluate(...)
     │
-    └─ errorPublisher ────► UsageCoordinator ──► AppState.providerErrors / authStatus / syncStatus
+    └─ errorPublisher ────► UsageCoordinator ──► AppState.providerErrors / syncStatus
+                                                       │
+    IncidentMonitor ────────────────────────────────► AppState.incidents
                                                        │
                                                        ▼
-                                              SwiftUI views (CompactView, ExpandedPanelView, etc.)
+                                              SwiftUI views (CompactView, ExpandedPanelView, …)
 ```
 
-`AppState` is the only `ObservableObject`. All views bind to it directly. No ViewModels.
+`AppState` is the primary `ObservableObject` for runtime data. `AppSettings` holds persisted preferences separately so settings changes don't re-trigger usage observers.
 
 ---
 
 ## How the notch window works
 
-`NotchWindowController` creates a borderless, non-activating `NSPanel` at window level `.popUpMenu` (101 — above the macOS menu bar compositor at 24). The panel is anchored at `screen.frame.maxY` (top of screen). Its height is `safeAreaInsets.top` (the hardware notch depth, ~37pt on MBP 14/16") plus the visible content height. The top portion sits inside the physical notch housing — black on black, invisible. Only the lower extension is visible. This is how iOS Dynamic Island works.
+`NotchWindowController` creates a borderless, non-activating `NSPanel` at window level `.popUpMenu` (101 — above the macOS menu bar compositor). The panel anchors at `screen.frame.maxY`. Its height is `safeAreaInsets.top` (~37 pt on MBP 14/16") plus the visible content height.
 
-Hover detection uses a 40ms `Timer` polling `NSEvent.mouseLocation`. `NSTrackingArea.mouseExited` is unreliable on non-activating panels during resize, and `NSEvent.addGlobalMonitorForEvents` only fires for other apps' events.
+Hover detection uses a 40 ms `Timer` polling `NSEvent.mouseLocation` — `NSTrackingArea` and global event monitors are unreliable on non-activating panels.
 
----
-
-## Polling and backoff
-
-`UsageService` spawns one `Task` per provider. Fetch errors double the wait interval on each consecutive failure, capped at 1 hour. A 429 response forces at least 5-minute backoff regardless of configured interval. The minimum configurable interval is 60s; the default is 300s.
+When the session hits 100%, the compact panel widens via `ScreenUtils.compactPanelWidth` so countdown text (e.g. `2h 1m`) stays in the visible strip beside the camera cutout.
 
 ---
 
 ## Auth
 
-Claude has two auth paths, tried in order by `ClaudeProvider`:
+Claude auth is tried in this order:
 
-1. **CLI OAuth** — reads the `Claude Code-credentials` Keychain item (written by the Claude CLI) or `~/.claude/credentials.json`. No user action needed if `claude` CLI is installed and logged in.
-2. **Session cookie** — paste the `Cookie` header from a claude.ai browser session. Stored in the macOS Keychain under `com.claudeusagenotch.ClaudeUsageNotch`.
+1. **CLI OAuth** — `Claude Code-credentials` Keychain item or `~/.claude/credentials.json`
+2. **Session cookie** — pasted from a claude.ai browser session, stored in Keychain
 
-`AuthService.claudeHasOAuthAvailable` / `cliOAuthAvailable(for:)` check path 1. The onboarding flow adapts to skip the cookie step when CLI OAuth is found.
+Onboarding skips the cookie step when CLI OAuth is detected.
 
 ---
 
 ## Adding a provider
 
-1. Add a case to `ProviderId` in `Core/Domain/ProviderId.swift`. Set `isAvailable: Bool`, `usesCLIOAuth: Bool`, and `statusPageBaseURL`.
-2. Create a folder under `Providers/YourProvider/` and implement `UsageProvider`:
-   - `validateCredentials() async throws` — throw `.unauthorized` on a bad token.
-   - `fetchUsage() async throws -> ServiceUsageSnapshot` — map to domain types; never return raw DTOs.
-   - Use `ServiceUsageSnapshot.connected(...)` for providers with no quota endpoint, `.balance(...)` for credit-balance providers.
-3. Register it in `ProviderRegistry.bootstrap()`.
-4. Add credential handling in `AuthService` (Keychain path) or `ClaudeOAuthCredential`-style (CLI file path).
-5. Add the source file to the `swiftc` invocation in `scripts/build.sh`.
-
-The UI adapts automatically: `AppState.activeShowsPercentBar`, `activeIsBalance`, and `activeIsStatusOnly` gate which compact and expanded sub-views render.
+See [`swift-project/ClaudeUsageNotch/docs/PROVIDER_GUIDE.md`](swift-project/ClaudeUsageNotch/docs/PROVIDER_GUIDE.md).
 
 ---
 
 ## State persistence
 
-`AppState` persists to `UserDefaults` under the `claudeusagenotch.*` key namespace (see `AppState.Key`). Persisted fields: `activeProvider`, `enabledProviders`, `pollIntervalSeconds`, `notificationsEnabled`, `thresholds`.
+`AppSettings` persists to `UserDefaults` under `claudeusagenotch.*`: poll interval, notification toggle, thresholds.
 
-Snapshots are not persisted — the app fetches fresh on launch.
+`AppState` persists `activeProvider` and `enabledProviders`. Snapshots are not persisted — the app fetches fresh on launch.
 
 ---
 
-Note:
-- Claude's usage endpoints are undocumented and may break on API changes.
+## Note
+
+Claude's usage endpoints are undocumented and may break on API changes.
 
 ---
 

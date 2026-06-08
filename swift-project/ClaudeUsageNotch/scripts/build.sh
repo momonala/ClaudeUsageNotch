@@ -95,6 +95,7 @@ swiftc \
   "$SOURCES_DIR/UI/Compact/ConstellationView.swift" \
   "$SOURCES_DIR/UI/NotchWindowController.swift" \
   "$SOURCES_DIR/UI/Expanded/HeaderRow.swift" \
+  "$SOURCES_DIR/UI/Expanded/ResetSubtitleRow.swift" \
   "$SOURCES_DIR/UI/Expanded/SessionCard.swift" \
   "$SOURCES_DIR/UI/Expanded/WeeklyCard.swift" \
   "$SOURCES_DIR/UI/Expanded/ExpandedPanelView.swift" \

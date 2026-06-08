@@ -10,28 +10,28 @@ struct WeeklyCard: View {
         let status = window.status
         let color  = status.color
 
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 5) {
-                    Text(title)
-                        .font(Theme.cardTitleFont)
-                        .foregroundColor(Theme.textPrimary)
-                    if let sub = subtitle {
-                        Text(sub)
-                            .font(Theme.cardSubtitleFont)
-                            .foregroundColor(Theme.textSecondary)
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 5) {
+                        Text(title)
+                            .font(Theme.cardTitleFont)
+                            .foregroundColor(Theme.textPrimary)
+                        if let sub = subtitle {
+                            Text(sub)
+                                .font(Theme.cardSubtitleFont)
+                                .foregroundColor(Theme.textSecondary)
+                        }
                     }
+                    CompactProgressBar(progress: pct, color: color, expectedProgress: window.expectedProgress())
+                        .frame(height: Theme.barHeightExpanded)
                 }
-                CompactProgressBar(progress: pct, color: color, expectedProgress: window.expectedProgress())
-                    .frame(height: Theme.barHeightExpanded)
-                Text(window.timeToResetString() ?? " ")
-                    .font(Theme.cardSubtitleFont)
-                    .foregroundColor(Theme.textSecondary)
+                Spacer()
+                Text("\(Int((pct * 100).rounded()))%")
+                    .font(Theme.weeklyValueFont)
+                    .foregroundColor(color)
             }
-            Spacer()
-            Text("\(Int((pct * 100).rounded()))%")
-                .font(Theme.weeklyValueFont)
-                .foregroundColor(color)
+            ResetSubtitleRow(window: window)
         }
         .padding(.horizontal, Theme.cardPaddingH)
         .padding(.vertical, Theme.cardPaddingV)

@@ -7,44 +7,51 @@ struct SessionCard: View {
         let pct   = appState.sessionPercent
         let color = statusColor
 
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 5) {
-                Text(windowTitle)
-                    .font(Theme.cardTitleFont)
-                    .foregroundColor(Theme.textPrimary)
-                if appState.activeIsBalance {
-                    Text(appState.activeShortLabel)
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(windowTitle)
                         .font(Theme.cardTitleFont)
+                        .foregroundColor(Theme.textPrimary)
+                    if appState.activeIsBalance {
+                        Text(appState.activeShortLabel)
+                            .font(Theme.cardTitleFont)
+                            .foregroundColor(color)
+                        Text("Credit balance — usage % not provided")
+                            .font(Theme.cardSubtitleFont)
+                            .foregroundColor(Theme.textSecondary)
+                    } else if appState.activeIsStatusOnly {
+                        Text("Connected")
+                            .font(Theme.cardTitleFont)
+                            .foregroundColor(color)
+                        Text("No usage quota exposed")
+                            .font(Theme.cardSubtitleFont)
+                            .foregroundColor(Theme.textSecondary)
+                    } else {
+                        CompactProgressBar(
+                            progress: pct,
+                            color: color,
+                            expectedProgress: appState.activeSnapshot?.sessionWindow.expectedProgress()
+                        )
+                            .frame(height: Theme.barHeightExpanded)
+                    }
+                }
+                Spacer()
+                if !appState.activeIsBalance && !appState.activeIsStatusOnly {
+                    Text("\(Int((pct * 100).rounded()))%")
+                        .font(Theme.cardValueFont)
                         .foregroundColor(color)
-                    Text("Credit balance — usage % not provided")
-                        .font(Theme.cardSubtitleFont)
-                        .foregroundColor(Theme.textSecondary)
-                } else if appState.activeIsStatusOnly {
-                    Text("Connected")
-                        .font(Theme.cardTitleFont)
-                        .foregroundColor(color)
-                    Text("No usage quota exposed")
-                        .font(Theme.cardSubtitleFont)
-                        .foregroundColor(Theme.textSecondary)
-                } else {
-                    CompactProgressBar(
-                        progress: pct,
-                        color: color,
-                        expectedProgress: appState.activeSnapshot?.sessionWindow.expectedProgress()
-                    )
-                        .frame(height: Theme.barHeightExpanded)
-                    Text(appState.sessionResetString ?? " ")
-                        .font(Theme.cardSubtitleFont)
-                        .foregroundColor(Theme.textSecondary)
+                        .contentTransition(.numericText())
+                        .animation(.spring(response: Theme.springResponse), value: pct)
                 }
             }
-            Spacer()
-            if !appState.activeIsBalance && !appState.activeIsStatusOnly {
-                Text("\(Int((pct * 100).rounded()))%")
-                    .font(Theme.cardValueFont)
-                    .foregroundColor(color)
-                    .contentTransition(.numericText())
-                    .animation(.spring(response: Theme.springResponse), value: pct)
+            if let window = appState.activeSnapshot?.sessionWindow,
+               !appState.activeIsBalance, !appState.activeIsStatusOnly {
+                ResetSubtitleRow(window: window)
+            } else if let reset = appState.sessionResetString {
+                Text(reset)
+                    .font(Theme.cardSubtitleFont)
+                    .foregroundColor(Theme.textSecondary)
             }
         }
         .padding(.horizontal, Theme.cardPaddingH)

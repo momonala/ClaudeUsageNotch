@@ -106,6 +106,50 @@ public struct UsageWindow: Codable, Hashable {
         return "Resets in \(max(minutes, 1))m"
     }
 
+    /// Pace label for expanded cards, e.g. "Expected usage 20%".
+    public func expectedUsageString(now: Date = Date()) -> String? {
+        guard let expected = expectedProgress(now: now) else { return nil }
+        return "Expected usage \(Int((expected * 100).rounded()))%"
+    }
+
+    /// When the window resets — time for short windows (session/daily), date for longer ones.
+    public func resetAtLabel() -> String? {
+        guard let resetAt else { return nil }
+        switch type {
+        case .session, .daily:
+            return Self.resetTimeFormatter.string(from: resetAt)
+        case .weekly, .weeklyModel, .monthly:
+            return Self.resetDateFormatter.string(from: resetAt)
+        case .connected, .balance:
+            return nil
+        }
+    }
+
+    /// Reset countdown, reset moment, and pace — e.g. "Resets in 1h 12m · 3:45 PM · Expected usage 20%".
+    public func resetAndExpectedSubtitle(now: Date = Date()) -> String? {
+        let parts = [
+            timeToResetString(now: now),
+            resetAtLabel(),
+            expectedUsageString(now: now),
+        ].compactMap { $0 }
+        guard !parts.isEmpty else { return nil }
+        return parts.joined(separator: " · ")
+    }
+
+    private static let resetTimeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.timeStyle = .short
+        f.dateStyle = .none
+        return f
+    }()
+
+    private static let resetDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.timeStyle = .none
+        f.dateStyle = .medium
+        return f
+    }()
+
     private func timeComponents(from interval: TimeInterval) -> (days: Int, hours: Int, minutes: Int) {
         let totalMinutes = Int(interval / 60)
         let totalHours   = totalMinutes / 60

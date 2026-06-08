@@ -23,7 +23,6 @@ final class NotchWindowController: NSObject {
     // MARK: - Layout constants
 
     private enum Layout {
-        static let compactWidth: CGFloat     = 220
         static let expandedWidth: CGFloat    = 380
         /// Visible strip height below the hardware notch in compact mode.
         static let compactStripHeight: CGFloat = Theme.compactStripHeight
@@ -43,7 +42,13 @@ final class NotchWindowController: NSObject {
     // hardware) and only the lower "visible extension" is seen by the user.
     // This is identical to how the iOS Dynamic Island works.
     private var compactSize: NSSize {
-        NSSize(width: Layout.compactWidth, height: ScreenUtils.notchHeight + Layout.compactStripHeight)
+        NSSize(
+            width: ScreenUtils.compactPanelWidth(
+                atSessionLimit: appState.isAtSessionLimit,
+                countdownText: appState.sessionResetShortString
+            ),
+            height: ScreenUtils.notchHeight + Layout.compactStripHeight
+        )
     }
     private var expandedSize: NSSize {
         NSSize(width: Layout.expandedWidth, height: ScreenUtils.notchHeight + Layout.expandedContentHeight)
@@ -53,7 +58,7 @@ final class NotchWindowController: NSObject {
         self.appState = appState
         self.refreshAction = refreshAction
         self.panel = NSPanel(
-            contentRect: NSRect(origin: .zero, size: NSSize(width: Layout.compactWidth, height: 30)),
+            contentRect: NSRect(origin: .zero, size: NSSize(width: ScreenUtils.compactPanelWidthDefault, height: 30)),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -76,6 +81,11 @@ final class NotchWindowController: NSObject {
         appState.$notchState
             .receive(on: RunLoop.main)
             .sink { [weak self] state in self?.applyState(state) }
+            .store(in: &cancellables)
+
+        Publishers.CombineLatest(appState.$snapshots, appState.$activeProviderId)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _, _ in self?.updateCompactLayoutIfNeeded() }
             .store(in: &cancellables)
     }
 
@@ -178,6 +188,23 @@ final class NotchWindowController: NSObject {
     }
 
     // MARK: - Layout
+
+    /// Animate compact width when countdown text needs more room beside the notch.
+    private func updateCompactLayoutIfNeeded() {
+        switch appState.notchState {
+        case .compactIdle, .compactHover:
+            let target = compactSize
+            guard abs(panel.frame.width - target.width) > 0.5 else { return }
+            let origin = ScreenUtils.topCenteredOrigin(forPanelSize: target)
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.25
+                ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                panel.animator().setFrame(NSRect(origin: origin, size: target), display: true)
+            }
+        default:
+            break
+        }
+    }
 
     private func applyState(_ state: NotchState) {
         let targetSize: NSSize
