@@ -260,7 +260,13 @@ struct RootNotchView: View {
             case .hidden:
                 Color.clear
             case .compactIdle, .compactHover:
-                CompactView(appState: appState)
+                Group {
+                    if appState.isNotchUIHidden {
+                        Color.clear
+                    } else {
+                        CompactView(appState: appState)
+                    }
+                }
                 .onTapGesture { controller.userClicked() }
                 .contextMenu {
                     Button { refreshAction() } label: {

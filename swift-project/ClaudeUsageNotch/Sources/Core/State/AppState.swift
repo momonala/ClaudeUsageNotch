@@ -15,6 +15,7 @@ public final class AppState: ObservableObject {
     @Published public var providerErrors: [ProviderId: ProviderError] = [:]
 
     @Published public var notchState: NotchState = .compactIdle
+    @Published public var isNotchUIHidden: Bool = false { didSet { persist() } }
     @Published public var showOnboarding: Bool = false
     @Published public var showSettings: Bool = false
 
@@ -67,6 +68,7 @@ public final class AppState: ObservableObject {
     private enum Key {
         static let activeProvider   = "claudeusagenotch.activeProvider"
         static let enabledProviders = "claudeusagenotch.enabledProviders"
+        static let notchUIHidden    = "claudeusagenotch.notchUIHidden"
     }
 
     private func load() {
@@ -80,6 +82,9 @@ public final class AppState: ObservableObject {
             let restored = raws.compactMap { ProviderId(rawValue: $0) }
             if !restored.isEmpty { enabledProviders = restored }
         }
+        if d.object(forKey: Key.notchUIHidden) != nil {
+            isNotchUIHidden = d.bool(forKey: Key.notchUIHidden)
+        }
     }
 
     private func persist() {
@@ -87,5 +92,6 @@ public final class AppState: ObservableObject {
         let d = UserDefaults.standard
         d.set(activeProviderId.rawValue, forKey: Key.activeProvider)
         d.set(enabledProviders.map(\.rawValue), forKey: Key.enabledProviders)
+        d.set(isNotchUIHidden, forKey: Key.notchUIHidden)
     }
 }

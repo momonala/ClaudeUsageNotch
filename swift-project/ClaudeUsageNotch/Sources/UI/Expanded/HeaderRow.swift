@@ -34,6 +34,18 @@ struct HeaderRow: View {
             Spacer()
 
             Button {
+                appState.isNotchUIHidden.toggle()
+                controller.userPressedEscape()
+            } label: {
+                Image(systemName: appState.isNotchUIHidden ? "eye.slash" : "eye")
+                    .font(.system(size: 11))
+                    .foregroundColor(Theme.textSecondary.opacity(0.6))
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(appState.isNotchUIHidden ? "Show notch" : "Hide notch")
+            .padding(.trailing, 6)
+
+            Button {
                 appState.showSettings = true
                 controller.userPressedEscape()
             } label: {
