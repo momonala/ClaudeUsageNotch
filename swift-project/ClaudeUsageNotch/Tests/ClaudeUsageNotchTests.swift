@@ -181,20 +181,20 @@ final class ClaudeOAuthCredentialTests: XCTestCase {
 final class NotificationServiceEvaluateTests: XCTestCase {
 
     private let defaultsKey = "com.claudeusagenotch.NotificationService.highWaterMark"
+    private let lastPercentKey = "com.claudeusagenotch.NotificationService.lastPercent"
     private let thresholds: [Double] = [0.25, 0.5, 0.75, 0.9]
 
     override func setUp() {
         super.setUp()
         UserDefaults.standard.removeObject(forKey: defaultsKey)
+        UserDefaults.standard.removeObject(forKey: lastPercentKey)
     }
 
     private func snapshot(percent: Double) -> ServiceUsageSnapshot {
         ServiceUsageSnapshot(
             providerId: .claude,
-            primaryWindow: UsageWindow(type: .session, percentUsed: percent,
+            sessionWindow: UsageWindow(type: .session, percentUsed: percent,
                                        lastUpdated: Date()),
-            secondaryWindow: nil,
-            tertiaryWindow: nil,
             capturedAt: Date()
         )
     }
@@ -250,6 +250,25 @@ final class NotificationServiceEvaluateTests: XCTestCase {
                          thresholds: thresholds, providerId: .claude)
         XCTAssertEqual(mark()["claude:session"], 0.75,
                        "mark should advance again after window reset")
+    }
+
+    // 5e. Reset detection works even when all threshold buttons are cleared.
+    func test_windowReset_firesWithEmptyThresholds() {
+        let service = NotificationService.shared
+        service.evaluate(snapshot: snapshot(percent: 0.82),
+                         thresholds: [], providerId: .claude)
+        service.evaluate(snapshot: snapshot(percent: 0.0),
+                         thresholds: [], providerId: .claude)
+        XCTAssertEqual(mark()["claude:session"], 0,
+                       "reset should clear threshold mark even with no thresholds configured")
+    }
+
+    // 5f. Reset detection: any decrease from the previous poll counts as a reset.
+    func test_usageDecrease_detectsReset() {
+        XCTAssertTrue(NotificationService.didUsageDecrease(previous: 1.0, current: 0.0))
+        XCTAssertTrue(NotificationService.didUsageDecrease(previous: 0.76, current: 0.05))
+        XCTAssertFalse(NotificationService.didUsageDecrease(previous: 0.5, current: 0.76))
+        XCTAssertFalse(NotificationService.didUsageDecrease(previous: 0.76, current: 0.76))
     }
 
     // 6. KeychainStore round-trip: write → read → delete.

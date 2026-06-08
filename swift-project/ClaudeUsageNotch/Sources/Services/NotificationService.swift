@@ -1,80 +1,80 @@
 import Foundation
 import AppKit
 
-/// Threshold-aware notification dispatcher.
+/// Poll-driven usage notifications.
 ///
-/// Strategy: high-water mark per window.
+/// On each snapshot: for every quota window (session, weekly, optional Sonnet),
+/// compare usage to the previous poll.
 ///
-/// For each usage window (session, weekly, model) we track the highest
-/// threshold we have already notified about. A notification fires only when
-/// the current usage climbs strictly above that mark. When usage drops back
-/// below the lowest configured threshold (window reset), the mark is cleared
-/// so the next rising edge fires again.
+/// - **Going up:** fire when usage crosses a configured threshold we have not
+///   notified for yet this cycle (high-water mark per window).
+/// - **Going down:** usage decreased → window reset → fire a reset banner and
+///   clear the threshold mark so the next climb can alert again.
 ///
-/// This replaces a previous key-based design that embedded `resets_at` in a
-/// deduplication key. Claude's API recalculates `resets_at` as "now + 5h" on
-/// every call, so the key drifted by the poll interval each fetch, causing
-/// notifications to fire on every single poll.
-///
-/// The mark is persisted in UserDefaults so app restarts within the same
-/// window do not re-fire already-seen thresholds.
+/// Does not use `resets_at` for deduplication — Claude shifts that timestamp
+/// on every API call.
 public final class NotificationService {
     public static let shared = NotificationService()
-    private init() { loadMark() }
+    private init() {
+        loadMark()
+        loadLastPercent()
+    }
 
     private let defaultsKey = "com.claudeusagenotch.NotificationService.highWaterMark"
+    private let lastPercentKey = "com.claudeusagenotch.NotificationService.lastPercent"
 
     // "claude:session" → highest threshold already notified (0.0 = none)
     private var mark: [String: Double] = [:]
+    // "claude:session" → usage percent on the previous poll
+    private var lastPercent: [String: Double] = [:]
 
     // MARK: - Public API
 
     public func evaluate(snapshot: ServiceUsageSnapshot,
                          thresholds: [Double],
                          providerId: ProviderId) {
-        guard !thresholds.isEmpty else { return }
-
-        var windows: [(UsageWindow, String)] = [(snapshot.sessionWindow, "session")]
-        if let w = snapshot.weeklyWindow       { windows.append((w, "weekly")) }
-        if let w = snapshot.weeklySonnetWindow { windows.append((w, "model"))  }
-
         let sorted = thresholds.sorted()
-        let lowest = sorted.first!
+        var markDirty = false
+        var lastPercentDirty = false
 
-        var dirty = false
-
-        for (window, label) in windows where window.percentUsed > 0 {
+        for window in notifiableWindows(in: snapshot) {
+            let label = Self.windowLabel(window.type)
             let key = "\(providerId.rawValue):\(label)"
-            var current = mark[key] ?? 0
+            let usage = window.percentUsed
+            let previous = lastPercent[key] ?? 0
 
-            // Reset on window rollover: usage has fallen back below the lowest
-            // threshold, meaning the window cycled. Clear the mark and notify
-            // so the user knows they can get back to work.
-            if window.percentUsed < lowest && current > 0 {
+            if Self.didUsageDecrease(previous: previous, current: usage) {
                 mark[key] = 0
-                current = 0
-                dirty = true
+                markDirty = true
                 fire(
                     title: "\(providerId.displayName) \(label) reset",
                     body: "\(label.capitalized) window reset — you're back to 0%."
                 )
+            } else if !sorted.isEmpty, usage > 0 {
+                let currentMark = mark[key] ?? 0
+                if let highest = sorted.last(where: { usage >= $0 }), highest > currentMark {
+                    mark[key] = highest
+                    markDirty = true
+                    let title = highest >= 1.0
+                        ? "\(providerId.displayName) \(label) limit reached"
+                        : "\(providerId.displayName) \(label) \(Int(highest * 100))% used"
+                    fire(title: title, body: usageBody(window: window, label: label))
+                }
             }
 
-            // Find the highest threshold the current usage has crossed.
-            guard let highest = sorted.last(where: { window.percentUsed >= $0 }) else { continue }
-
-            // Only fire if we have crossed above the previously recorded mark.
-            guard highest > current else { continue }
-
-            mark[key] = highest
-            dirty = true
-            let title = highest >= 1.0
-                ? "\(providerId.displayName) \(label) limit reached"
-                : "\(providerId.displayName) \(label) \(Int(highest * 100))% used"
-            fire(title: title, body: usageBody(window: window, label: label))
+            if previous != usage {
+                lastPercent[key] = usage
+                lastPercentDirty = true
+            }
         }
 
-        if dirty { saveMark() }
+        if markDirty { saveMark() }
+        if lastPercentDirty { saveLastPercent() }
+    }
+
+    /// True when the current reading is lower than the previous poll.
+    static func didUsageDecrease(previous: Double, current: Double) -> Bool {
+        current < previous - 0.001
     }
 
     public func send(title: String, body: String) {
@@ -85,6 +85,26 @@ public final class NotificationService {
         fire(title: "Notchy Limit", body: "Notifications are working.")
     }
 
+    // MARK: - Windows
+
+    private func notifiableWindows(in snapshot: ServiceUsageSnapshot) -> [UsageWindow] {
+        var windows = [snapshot.sessionWindow]
+        if let weekly = snapshot.weeklyWindow { windows.append(weekly) }
+        if let sonnet = snapshot.weeklySonnetWindow { windows.append(sonnet) }
+        return windows.filter { Self.notifiableTypes.contains($0.type) }
+    }
+
+    private static let notifiableTypes: Set<UsageWindowType> = [.session, .weekly, .weeklyModel]
+
+    private static func windowLabel(_ type: UsageWindowType) -> String {
+        switch type {
+        case .session:     return "session"
+        case .weekly:      return "weekly"
+        case .weeklyModel: return "sonnet"
+        default:           return type.rawValue
+        }
+    }
+
     // MARK: - Persistence
 
     private func saveMark() {
@@ -93,6 +113,14 @@ public final class NotificationService {
 
     private func loadMark() {
         mark = UserDefaults.standard.dictionary(forKey: defaultsKey) as? [String: Double] ?? [:]
+    }
+
+    private func saveLastPercent() {
+        UserDefaults.standard.set(lastPercent, forKey: lastPercentKey)
+    }
+
+    private func loadLastPercent() {
+        lastPercent = UserDefaults.standard.dictionary(forKey: lastPercentKey) as? [String: Double] ?? [:]
     }
 
     // MARK: - Delivery
