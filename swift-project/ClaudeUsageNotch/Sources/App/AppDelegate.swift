@@ -88,11 +88,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             )
             content = NSHostingView(rootView: view)
             size = NSSize(width: 420, height: 480)
-            title = "Welcome to Notchy"
+            title = "Welcome to ClaudeUsageNotch"
         case .settings:
             content = NSHostingView(rootView: SettingsView(appSettings: appSettings))
             size = NSSize(width: 460, height: 440)
-            title = "Notchy Settings"
+            title = "ClaudeUsageNotch Settings"
         }
 
         let window = NSWindow(

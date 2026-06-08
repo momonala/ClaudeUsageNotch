@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build script for Notchy Limit.
+# Build script for ClaudeUsageNotch.
 # Mode A (default): swiftc — no Xcode required, works with CLI tools only.
 # Mode B: xcodebuild — set USE_XCODEBUILD=1 if Xcode is installed.
 #   Requires: Xcode 15+ and `brew install xcodegen` for Mode B.

@@ -28,7 +28,7 @@ struct OnboardingView: View {
             VStack(spacing: 18) {
                 HStack {
                     RetroMascot(size: 32)
-                    Text("Welcome to Notchy")
+                    Text("Welcome to ClaudeUsageNotch")
                         .font(Theme.displayFont)
                         .foregroundColor(Theme.textPrimary)
                     Spacer()
@@ -163,7 +163,7 @@ struct OnboardingView: View {
                     Text("\(info.tool) detected")
                         .font(.title3.weight(.semibold))
                         .foregroundColor(Theme.textPrimary)
-                    Text("Notchy will use your existing CLI credentials.")
+                    Text("ClaudeUsageNotch will use your existing CLI credentials.")
                         .font(Theme.captionFont)
                         .foregroundColor(Theme.textSecondary)
                 }

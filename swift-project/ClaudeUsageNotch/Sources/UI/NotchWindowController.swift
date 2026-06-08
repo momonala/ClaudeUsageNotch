@@ -297,7 +297,7 @@ struct RootNotchView: View {
                     Button(role: .destructive) {
                         NSApplication.shared.terminate(nil)
                     } label: {
-                        Label("Quit Notchy Limit", systemImage: "power")
+                        Label("Quit ClaudeUsageNotch", systemImage: "power")
                     }
                 }
             case .expandedHover, .expandedPinned:

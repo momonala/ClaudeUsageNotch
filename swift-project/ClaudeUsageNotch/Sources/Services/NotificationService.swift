@@ -82,7 +82,7 @@ public final class NotificationService {
     }
 
     public func sendTest() {
-        fire(title: "Notchy Limit", body: "Notifications are working.")
+        fire(title: "ClaudeUsageNotch", body: "Notifications are working.")
     }
 
     // MARK: - Windows

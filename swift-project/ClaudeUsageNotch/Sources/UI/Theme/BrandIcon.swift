@@ -6,7 +6,7 @@ import AppKit
 /// Logos are sourced from the open-source lobehub icon set, rasterized to
 /// transparent PNGs at build time. Colored marks (Claude, Gemini, Perplexity,
 /// DeepSeek) keep their brand colors; monochrome marks (OpenAI, Codex,
-/// ElevenLabs, OpenRouter) are baked white so they read on Notchy's dark UI.
+/// ElevenLabs, OpenRouter) are baked white so they read on ClaudeUsageNotch's dark UI.
 enum BrandIcon {
     private static var cache: [ProviderId: NSImage] = [:]
 

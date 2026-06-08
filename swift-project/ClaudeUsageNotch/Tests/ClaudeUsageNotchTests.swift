@@ -73,7 +73,7 @@ final class ClaudeUsageMappingTests: XCTestCase {
 // MARK: - OpenAI status-only snapshot tests
 
 // OpenAI is a connected-status provider (issue #9): its old billing dashboard
-// endpoints reject standard `sk-` API keys, so Notchy verifies the key is live
+// endpoints reject standard `sk-` API keys, so ClaudeUsageNotch verifies the key is live
 // and reports an "Active" status rather than a fabricated quota %.
 final class OpenAIStatusOnlyTests: XCTestCase {
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Create a DMG installer for Notchy Limit.
+# Create a DMG installer for ClaudeUsageNotch.
 # Run ./scripts/build.sh first.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -25,7 +25,7 @@ ln -s /Applications "$STAGING/Applications"
 
 rm -f "$BUILD_DIR/$DMG_NAME.dmg"
 hdiutil create \
-  -volname "Notchy Limit" \
+  -volname "ClaudeUsageNotch" \
   -srcfolder "$STAGING" \
   -ov \
   -format UDZO \

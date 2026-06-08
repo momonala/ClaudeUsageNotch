@@ -9,7 +9,7 @@
 #   release.sh 0.5.1 --notes "Bug fixes"
 #   release.sh 0.6.0 --dry-run            # build + sha locally, publish nothing
 #
-# Config (env vars; defaults are for Notchy — override for another app):
+# Config (env vars; defaults are for ClaudeUsageNotch — override for another app):
 #   PROJECT_DIR  Swift project dir holding scripts/build.sh + Info.plist
 #   APP_NAME     .app bundle name        (default ClaudeUsageNotch)
 #   DMG_NAME     DMG basename            (default ClaudeUsageNotch-Installer)

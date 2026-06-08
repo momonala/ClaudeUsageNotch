@@ -84,7 +84,7 @@ struct CompactView: View {
         .onAppear {
             withAnimation(.spring(response: Theme.springResponse, dampingFraction: Theme.springDamping)) { appeared = true }
         }
-        .help(appState.sessionResetString ?? "Notchy Limit")
+        .help(appState.sessionResetString ?? "ClaudeUsageNotch")
     }
 
     private var statusColor: Color { appState.sessionStatus.color }

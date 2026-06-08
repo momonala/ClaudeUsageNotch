@@ -81,7 +81,7 @@ struct HeaderRow: View {
                     .animation(.easeInOut(duration: 0.18), value: quitHovered)
             }
             .buttonStyle(.borderless)
-            .accessibilityLabel("Quit Notchy Limit")
+            .accessibilityLabel("Quit ClaudeUsageNotch")
             .onHover { hovering in quitHovered = hovering }
             .simultaneousGesture(
                 DragGesture(minimumDistance: 0)

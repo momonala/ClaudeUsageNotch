@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Sign and notarize Notchy Limit for distribution.
+# Sign and notarize ClaudeUsageNotch for distribution.
 # Requires an Apple Developer ID and a configured notarytool keychain profile.
 #
 #   xcrun notarytool store-credentials "claudeusagenotch-notarize" \

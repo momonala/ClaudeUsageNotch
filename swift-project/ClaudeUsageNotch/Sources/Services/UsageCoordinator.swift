@@ -68,7 +68,7 @@ public final class UsageCoordinator {
                     if wasValid && err == .unauthorized {
                         self.notifications.send(
                             title: "\(providerId.displayName) credentials expired",
-                            body: "Open Notchy → Settings to reconnect."
+                            body: "Open ClaudeUsageNotch → Settings to reconnect."
                         )
                     }
                 }
