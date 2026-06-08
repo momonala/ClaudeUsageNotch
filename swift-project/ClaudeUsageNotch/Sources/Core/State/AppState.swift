@@ -18,6 +18,7 @@ public final class AppState: ObservableObject {
     @Published public var isNotchUIHidden: Bool = false { didSet { persist() } }
     @Published public var showOnboarding: Bool = false
     @Published public var showSettings: Bool = false
+    @Published public var showAnalyticsChart: Bool = false
 
     // MARK: - Snapshot access
 

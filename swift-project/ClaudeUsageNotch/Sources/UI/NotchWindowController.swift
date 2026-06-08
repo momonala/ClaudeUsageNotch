@@ -23,10 +23,12 @@ final class NotchWindowController: NSObject {
     // MARK: - Layout constants
 
     private enum Layout {
-        static let expandedWidth: CGFloat    = 380
+        static let expandedWidth: CGFloat      = 380
+        static let expandedWidthChart: CGFloat = 450
         /// Visible strip height below the hardware notch in compact mode.
         static let compactStripHeight: CGFloat = Theme.compactStripHeight
-        static let expandedContentHeight: CGFloat = 184
+        static let expandedContentHeight: CGFloat      = 184
+        static let expandedContentHeightChart: CGFloat = 335
         static let hoverHitInset: CGFloat    = -4
         static let hoverDelay: TimeInterval  = 0.15
 
@@ -51,7 +53,9 @@ final class NotchWindowController: NSObject {
         )
     }
     private var expandedSize: NSSize {
-        NSSize(width: Layout.expandedWidth, height: ScreenUtils.notchHeight + Layout.expandedContentHeight)
+        let w = appState.showAnalyticsChart ? Layout.expandedWidthChart      : Layout.expandedWidth
+        let h = appState.showAnalyticsChart ? Layout.expandedContentHeightChart : Layout.expandedContentHeight
+        return NSSize(width: w, height: ScreenUtils.notchHeight + h)
     }
 
     init(appState: AppState, refreshAction: @escaping () -> Void) {
@@ -81,6 +85,17 @@ final class NotchWindowController: NSObject {
         appState.$notchState
             .receive(on: RunLoop.main)
             .sink { [weak self] state in self?.applyState(state) }
+            .store(in: &cancellables)
+
+        appState.$showAnalyticsChart
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                switch self.appState.notchState {
+                case .expandedHover, .expandedPinned: self.applyState(self.appState.notchState)
+                default: break
+                }
+            }
             .store(in: &cancellables)
 
         Publishers.CombineLatest(appState.$snapshots, appState.$activeProviderId)

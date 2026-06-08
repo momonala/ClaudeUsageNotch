@@ -70,6 +70,7 @@ swiftc \
   "$SOURCES_DIR/Core/Domain/Status.swift" \
   "$SOURCES_DIR/Core/Domain/UsageWindow.swift" \
   "$SOURCES_DIR/Core/Domain/ServiceUsageSnapshot.swift" \
+  "$SOURCES_DIR/Core/Domain/UsageRecord.swift" \
   "$SOURCES_DIR/Core/State/AppSettings.swift" \
   "$SOURCES_DIR/Core/State/AppState.swift" \
   "$SOURCES_DIR/Core/State/NotchState.swift" \
@@ -85,6 +86,7 @@ swiftc \
   "$SOURCES_DIR/Services/NotificationService.swift" \
   "$SOURCES_DIR/Services/UsageCoordinator.swift" \
   "$SOURCES_DIR/Services/UsageService.swift" \
+  "$SOURCES_DIR/Services/LocalHistoryReader.swift" \
   "$SOURCES_DIR/UI/Theme/Theme.swift" \
   "$SOURCES_DIR/UI/Theme/BrandIcon.swift" \
   "$SOURCES_DIR/UI/Theme/GlassBackground.swift" \
@@ -98,6 +100,7 @@ swiftc \
   "$SOURCES_DIR/UI/Expanded/ResetSubtitleRow.swift" \
   "$SOURCES_DIR/UI/Expanded/SessionCard.swift" \
   "$SOURCES_DIR/UI/Expanded/WeeklyCard.swift" \
+  "$SOURCES_DIR/UI/Expanded/UsageChartView.swift" \
   "$SOURCES_DIR/UI/Expanded/ExpandedPanelView.swift" \
   "$SOURCES_DIR/UI/Onboarding/OnboardingView.swift" \
   "$SOURCES_DIR/UI/Settings/SettingsView.swift" \

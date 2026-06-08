@@ -46,6 +46,19 @@ struct HeaderRow: View {
             .padding(.trailing, 6)
 
             Button {
+                appState.showAnalyticsChart.toggle()
+            } label: {
+                Image(systemName: "chart.bar.fill")
+                    .font(.system(size: 11))
+                    .foregroundColor(appState.showAnalyticsChart
+                        ? Theme.accentWarm
+                        : Theme.textSecondary.opacity(0.6))
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Toggle usage charts")
+            .padding(.trailing, 6)
+
+            Button {
                 appState.showSettings = true
                 controller.userPressedEscape()
             } label: {

@@ -23,20 +23,24 @@ struct ExpandedPanelView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HeaderRow(appState: appState, controller: controller)
 
-                    if let incident = appState.activeIncident {
-                        IncidentBanner(providerName: appState.activeProviderId.displayName,
-                                       incident: incident)
-                    }
+                    if appState.showAnalyticsChart {
+                        UsageChartView(appState: appState)
+                    } else {
+                        if let incident = appState.activeIncident {
+                            IncidentBanner(providerName: appState.activeProviderId.displayName,
+                                           incident: incident)
+                        }
 
-                    SessionCard(appState: appState)
+                        SessionCard(appState: appState)
 
-                    if let weekly = appState.activeSnapshot?.weeklyWindow {
-                        WeeklyCard(window: weekly)
-                    }
-                    if let weeklySonnet = appState.activeSnapshot?.weeklySonnetWindow {
-                        WeeklyCard(window: weeklySonnet,
-                                   title: "Weekly Sonnet",
-                                   subtitle: "Pro plan")
+                        if let weekly = appState.activeSnapshot?.weeklyWindow {
+                            WeeklyCard(window: weekly)
+                        }
+                        if let weeklySonnet = appState.activeSnapshot?.weeklySonnetWindow {
+                            WeeklyCard(window: weeklySonnet,
+                                       title: "Weekly Sonnet",
+                                       subtitle: "Pro plan")
+                        }
                     }
 
                     Spacer(minLength: 0)
@@ -44,7 +48,8 @@ struct ExpandedPanelView: View {
                 .padding(.top, 12)
                 .padding([.horizontal, .bottom], 12)
             }
-            .frame(width: 380, height: 156)
+            .frame(width: appState.showAnalyticsChart ? 450 : 380,
+                   height: appState.showAnalyticsChart ? 308 : 156)
             .scaleEffect(appeared ? 1 : 0.90, anchor: .top)
             .opacity(appeared ? 1 : 0)
         }
