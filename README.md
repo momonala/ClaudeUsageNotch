@@ -1,4 +1,4 @@
-# NotchyLimit
+# ClaudeUsageNotch
 
 A native macOS menubar app that shows Claude Code usage (session + weekly quota) live in the hardware notch. No Dock icon. No Electron. Under 10MB.
 
@@ -11,9 +11,9 @@ The notch panel works like iOS Dynamic Island: the top portion of the panel sits
 **Mode A — no Xcode required (default)**
 
 ```bash
-cd swift-project/NotchyLimit
+cd swift-project/ClaudeUsageNotch
 bash scripts/build.sh
-open build/NotchyLimit.app
+open build/ClaudeUsageNotch.app
 ```
 
 Compiles with `swiftc` directly. Produces an **unsigned, ad-hoc signed** binary for local use only. Do not distribute Mode A builds.
@@ -22,9 +22,9 @@ Compiles with `swiftc` directly. Produces an **unsigned, ad-hoc signed** binary 
 
 ```bash
 brew install xcodegen
-cd swift-project/NotchyLimit
+cd swift-project/ClaudeUsageNotch
 USE_XCODEBUILD=1 bash scripts/build.sh
-open build/NotchyLimit.app
+open build/ClaudeUsageNotch.app
 ```
 
 Generates an Xcode project via XcodeGen, then builds with `xcodebuild`. Required for code signing and notarization. See `scripts/sign_and_notarize.sh`.
@@ -35,9 +35,9 @@ Generates an Xcode project via XcodeGen, then builds with `xcodebuild`. Required
 
 ```bash
 brew install xcodegen
-cd swift-project/NotchyLimit
+cd swift-project/ClaudeUsageNotch
 xcodegen generate
-open NotchyLimit.xcodeproj
+open ClaudeUsageNotch.xcodeproj
 ```
 
 ---
@@ -55,7 +55,7 @@ open NotchyLimit.xcodeproj
 ```
 Sources/
 ├── App/
-│   ├── NotchyLimitApp.swift       @main SwiftUI entry point
+│   ├── ClaudeUsageNotchApp.swift  @main SwiftUI entry point
 │   └── AppDelegate.swift          Root controller; wires AppState, NotchWindowController, UsageCoordinator
 │
 ├── Core/
@@ -158,7 +158,7 @@ Hover detection uses a 40ms `Timer` polling `NSEvent.mouseLocation`. `NSTracking
 Claude has two auth paths, tried in order by `ClaudeProvider`:
 
 1. **CLI OAuth** — reads the `Claude Code-credentials` Keychain item (written by the Claude CLI) or `~/.claude/credentials.json`. No user action needed if `claude` CLI is installed and logged in.
-2. **Session cookie** — paste the `Cookie` header from a claude.ai browser session. Stored in the macOS Keychain under `com.notchylimit.NotchyLimit`.
+2. **Session cookie** — paste the `Cookie` header from a claude.ai browser session. Stored in the macOS Keychain under `com.claudeusagenotch.ClaudeUsageNotch`.
 
 `AuthService.claudeHasOAuthAvailable` / `cliOAuthAvailable(for:)` check path 1. The onboarding flow adapts to skip the cookie step when CLI OAuth is found.
 
@@ -181,7 +181,7 @@ The UI adapts automatically: `AppState.activeShowsPercentBar`, `activeIsBalance`
 
 ## State persistence
 
-`AppState` persists to `UserDefaults` under the `notchy.*` key namespace (see `AppState.Key`). Persisted fields: `activeProvider`, `enabledProviders`, `pollIntervalSeconds`, `notificationsEnabled`, `thresholds`.
+`AppState` persists to `UserDefaults` under the `claudeusagenotch.*` key namespace (see `AppState.Key`). Persisted fields: `activeProvider`, `enabledProviders`, `pollIntervalSeconds`, `notificationsEnabled`, `thresholds`.
 
 Snapshots are not persisted — the app fetches fresh on launch.
 

@@ -10,12 +10,12 @@
 
 ```bash
 ./scripts/build.sh
-open build/NotchyLimit.app
+open build/ClaudeUsageNotch.app
 ```
 
 The `build.sh` script will:
 
-1. Run `xcodegen generate` to produce `NotchyLimit.xcodeproj` from `project.yml`.
+1. Run `xcodegen generate` to produce `ClaudeUsageNotch.xcodeproj` from `project.yml`.
 2. Build with `xcodebuild` (Release config) using the local toolchain.
 3. Copy the `.app` bundle to `build/`.
 
@@ -23,17 +23,17 @@ The `build.sh` script will:
 
 ```bash
 xcodegen generate
-open NotchyLimit.xcodeproj
+open ClaudeUsageNotch.xcodeproj
 ```
 
-Select the **NotchyLimit** scheme and ⌘R.
+Select the **ClaudeUsageNotch** scheme and ⌘R.
 
 ## Creating a DMG installer
 
 ```bash
 ./scripts/build.sh
 ./scripts/create_dmg.sh
-# build/NotchyLimit-Installer.dmg
+# build/ClaudeUsageNotch-Installer.dmg
 ```
 
 ## Signing + Notarization (distribution)

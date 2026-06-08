@@ -8,7 +8,7 @@ NOTCHY is built and maintained by one person, in the open, for free. If it saves
 - **[GitHub Sponsors](https://github.com/sponsors/I-N-SILVA)** — recurring, public sponsor badge on your profile
 - **Star the repo** — costs nothing, helps a lot with discoverability
 - **Spread the word** — share NOTCHY with anyone who lives in Claude all day
-- **Contribute code** — see [CONTRIBUTING.md](swift-project/NotchyLimit/CONTRIBUTING.md)
+- **Contribute code** — see [CONTRIBUTING.md](swift-project/ClaudeUsageNotch/CONTRIBUTING.md)
 
 ## Sponsors
 

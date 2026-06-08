@@ -1,5 +1,5 @@
 import XCTest
-@testable import NotchyLimit
+@testable import ClaudeUsageNotch
 
 // MARK: - ClaudeUsageMapper Tests
 
@@ -180,7 +180,7 @@ final class ClaudeOAuthCredentialTests: XCTestCase {
 
 final class NotificationServiceEvaluateTests: XCTestCase {
 
-    private let defaultsKey = "com.notchylimit.NotificationService.highWaterMark"
+    private let defaultsKey = "com.claudeusagenotch.NotificationService.highWaterMark"
     private let thresholds: [Double] = [0.25, 0.5, 0.75, 0.9]
 
     override func setUp() {
@@ -254,7 +254,7 @@ final class NotificationServiceEvaluateTests: XCTestCase {
 
     // 6. KeychainStore round-trip: write → read → delete.
     func test_keychainStore_roundTrip() {
-        let store = KeychainStore(service: "com.notchylimit.tests.\(UUID().uuidString)")
+        let store = KeychainStore(service: "com.claudeusagenotch.tests.\(UUID().uuidString)")
         let payload = "test-payload-\(UUID().uuidString)".data(using: .utf8)!
         store.set(account: "roundtrip", data: payload)
         let read = store.get(account: "roundtrip")

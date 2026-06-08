@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 @main
-struct NotchyLimitApp {
+struct ClaudeUsageNotchApp {
     static func main() {
         let app = NSApplication.shared
         let delegate = AppDelegate()

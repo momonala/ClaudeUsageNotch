@@ -37,7 +37,7 @@ assignees: I-N-SILVA
 
 ## Logs / error output
 
-<!-- Paste any relevant log output here. NOTCHY logs to Console.app under "NotchyLimit". -->
+<!-- Paste any relevant log output here. NOTCHY logs to Console.app under "ClaudeUsageNotch". -->
 
 ```
 paste logs here

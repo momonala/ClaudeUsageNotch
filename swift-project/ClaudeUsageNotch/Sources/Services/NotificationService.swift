@@ -22,7 +22,7 @@ public final class NotificationService {
     public static let shared = NotificationService()
     private init() { loadMark() }
 
-    private let defaultsKey = "com.notchylimit.NotificationService.highWaterMark"
+    private let defaultsKey = "com.claudeusagenotch.NotificationService.highWaterMark"
 
     // "claude:session" → highest threshold already notified (0.0 = none)
     private var mark: [String: Double] = [:]

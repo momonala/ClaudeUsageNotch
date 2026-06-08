@@ -16,7 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var settingsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSLog("[NotchyLimit] launched — v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?")")
+        NSLog("[ClaudeUsageNotch] launched — v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?")")
 
         ProviderRegistry.shared.bootstrap()
 
@@ -135,7 +135,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             if enabled { try SMAppService.mainApp.register()   }
             else       { try SMAppService.mainApp.unregister() }
         } catch {
-            NSLog("[NotchyLimit] Launch at login toggle failed: \(error.localizedDescription)")
+            NSLog("[ClaudeUsageNotch] Launch at login toggle failed: \(error.localizedDescription)")
             appState.launchAtLogin = !enabled
         }
     }

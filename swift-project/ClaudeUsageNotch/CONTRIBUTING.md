@@ -14,8 +14,8 @@ intentionally easy to fork.
 
 1. Install Xcode (15+) and XcodeGen: `brew install xcodegen`
 2. Clone the repo
-3. `cd NotchyLimit && xcodegen generate`
-4. Open `NotchyLimit.xcodeproj` and run
+3. `cd ClaudeUsageNotch && xcodegen generate`
+4. Open `ClaudeUsageNotch.xcodeproj` and run
 
 ## Adding a provider
 

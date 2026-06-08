@@ -8,8 +8,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_DIR"
 
-APP_NAME="NotchyLimit"
-DMG_NAME="NotchyLimit-Installer"
+APP_NAME="ClaudeUsageNotch"
+DMG_NAME="ClaudeUsageNotch-Installer"
 BUILD_DIR="$PROJECT_DIR/build"
 STAGING="$BUILD_DIR/dmg-staging"
 

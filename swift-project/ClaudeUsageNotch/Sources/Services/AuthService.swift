@@ -5,7 +5,7 @@ public final class AuthService {
     public static let shared = AuthService()
     private init() {}
 
-    private let store = KeychainStore(service: "com.notchylimit.NotchyLimit")
+    private let store = KeychainStore(service: "com.claudeusagenotch.ClaudeUsageNotch")
 
     // MARK: - Generic
 

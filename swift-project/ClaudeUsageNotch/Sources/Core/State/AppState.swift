@@ -115,11 +115,11 @@ public final class AppState: ObservableObject {
     // MARK: - Persistence
 
     private enum Key {
-        static let activeProvider   = "notchy.activeProvider"
-        static let enabledProviders = "notchy.enabledProviders"
-        static let pollInterval     = "notchy.pollIntervalSeconds"
-        static let notifications    = "notchy.notificationsEnabled"
-        static let thresholds       = "notchy.thresholds"
+        static let activeProvider   = "claudeusagenotch.activeProvider"
+        static let enabledProviders = "claudeusagenotch.enabledProviders"
+        static let pollInterval     = "claudeusagenotch.pollIntervalSeconds"
+        static let notifications    = "claudeusagenotch.notificationsEnabled"
+        static let thresholds       = "claudeusagenotch.thresholds"
     }
 
     private func load() {

@@ -56,11 +56,11 @@ The [cask](https://github.com/I-N-SILVA/homebrew-notchy) clears the macOS quaran
 
 ### Option B — Download the release DMG
 
-1. Grab `NotchyLimit-Installer.dmg` from the [latest release](https://github.com/I-N-SILVA/NOTCHY/releases/latest).
-2. Open the DMG and drag **NotchyLimit** to **Applications**.
+1. Grab `ClaudeUsageNotch-Installer.dmg` from the [latest release](https://github.com/I-N-SILVA/NOTCHY/releases/latest).
+2. Open the DMG and drag **ClaudeUsageNotch** to **Applications**.
 3. **First launch (unsigned build):** the app isn't notarized yet, so macOS Gatekeeper blocks a normal double-click. Either:
    - **Right-click** the app → **Open** → **Open** in the dialog, **or**
-   - run `xattr -dr com.apple.quarantine /Applications/NotchyLimit.app` then open it.
+   - run `xattr -dr com.apple.quarantine /Applications/ClaudeUsageNotch.app` then open it.
 
 ![Opening Notchy the first time: right-click → Open → Open](docs/install.gif)
 
@@ -73,18 +73,18 @@ The [cask](https://github.com/I-N-SILVA/homebrew-notchy) clears the macOS quaran
 ```bash
 xcode-select --install
 git clone https://github.com/I-N-SILVA/NOTCHY.git
-cd NOTCHY/swift-project/NotchyLimit
+cd ClaudeUsageNotch/swift-project/ClaudeUsageNotch
 bash scripts/build.sh
-open build/NotchyLimit.app
+open build/ClaudeUsageNotch.app
 ```
 
 ### Option D — With Xcode (for development)
 
 ```bash
 brew install xcodegen
-cd NOTCHY/swift-project/NotchyLimit
+cd ClaudeUsageNotch/swift-project/ClaudeUsageNotch
 xcodegen generate
-open NotchyLimit.xcodeproj   # then ⌘R
+open ClaudeUsageNotch.xcodeproj   # then ⌘R
 ```
 
 ---

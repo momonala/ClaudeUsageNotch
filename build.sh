@@ -1,2 +1,2 @@
-swift-project/NotchyLimit/scripts/build.sh
-open swift-project/NotchyLimit/build/NotchyLimit.app
+swift-project/ClaudeUsageNotch/scripts/build.sh
+open swift-project/ClaudeUsageNotch/build/ClaudeUsageNotch.app

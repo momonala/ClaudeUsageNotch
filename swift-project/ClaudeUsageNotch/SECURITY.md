@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-If you believe you've found a security issue in Notchy Limit, please **do not**
+If you believe you've found a security issue in ClaudeUsageNotch, please **do not**
 open a public issue. Instead, email the maintainers (see GitHub profile) with:
 
 - Reproduction steps
@@ -14,7 +14,7 @@ for anything that risks exposing user credentials or data.
 
 ## Threat Model
 
-Notchy Limit is a local-only macOS app. It stores a single `claude.ai` cookie in
+ClaudeUsageNotch is a local-only macOS app. It stores a single `claude.ai` cookie in
 the macOS Keychain and makes outbound HTTPS calls to `claude.ai` and
 `status.claude.com`. It does not run a server, accept inbound traffic, or sync to
 any cloud.

@@ -11,7 +11,7 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_DIR"
 
 BUILD_DIR="$PROJECT_DIR/build"
-APP_NAME="NotchyLimit"
+APP_NAME="ClaudeUsageNotch"
 APP_BUNDLE="$BUILD_DIR/$APP_NAME.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 SOURCES_DIR="$PROJECT_DIR/Sources"
@@ -64,7 +64,7 @@ swiftc \
   -O \
   -module-name "$APP_NAME" \
   -o "$APP_CONTENTS/MacOS/$APP_NAME" \
-  "$SOURCES_DIR/App/NotchyLimitApp.swift" \
+  "$SOURCES_DIR/App/ClaudeUsageNotchApp.swift" \
   "$SOURCES_DIR/App/AppDelegate.swift" \
   "$SOURCES_DIR/Core/Domain/ProviderId.swift" \
   "$SOURCES_DIR/Core/Domain/Status.swift" \
@@ -110,7 +110,7 @@ echo "==> Assembling .app bundle"
 # Info.plist — resolve Xcode build variables to literal values
 cp "$SOURCES_DIR/Resources/Info.plist" "$APP_CONTENTS/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable $APP_NAME"                     "$APP_CONTENTS/Info.plist"
-/usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.notchylimit.NotchyLimit"   "$APP_CONTENTS/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.claudeusagenotch.ClaudeUsageNotch"   "$APP_CONTENTS/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile AppIcon" "$APP_CONTENTS/Info.plist" 2>/dev/null || \
   /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$APP_CONTENTS/Info.plist"
 

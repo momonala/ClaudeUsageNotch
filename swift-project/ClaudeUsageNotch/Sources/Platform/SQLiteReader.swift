@@ -60,7 +60,7 @@ enum SQLiteReader {
 
     private static func makeSnapshot(of dbPath: String) -> URL? {
         let fm = FileManager.default
-        let tmpDir = fm.temporaryDirectory.appendingPathComponent("notchy-sqlite-\(UUID().uuidString)", isDirectory: true)
+        let tmpDir = fm.temporaryDirectory.appendingPathComponent("claudeusagenotch-sqlite-\(UUID().uuidString)", isDirectory: true)
         guard (try? fm.createDirectory(at: tmpDir, withIntermediateDirectories: true)) != nil else { return nil }
         let src = URL(fileURLWithPath: dbPath)
         let dst = tmpDir.appendingPathComponent(src.lastPathComponent)

@@ -4,25 +4,25 @@ set -euo pipefail
 # Sign and notarize Notchy Limit for distribution.
 # Requires an Apple Developer ID and a configured notarytool keychain profile.
 #
-#   xcrun notarytool store-credentials "notchylimit-notarize" \
+#   xcrun notarytool store-credentials "claudeusagenotch-notarize" \
 #       --apple-id "you@example.com" \
 #       --team-id "YOURTEAMID" \
 #       --password "app-specific-password"
 #
 # Env vars:
 #   DEVELOPER_ID_APP      e.g. "Developer ID Application: Your Name (TEAMID)"
-#   NOTARY_PROFILE        keychain profile name (default: notchylimit-notarize)
+#   NOTARY_PROFILE        keychain profile name (default: claudeusagenotch-notarize)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_DIR"
 
-APP_NAME="NotchyLimit"
-DMG_NAME="NotchyLimit-Installer"
+APP_NAME="ClaudeUsageNotch"
+DMG_NAME="ClaudeUsageNotch-Installer"
 BUILD_DIR="$PROJECT_DIR/build"
 APP_PATH="$BUILD_DIR/$APP_NAME.app"
 DMG_PATH="$BUILD_DIR/$DMG_NAME.dmg"
-NOTARY_PROFILE="${NOTARY_PROFILE:-notchylimit-notarize}"
+NOTARY_PROFILE="${NOTARY_PROFILE:-claudeusagenotch-notarize}"
 
 if [ -z "${DEVELOPER_ID_APP:-}" ]; then
   echo "DEVELOPER_ID_APP env var is required (e.g. 'Developer ID Application: Your Name (TEAMID)')." >&2
@@ -36,7 +36,7 @@ fi
 
 echo "==> Codesigning .app (hardened runtime)"
 codesign --force --deep --options runtime \
-  --entitlements "$PROJECT_DIR/Sources/Resources/NotchyLimit.entitlements" \
+  --entitlements "$PROJECT_DIR/Sources/Resources/ClaudeUsageNotch.entitlements" \
   --sign "$DEVELOPER_ID_APP" \
   "$APP_PATH"
 codesign --verify --deep --strict --verbose=2 "$APP_PATH"

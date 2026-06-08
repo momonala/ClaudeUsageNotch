@@ -2,7 +2,7 @@ import Foundation
 import Security
 import os.log
 
-private let logger = Logger(subsystem: "com.notchylimit.NotchyLimit", category: "Keychain")
+private let logger = Logger(subsystem: "com.claudeusagenotch.ClaudeUsageNotch", category: "Keychain")
 
 /// Tiny Keychain wrapper for `kSecClassGenericPassword` items.
 /// Used to store provider credentials (e.g. Claude session cookie).

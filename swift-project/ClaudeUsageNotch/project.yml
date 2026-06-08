@@ -1,6 +1,6 @@
-name: NotchyLimit
+name: ClaudeUsageNotch
 options:
-  bundleIdPrefix: com.notchylimit
+  bundleIdPrefix: com.claudeusagenotch
   deploymentTarget:
     macOS: "12.0"
   createIntermediateGroups: true
@@ -10,34 +10,34 @@ settings:
   base:
     SWIFT_VERSION: "5.9"
     MACOSX_DEPLOYMENT_TARGET: "12.0"
-    PRODUCT_BUNDLE_IDENTIFIER: com.notchylimit.NotchyLimit
+    PRODUCT_BUNDLE_IDENTIFIER: com.claudeusagenotch.ClaudeUsageNotch
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: ""  # Set to your 10-char Apple Team ID before notarizing: https://developer.apple.com/account
     ENABLE_HARDENED_RUNTIME: YES
     INFOPLIST_FILE: Sources/Resources/Info.plist
-    CODE_SIGN_ENTITLEMENTS: Sources/Resources/NotchyLimit.entitlements
+    CODE_SIGN_ENTITLEMENTS: Sources/Resources/ClaudeUsageNotch.entitlements
     LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks"
 
 targets:
-  NotchyLimit:
+  ClaudeUsageNotch:
     type: application
     platform: macOS
     sources:
       - path: Sources
         excludes:
           - "Resources/Info.plist"
-          - "Resources/NotchyLimit.entitlements"
+          - "Resources/ClaudeUsageNotch.entitlements"
     resources:
       - path: Sources/Resources/Assets.xcassets
       - path: Sources/Resources/BrandIcons
     info:
       path: Sources/Resources/Info.plist
       properties:
-        CFBundleName: NotchyLimit
-        CFBundleDisplayName: Notchy Limit
-        CFBundleIdentifier: com.notchylimit.NotchyLimit
+        CFBundleName: ClaudeUsageNotch
+        CFBundleDisplayName: Claude Usage Notch
+        CFBundleIdentifier: com.claudeusagenotch.ClaudeUsageNotch
         CFBundleShortVersionString: "0.1.0"
         CFBundleVersion: "1"
         LSMinimumSystemVersion: "12.0"
@@ -54,13 +54,13 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 
-  NotchyLimitTests:
+  ClaudeUsageNotchTests:
     type: bundle.unit-test
     platform: macOS
     sources:
       - path: Tests
     dependencies:
-      - target: NotchyLimit
+      - target: ClaudeUsageNotch
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
