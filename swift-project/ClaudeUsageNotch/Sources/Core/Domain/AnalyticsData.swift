@@ -27,7 +27,9 @@ struct DailyValue: Identifiable {
 
 struct AnalyticsData {
     let sessionCost:       Double
+    let todayCost:         Double
     let weeklyCost:        Double
+    let monthCost:         Double
 
     let cacheHitRate:      Double   // cacheRead / (input + cacheRead + cacheCreate), 0–1
     let cacheSavingsUSD:   Double
@@ -49,7 +51,7 @@ struct AnalyticsData {
     }
 
     static let empty = AnalyticsData(
-        sessionCost: 0, weeklyCost: 0,
+        sessionCost: 0, todayCost: 0, weeklyCost: 0, monthCost: 0,
         cacheHitRate: 0, cacheSavingsUSD: 0,
         tokenTypes: TokenTypeBreakdown(inputFraction: 0, outputFraction: 0,
                                        cacheCreateFraction: 0, cacheReadFraction: 0,
@@ -59,8 +61,9 @@ struct AnalyticsData {
         dailyCost: [], dailySessions: [], totalWebSearches: 0, totalWebFetches: 0
     )
 
-    static func compute(sessionRecords: [UsageRecord], weeklyRecords: [UsageRecord]) -> AnalyticsData {
+    static func compute(sessionRecords: [UsageRecord], weeklyRecords: [UsageRecord], monthlyRecords: [UsageRecord]) -> AnalyticsData {
         let sessionCost = sessionRecords.reduce(0.0) { $0 + $1.estimatedCostUSD }
+        let monthCost   = monthlyRecords.reduce(0.0) { $0 + $1.estimatedCostUSD }
 
         let cal = Calendar.current
         var weeklyCost       = 0.0
@@ -122,9 +125,13 @@ struct AnalyticsData {
         let dailyCost     = days.map { DailyValue(date: $0, value: costByDay[$0] ?? 0) }
         let dailySessions = days.map { DailyValue(date: $0, value: Double(sessionsByDay[$0]?.count ?? 0)) }
 
+        let todayCost = costByDay[cal.startOfDay(for: Date())] ?? 0
+
         return AnalyticsData(
             sessionCost:      sessionCost,
+            todayCost:        todayCost,
             weeklyCost:       weeklyCost,
+            monthCost:        monthCost,
             cacheHitRate:     cacheHitRate,
             cacheSavingsUSD:  cacheSavings,
             tokenTypes:       tokenTypes,

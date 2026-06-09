@@ -292,16 +292,18 @@ struct UsageChartView: View {
         }
 
         isLoading = true
-        let now           = Date()
-        let sessionCutoff = now.addingTimeInterval(-5 * 3600)
-        let weeklyCutoff  = now.addingTimeInterval(-6 * 24 * 3600)
+        let now            = Date()
+        let sessionCutoff  = now.addingTimeInterval(-5 * 3600)
+        let weeklyCutoff   = now.addingTimeInterval(-6 * 24 * 3600)
+        let monthlyCutoff  = now.addingTimeInterval(-29 * 24 * 3600)
 
         let sessionPct = sessionWindow?.percentUsed ?? 0
         let weeklyPct  = weeklyWindow?.percentUsed  ?? 0
 
         let (session, weekly, newAnalytics) = await Task.detached(priority: .utility) {
-            let all     = LocalHistoryReader.read(since: weeklyCutoff)
-            let session = all.filter { $0.timestamp >= sessionCutoff }
+            let monthly = LocalHistoryReader.read(since: monthlyCutoff)
+            let all     = monthly.filter { $0.timestamp >= weeklyCutoff }
+            let session = monthly.filter { $0.timestamp >= sessionCutoff }
 
             let sessionBuckets = makeTimeBuckets(
                 records: session,
@@ -313,7 +315,7 @@ struct UsageChartView: View {
                 unit: .hour, from: weeklyCutoff, count: 7 * 24,
                 currentPct: weeklyPct
             )
-            let analytics = AnalyticsData.compute(sessionRecords: session, weeklyRecords: all)
+            let analytics = AnalyticsData.compute(sessionRecords: session, weeklyRecords: all, monthlyRecords: monthly)
             return (sessionBuckets, weeklyBuckets, analytics)
         }.value
 
@@ -412,7 +414,9 @@ private struct CostSection: View {
         HStack(alignment: .bottom, spacing: 24) {
             Spacer(minLength: 0)
             statPill(label: "Session", value: formatCost(data.sessionCost))
+            statPill(label: "Today", value: formatCost(data.todayCost))
             statPill(label: "Weekly", value: formatCost(data.weeklyCost))
+            statPill(label: "Month", value: formatCost(data.monthCost))
             statPill(label: "Avg / day", value: formatCost(data.averageDailyCost))
         }
     }
