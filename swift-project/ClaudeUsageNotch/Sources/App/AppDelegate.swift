@@ -14,7 +14,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var cancellables = Set<AnyCancellable>()
 
     private var onboardingWindow: NSWindow?
-    private var settingsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSLog("[ClaudeUsageNotch] launched — v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?")")
@@ -38,15 +37,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         notchController = NotchWindowController(
             appState: appState,
+            appSettings: appSettings,
             refreshAction: { [weak self] in self?.coordinator?.refreshNow() }
         )
         notchController?.present()
 
         appState.$showOnboarding.removeDuplicates().receive(on: RunLoop.main)
-            .sink { [weak self] show in self?.presentAux(.onboarding, show: show) }
-            .store(in: &cancellables)
-        appState.$showSettings.removeDuplicates().receive(on: RunLoop.main)
-            .sink { [weak self] show in self?.presentAux(.settings, show: show) }
+            .sink { [weak self] show in self?.presentOnboarding(show: show) }
             .store(in: &cancellables)
 
         if !AuthService.shared.hasAnyConfiguredProvider() {
@@ -56,74 +53,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     // MARK: - Aux windows
 
-    private enum AuxKind { case onboarding, settings }
+    private func presentOnboarding(show: Bool) {
+        guard show else { onboardingWindow?.close(); return }
+        if let w = onboardingWindow { NSApp.activate(ignoringOtherApps: true); w.makeKeyAndOrderFront(nil); return }
 
-    private func presentAux(_ kind: AuxKind, show: Bool) {
-        let current: NSWindow? = switch kind {
-            case .onboarding: onboardingWindow
-            case .settings:   settingsWindow
-        }
-
-        guard show else {
-            current?.close()
-            return
-        }
-        if let current {
-            NSApp.activate(ignoringOtherApps: true)
-            current.makeKeyAndOrderFront(nil)
-            return
-        }
-
-        let content: NSView
-        let size: NSSize
-        let title: String
-        switch kind {
-        case .onboarding:
-            let view = OnboardingView(
-                appState: appState,
-                appSettings: appSettings,
-                onCredentialsSaved: { [weak self] in
-                    self?.coordinator?.onCredentialsSaved(for: .claude)
-                }
-            )
-            content = NSHostingView(rootView: view)
-            size = NSSize(width: 420, height: 480)
-            title = "Welcome to ClaudeUsageNotch"
-        case .settings:
-            content = NSHostingView(rootView: SettingsView(appSettings: appSettings))
-            size = NSSize(width: 460, height: 440)
-            title = "ClaudeUsageNotch Settings"
-        }
-
+        let view = OnboardingView(
+            appState: appState,
+            appSettings: appSettings,
+            onCredentialsSaved: { [weak self] in
+                self?.coordinator?.onCredentialsSaved(for: .claude)
+            }
+        )
         let window = NSWindow(
-            contentRect: NSRect(origin: .zero, size: size),
+            contentRect: NSRect(origin: .zero, size: NSSize(width: 420, height: 480)),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
         )
-        window.title = title
+        window.title = "Welcome to ClaudeUsageNotch"
         window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
-        window.contentView = content
+        window.contentView = NSHostingView(rootView: view)
         window.delegate = self
         window.center()
-
-        switch kind {
-        case .onboarding: onboardingWindow = window
-        case .settings:   settingsWindow = window
-        }
-
+        onboardingWindow = window
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
     }
 
     func windowWillClose(_ notification: Notification) {
-        guard let w = notification.object as? NSWindow else { return }
-        switch w {
-        case onboardingWindow: onboardingWindow = nil; appState.showOnboarding = false
-        case settingsWindow:   settingsWindow = nil;   appState.showSettings = false
-        default: break
-        }
+        guard let w = notification.object as? NSWindow, w === onboardingWindow else { return }
+        onboardingWindow = nil
+        appState.showOnboarding = false
     }
 
     func applicationWillTerminate(_ notification: Notification) {

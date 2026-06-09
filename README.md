@@ -2,7 +2,7 @@
 
 A native macOS app that shows Claude Code usage (session + weekly quota) live in the hardware notch.
 
-The notch panel works like iOS Dynamic Island: the top portion sits inside the physical camera housing (black on black), and only the visible extension below the notch is rendered. Hover expands it; click pins it open.
+The notch panel works like iOS Dynamic Island: the top portion sits inside the physical camera housing (black on black), and only the visible extension below is rendered. Hover expands it; click pins it open.
 
 ---
 
@@ -63,10 +63,12 @@ Sources/
 │   ├── Domain/
 │   │   ├── ProviderId.swift       Supported providers (currently: .claude)
 │   │   ├── ServiceUsageSnapshot.swift
+│   │   ├── UsageRecord.swift      Token-level record parsed from JSONL history
 │   │   ├── UsageWindow.swift      Session / weekly windows, pace, reset helpers
 │   │   └── Status.swift           UsageStatus, ProviderError, AuthStatus, SyncStatus
 │   └── State/
 │       ├── AppState.swift         Runtime state; snapshots, notch state, incidents
+│       │                          Also defines ExpandedMode (.usage | .analytics | .settings)
 │       ├── AppSettings.swift      Persisted prefs: poll interval, thresholds, notifications
 │       └── NotchState.swift       compactIdle / expandedHover / expandedPinned / …
 │
@@ -83,6 +85,7 @@ Sources/
 │   ├── UsageCoordinator.swift     UsageService → AppState → NotificationService
 │   ├── AuthService.swift          Keychain + CLI OAuth detection
 │   ├── NotificationService.swift  In-app banners at configurable thresholds
+│   ├── LocalHistoryReader.swift   Reads ~/.claude/projects/**/*.jsonl for analytics
 │   └── IncidentMonitor.swift      Polls Anthropic status page
 │
 ├── Platform/
@@ -98,13 +101,14 @@ Sources/
     │   ├── ConstellationView.swift  Multi-provider layout (not wired yet)
     │   └── StatusDot.swift          IncidentBanner
     ├── Expanded/
-    │   ├── ExpandedPanelView.swift
-    │   ├── HeaderRow.swift          Provider name, sync time, settings, quit
+    │   ├── ExpandedPanelView.swift  Switches on ExpandedMode
+    │   ├── HeaderRow.swift          Provider name, sync time, mode buttons, quit
     │   ├── SessionCard.swift
     │   ├── WeeklyCard.swift
-    │   └── ResetSubtitleRow.swift   Countdown · reset time/date · expected usage
+    │   ├── ResetSubtitleRow.swift   Countdown · reset time/date · expected usage
+    │   ├── UsageChartView.swift     Bar chart of token consumption; session + weekly views
+    │   └── InlineSettingsView.swift Settings rendered inline in the notch panel
     ├── Onboarding/OnboardingView.swift
-    ├── Settings/SettingsView.swift
     └── Theme/                       Theme · BrandIcon · NotchPillShape · RetroMascot
 ```
 
@@ -127,9 +131,28 @@ UsageService (poll loop + backoff)
                                                        │
                                                        ▼
                                               SwiftUI views (CompactView, ExpandedPanelView, …)
+
+LocalHistoryReader (reads ~/.claude/projects/**/*.jsonl on demand)
+    └─► UsageChartView (analytics mode only; not part of the poll loop)
 ```
 
 `AppState` is the primary `ObservableObject` for runtime data. `AppSettings` holds persisted preferences separately so settings changes don't re-trigger usage observers.
+
+The analytics chart does not poll — it reads local JSONL history when the user switches to analytics mode, with a 60-second in-memory cache to avoid re-parsing on hover-away/return.
+
+---
+
+## Expanded panel modes
+
+`ExpandedMode` (defined in `AppState.swift`) controls what the expanded panel shows:
+
+| Mode | Content |
+|------|---------|
+| `.usage` | Session card + weekly card + reset countdown |
+| `.analytics` | Bar chart of token consumption over session or week (`UsageChartView`) |
+| `.settings` | Inline settings: poll interval, notification thresholds, hide toggle |
+
+Mode buttons live in `HeaderRow`. Settings are no longer a separate window — they render directly in the notch panel.
 
 ---
 
@@ -154,17 +177,11 @@ Onboarding skips the cookie step when CLI OAuth is detected.
 
 ---
 
-## Adding a provider
-
-See [`swift-project/ClaudeUsageNotch/docs/PROVIDER_GUIDE.md`](swift-project/ClaudeUsageNotch/docs/PROVIDER_GUIDE.md).
-
----
-
 ## State persistence
 
 `AppSettings` persists to `UserDefaults` under `claudeusagenotch.*`: poll interval, notification toggle, thresholds.
 
-`AppState` persists `activeProvider` and `enabledProviders`. Snapshots are not persisted — the app fetches fresh on launch.
+`AppState` persists `activeProvider`, `enabledProviders`, and `isNotchUIHidden`. Snapshots are not persisted — the app fetches fresh on launch.
 
 ---
 

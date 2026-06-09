@@ -133,9 +133,16 @@ struct UsageChartView: View {
 
     private var weeklyChart: some View {
         Chart(weeklyBuckets) { b in
-            BarMark(x: .value("Day", b.id, unit: .day), y: .value(yLabel, yValue(b)))
-                .foregroundStyle(Theme.accentWarm.opacity(0.85))
-                .cornerRadius(3)
+            AreaMark(x: .value("Day", b.id), y: .value(yLabel, yValue(b)))
+                .foregroundStyle(LinearGradient(
+                    colors: [Theme.accentWarm.opacity(0.55), Theme.accentWarm.opacity(0.05)],
+                    startPoint: .top, endPoint: .bottom
+                ))
+                .interpolationMethod(.catmullRom)
+            LineMark(x: .value("Day", b.id), y: .value(yLabel, yValue(b)))
+                .foregroundStyle(Theme.accentWarm)
+                .lineStyle(StrokeStyle(lineWidth: 1.5))
+                .interpolationMethod(.catmullRom)
         }
         .chartXAxis { dayAxis }
         .chartYAxis { yAxis }
@@ -206,7 +213,7 @@ struct UsageChartView: View {
         )
         let weekly = makeBuckets(
             records: all,
-            unit: .day, from: weeklyCutoff, count: 7,
+            unit: .hour, from: weeklyCutoff, count: 7 * 24,
             currentPct: weeklyPct
         )
 

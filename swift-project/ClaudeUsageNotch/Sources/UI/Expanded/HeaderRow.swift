@@ -8,8 +8,10 @@ struct HeaderRow: View {
     @State private var quitPressed = false
 
     var body: some View {
+        // Mode buttons sit LEFT of the spacer so they stay in the left "ear"
+        // (clear of the hardware notch). Eye and power anchor the right "ear".
+        // The spacer spans the notch dead-zone in between.
         HStack(spacing: 6) {
-            // Provider name + pin indicator (U6)
             HStack(spacing: 4) {
                 Text(appState.activeProviderId.displayName)
                     .font(Theme.headerFont)
@@ -23,13 +25,8 @@ struct HeaderRow: View {
             }
             .animation(.easeInOut(duration: 0.15), value: appState.notchState)
 
-            Text("·")
-                .foregroundColor(Theme.textSecondary.opacity(0.5))
-
-            Text(syncSubtitle)
-                .font(Theme.headerFontRegular)
-                .foregroundColor(Theme.textSecondary)
-                .lineLimit(1)
+            modeButton(.usage,     icon: "gauge.medium")
+            modeButton(.analytics, icon: "chart.bar.fill")
 
             Spacer()
 
@@ -45,30 +42,7 @@ struct HeaderRow: View {
             .accessibilityLabel(appState.isNotchUIHidden ? "Show notch" : "Hide notch")
             .padding(.trailing, 6)
 
-            Button {
-                appState.showAnalyticsChart.toggle()
-            } label: {
-                Image(systemName: "chart.bar.fill")
-                    .font(.system(size: 11))
-                    .foregroundColor(appState.showAnalyticsChart
-                        ? Theme.accentWarm
-                        : Theme.textSecondary.opacity(0.6))
-            }
-            .buttonStyle(.borderless)
-            .accessibilityLabel("Toggle usage charts")
-            .padding(.trailing, 6)
-
-            Button {
-                appState.showSettings = true
-                controller.userPressedEscape()
-            } label: {
-                Image(systemName: "gearshape.fill")
-                    .font(.system(size: 11))
-                    .foregroundColor(Theme.textSecondary.opacity(0.6))
-            }
-            .buttonStyle(.borderless)
-            .accessibilityLabel("Settings")
-            .padding(.trailing, 6)
+            modeButton(.settings, icon: "gearshape.fill")
 
             Button {
                 NSApplication.shared.terminate(nil)
@@ -89,6 +63,18 @@ struct HeaderRow: View {
                     .onEnded { _ in quitPressed = false }
             )
         }
+    }
+
+    private func modeButton(_ mode: ExpandedMode, icon: String) -> some View {
+        Button { appState.expandedMode = mode } label: {
+            Image(systemName: icon)
+                .font(.system(size: 11))
+                .foregroundColor(appState.expandedMode == mode
+                    ? Theme.accentWarm
+                    : Theme.textSecondary.opacity(0.6))
+        }
+        .buttonStyle(.borderless)
+        .padding(.trailing, 6)
     }
 
     private var syncSubtitle: String {

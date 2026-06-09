@@ -2,11 +2,12 @@ import SwiftUI
 
 /// Expanded notch panel.
 ///
-/// Panel frame is `notchH + 184` tall, anchored at screen top.
+/// Panel frame is `notchH + content` tall, anchored at screen top.
 /// The top `notchH` points are pure black and overlap the hardware notch.
-/// A 28 pt transparent gap separates the notch from the 156 pt glass card.
+/// A 28 pt transparent gap separates the notch from the glass card.
 struct ExpandedPanelView: View {
     @ObservedObject var appState: AppState
+    let appSettings: AppSettings
     let controller: NotchWindowController
     @State private var appeared = false
 
@@ -14,7 +15,6 @@ struct ExpandedPanelView: View {
         let notchH = ScreenUtils.notchHeight
 
         ZStack(alignment: .bottom) {
-            // Glass card — 156 pt visible portion, with a 12 pt transparent gap above it.
             ZStack(alignment: .topLeading) {
                 NotchPillShape(topRadius: 10, bottomRadius: 20)
                     .fill(Color.black)
@@ -23,16 +23,13 @@ struct ExpandedPanelView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HeaderRow(appState: appState, controller: controller)
 
-                    if appState.showAnalyticsChart {
-                        UsageChartView(appState: appState)
-                    } else {
+                    switch appState.expandedMode {
+                    case .usage:
                         if let incident = appState.activeIncident {
                             IncidentBanner(providerName: appState.activeProviderId.displayName,
                                            incident: incident)
                         }
-
                         SessionCard(appState: appState)
-
                         if let weekly = appState.activeSnapshot?.weeklyWindow {
                             WeeklyCard(window: weekly)
                         }
@@ -41,6 +38,10 @@ struct ExpandedPanelView: View {
                                        title: "Weekly Sonnet",
                                        subtitle: "Pro plan")
                         }
+                    case .analytics:
+                        UsageChartView(appState: appState)
+                    case .settings:
+                        InlineSettingsView(appSettings: appSettings)
                     }
 
                     Spacer(minLength: 0)
@@ -48,13 +49,11 @@ struct ExpandedPanelView: View {
                 .padding(.top, 12)
                 .padding([.horizontal, .bottom], 12)
             }
-            .frame(width: appState.showAnalyticsChart ? 450 : 380,
-                   height: appState.showAnalyticsChart ? 308 : 156)
+            .frame(width: panelWidth, height: panelHeight)
             .scaleEffect(appeared ? 1 : 0.90, anchor: .top)
             .opacity(appeared ? 1 : 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // Only paint black behind the hardware notch zone — the card manages its own background.
         .background(
             VStack(spacing: 0) {
                 Color.black.frame(height: notchH)
@@ -71,6 +70,18 @@ struct ExpandedPanelView: View {
         .background(KeyEventCatcher { key in
             if key == "\u{1B}" { controller.userPressedEscape() }
         })
+    }
+
+    private var panelWidth: CGFloat {
+        appState.expandedMode == .analytics ? 450 : 380
+    }
+
+    private var panelHeight: CGFloat {
+        switch appState.expandedMode {
+        case .usage:     return 156
+        case .analytics: return 308
+        case .settings:  return 230
+        }
     }
 }
 

@@ -1,6 +1,10 @@
 import Foundation
 import Combine
 
+public enum ExpandedMode: Equatable {
+    case usage, analytics, settings
+}
+
 @MainActor
 public final class AppState: ObservableObject {
     private var isLoading = false
@@ -17,8 +21,7 @@ public final class AppState: ObservableObject {
     @Published public var notchState: NotchState = .compactIdle
     @Published public var isNotchUIHidden: Bool = false { didSet { persist() } }
     @Published public var showOnboarding: Bool = false
-    @Published public var showSettings: Bool = false
-    @Published public var showAnalyticsChart: Bool = false
+    @Published public var expandedMode: ExpandedMode = .usage
 
     // MARK: - Snapshot access
 

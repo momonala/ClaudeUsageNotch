@@ -101,9 +101,9 @@ swiftc \
   "$SOURCES_DIR/UI/Expanded/SessionCard.swift" \
   "$SOURCES_DIR/UI/Expanded/WeeklyCard.swift" \
   "$SOURCES_DIR/UI/Expanded/UsageChartView.swift" \
+  "$SOURCES_DIR/UI/Expanded/InlineSettingsView.swift" \
   "$SOURCES_DIR/UI/Expanded/ExpandedPanelView.swift" \
   "$SOURCES_DIR/UI/Onboarding/OnboardingView.swift" \
-  "$SOURCES_DIR/UI/Settings/SettingsView.swift" \
   "$SOURCES_DIR/UI/NotificationBanner.swift"
 
 echo "==> Assembling .app bundle"

@@ -13,6 +13,7 @@ import Combine
 final class NotchWindowController: NSObject {
     private let panel: NSPanel
     private let appState: AppState
+    private let appSettings: AppSettings
     private let refreshAction: () -> Void
     private var hostingController: NSHostingController<RootNotchView>?
     private var cancellables = Set<AnyCancellable>()
@@ -27,8 +28,9 @@ final class NotchWindowController: NSObject {
         static let expandedWidthChart: CGFloat = 450
         /// Visible strip height below the hardware notch in compact mode.
         static let compactStripHeight: CGFloat = Theme.compactStripHeight
-        static let expandedContentHeight: CGFloat      = 184
-        static let expandedContentHeightChart: CGFloat = 335
+        static let expandedContentHeight: CGFloat         = 184
+        static let expandedContentHeightChart: CGFloat    = 335
+        static let expandedContentHeightSettings: CGFloat = 258
         static let hoverHitInset: CGFloat    = -4
         static let hoverDelay: TimeInterval  = 0.15
 
@@ -53,13 +55,22 @@ final class NotchWindowController: NSObject {
         )
     }
     private var expandedSize: NSSize {
-        let w = appState.showAnalyticsChart ? Layout.expandedWidthChart      : Layout.expandedWidth
-        let h = appState.showAnalyticsChart ? Layout.expandedContentHeightChart : Layout.expandedContentHeight
-        return NSSize(width: w, height: ScreenUtils.notchHeight + h)
+        switch appState.expandedMode {
+        case .usage:
+            return NSSize(width: Layout.expandedWidth,
+                          height: ScreenUtils.notchHeight + Layout.expandedContentHeight)
+        case .analytics:
+            return NSSize(width: Layout.expandedWidthChart,
+                          height: ScreenUtils.notchHeight + Layout.expandedContentHeightChart)
+        case .settings:
+            return NSSize(width: Layout.expandedWidth,
+                          height: ScreenUtils.notchHeight + Layout.expandedContentHeightSettings)
+        }
     }
 
-    init(appState: AppState, refreshAction: @escaping () -> Void) {
+    init(appState: AppState, appSettings: AppSettings, refreshAction: @escaping () -> Void) {
         self.appState = appState
+        self.appSettings = appSettings
         self.refreshAction = refreshAction
         self.panel = NSPanel(
             contentRect: NSRect(origin: .zero, size: NSSize(width: ScreenUtils.compactPanelWidthDefault, height: 30)),
@@ -87,7 +98,7 @@ final class NotchWindowController: NSObject {
             .sink { [weak self] state in self?.applyState(state) }
             .store(in: &cancellables)
 
-        appState.$showAnalyticsChart
+        appState.$expandedMode
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 guard let self else { return }
@@ -122,7 +133,7 @@ final class NotchWindowController: NSObject {
     }
 
     func present() {
-        let root = RootNotchView(appState: appState, controller: self, refreshAction: refreshAction)
+        let root = RootNotchView(appState: appState, appSettings: appSettings, controller: self, refreshAction: refreshAction)
         let hosting = NSHostingController(rootView: root)
         hosting.view.wantsLayer = true
         self.hostingController = hosting
@@ -266,6 +277,7 @@ final class NotchWindowController: NSObject {
 
 struct RootNotchView: View {
     @ObservedObject var appState: AppState
+    let appSettings: AppSettings
     let controller: NotchWindowController
     let refreshAction: () -> Void
 
@@ -287,7 +299,10 @@ struct RootNotchView: View {
                     Button { refreshAction() } label: {
                         Label("Refresh", systemImage: "arrow.clockwise")
                     }
-                    Button { appState.showSettings = true } label: {
+                    Button {
+                        appState.expandedMode = .settings
+                        appState.notchState = .expandedPinned
+                    } label: {
                         Label("Settings", systemImage: "gearshape.fill")
                     }
                     Button { NotificationService.shared.sendTest() } label: {
@@ -301,7 +316,7 @@ struct RootNotchView: View {
                     }
                 }
             case .expandedHover, .expandedPinned:
-                ExpandedPanelView(appState: appState, controller: controller)
+                ExpandedPanelView(appState: appState, appSettings: appSettings, controller: controller)
                     .transition(.asymmetric(
                         insertion: .identity,
                         removal: .opacity.combined(with: .scale(scale: 0.92, anchor: .top))
