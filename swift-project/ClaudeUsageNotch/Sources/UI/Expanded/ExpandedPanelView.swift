@@ -38,6 +38,7 @@ struct ExpandedPanelView: View {
                                        title: "Weekly Sonnet",
                                        subtitle: "Pro plan")
                         }
+                        lastUpdatedFooter
                     case .analytics:
                         UsageChartView(appState: appState)
                     case .settings:
@@ -72,13 +73,30 @@ struct ExpandedPanelView: View {
         })
     }
 
+    @ViewBuilder
+    private var lastUpdatedFooter: some View {
+        let label: String = {
+            if case .ok(let at) = appState.syncStatus {
+                let f = RelativeDateTimeFormatter()
+                f.unitsStyle = .abbreviated
+                return "Updated \(f.localizedString(for: at, relativeTo: Date()))"
+            }
+            if case .syncing = appState.syncStatus { return "Syncing…" }
+            return "Not yet synced"
+        }()
+        Text(label)
+            .font(.system(size: 9))
+            .foregroundColor(Theme.textSecondary.opacity(0.4))
+            .frame(maxWidth: .infinity, alignment: .trailing)
+    }
+
     private var panelWidth: CGFloat {
         appState.expandedMode == .analytics ? 1040 : 380
     }
 
     private var panelHeight: CGFloat {
         switch appState.expandedMode {
-        case .usage:     return 156
+        case .usage:     return 168
         case .analytics: return 590
         case .settings:  return 230
         }
