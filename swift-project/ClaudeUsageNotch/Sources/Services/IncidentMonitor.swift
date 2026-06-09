@@ -36,7 +36,7 @@ public enum IncidentLevel: String, Codable, Hashable {
     }
 }
 
-/// A point-in-time read of a provider's status page.
+/// A point-in-time read of Claude's status page.
 public struct ServiceIncident: Hashable, Codable {
     public let level: IncidentLevel
     public let summary: String
@@ -51,8 +51,7 @@ public struct ServiceIncident: Hashable, Codable {
 
 // MARK: - StatusPage client
 
-/// Reads a statuspage.io-backed status page. The `/api/v2/status.json` shape is
-/// shared across every statuspage.io instance (Anthropic, OpenAI, ElevenLabs, …).
+/// Reads a statuspage.io-backed status page.
 final class StatusPageService {
     static let shared = StatusPageService()
 
@@ -67,8 +66,6 @@ final class StatusPageService {
         let status: Status
     }
 
-    /// Fetches the current status. Returns nil if the page is unreachable or the
-    /// payload doesn't parse — callers treat nil as "no information", not an outage.
     func fetchIncident(baseURL: URL) async -> ServiceIncident? {
         let url = baseURL.appendingPathComponent("api/v2/status.json")
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 12)
@@ -92,29 +89,27 @@ final class StatusPageService {
 
 // MARK: - Monitor
 
-/// Polls the status pages of the enabled providers on a slow cadence and publishes
-/// incidents via `incidentPublisher`. Independent of auth — outages are public.
+private let claudeStatusURL = URL(string: "https://status.anthropic.com")!
+
+/// Polls Claude's status page on a slow cadence and publishes incidents.
+/// Independent of auth — outages are public.
 final class IncidentMonitor {
     static let shared = IncidentMonitor()
     private init() {}
 
-    let incidentPublisher = PassthroughSubject<(ProviderId, ServiceIncident), Never>()
+    let incidentPublisher = PassthroughSubject<ServiceIncident, Never>()
 
     private var task: Task<Void, Never>?
-    private var providers: [ProviderId] = []
-    private var interval: TimeInterval = 300
 
-    func start(providers: [ProviderId], interval: TimeInterval = 300) {
+    func start(interval: TimeInterval = 300) {
         stop()
-        self.providers = providers.filter { $0.statusPageBaseURL != nil }
-        self.interval = max(120, interval)
-        guard !self.providers.isEmpty else { return }
+        let clamped = max(120, interval)
 
         task = Task { [weak self] in
             guard let self else { return }
             while !Task.isCancelled {
                 await self.pollOnce()
-                try? await Task.sleep(nanoseconds: UInt64(self.interval * 1_000_000_000))
+                try? await Task.sleep(nanoseconds: UInt64(clamped * 1_000_000_000))
             }
         }
     }
@@ -125,10 +120,7 @@ final class IncidentMonitor {
     }
 
     private func pollOnce() async {
-        for provider in providers {
-            guard let base = provider.statusPageBaseURL else { continue }
-            guard let incident = await StatusPageService.shared.fetchIncident(baseURL: base) else { continue }
-            incidentPublisher.send((provider, incident))
-        }
+        guard let incident = await StatusPageService.shared.fetchIncident(baseURL: claudeStatusURL) else { return }
+        incidentPublisher.send(incident)
     }
 }

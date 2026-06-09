@@ -22,7 +22,7 @@ struct CompactView: View {
             // Visible content strip (bottom 22 pt, below the notch edge).
             HStack(spacing: 7) {
                 // Which provider this pill is showing (switch via the expanded panel).
-                ProviderIconView(id: appState.activeProviderId, size: 13, fallbackColor: Theme.textLabel)
+                ProviderIconView(size: 13, fallbackColor: Theme.textLabel)
 
                 // Outage badge — appears only when the active provider has an incident.
                 if let incident = appState.activeIncident {

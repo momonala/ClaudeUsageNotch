@@ -18,11 +18,10 @@ final class ClaudeUsageMappingTests: XCTestCase {
         let dto = try JSONDecoder().decode(ClaudeUsageDTO.self, from: json)
         let snapshot = try ClaudeUsageMapper.snapshot(from: dto)
 
-        XCTAssertEqual(snapshot.providerId, .claude)
-        XCTAssertEqual(snapshot.primaryWindow.percentUsed, 0.425, accuracy: 0.001)
-        XCTAssertEqual(snapshot.secondaryWindow?.percentUsed, 0.610, accuracy: 0.001)
-        XCTAssertEqual(snapshot.tertiaryWindow?.percentUsed, 0.280, accuracy: 0.001)
-        XCTAssertNotNil(snapshot.primaryWindow.resetAt)
+        XCTAssertEqual(snapshot.sessionWindow.percentUsed, 0.425, accuracy: 0.001)
+        XCTAssertEqual(snapshot.weeklyWindow?.percentUsed, 0.610, accuracy: 0.001)
+        XCTAssertEqual(snapshot.weeklySonnetWindow?.percentUsed, 0.280, accuracy: 0.001)
+        XCTAssertNotNil(snapshot.sessionWindow.resetAt)
     }
 
     // 2. Missing five_hour → decoding error.
@@ -55,7 +54,7 @@ final class ClaudeUsageMappingTests: XCTestCase {
         }
     }
 
-    // 4. Missing optional windows → secondaryWindow and tertiaryWindow are nil.
+    // 4. Missing optional windows → weeklyWindow and weeklySonnetWindow are nil.
     func test_snapshot_optionalWindowsAreNil() throws {
         let json = """
         { "five_hour": { "utilization": 10.0, "resets_at": null } }
@@ -64,31 +63,27 @@ final class ClaudeUsageMappingTests: XCTestCase {
         let dto = try JSONDecoder().decode(ClaudeUsageDTO.self, from: json)
         let snapshot = try ClaudeUsageMapper.snapshot(from: dto)
 
-        XCTAssertNil(snapshot.secondaryWindow)
-        XCTAssertNil(snapshot.tertiaryWindow)
-        XCTAssertNil(snapshot.primaryWindow.resetAt)
+        XCTAssertNil(snapshot.weeklyWindow)
+        XCTAssertNil(snapshot.weeklySonnetWindow)
+        XCTAssertNil(snapshot.sessionWindow.resetAt)
     }
 }
 
-// MARK: - OpenAI status-only snapshot tests
+// MARK: - Snapshot factory tests
 
-// OpenAI is a connected-status provider (issue #9): its old billing dashboard
-// endpoints reject standard `sk-` API keys, so ClaudeUsageNotch verifies the key is live
-// and reports an "Active" status rather than a fabricated quota %.
-final class OpenAIStatusOnlyTests: XCTestCase {
+final class SnapshotFactoryTests: XCTestCase {
 
-    func test_openai_connectedSnapshot_isStatusOnly() {
-        let snapshot = ServiceUsageSnapshot.connected(providerId: .openai)
-        XCTAssertEqual(snapshot.providerId, .openai)
+    func test_connectedSnapshot_isStatusOnly() {
+        let snapshot = ServiceUsageSnapshot.connected()
         XCTAssertTrue(snapshot.isStatusOnly)
         XCTAssertFalse(snapshot.showsPercentBar)
         XCTAssertEqual(snapshot.shortLabel, "Active")
     }
 
-    func test_openai_connectedSnapshot_hasNoSecondaryWindows() {
-        let snapshot = ServiceUsageSnapshot.connected(providerId: .openai)
-        XCTAssertNil(snapshot.secondaryWindow)
-        XCTAssertNil(snapshot.tertiaryWindow)
+    func test_connectedSnapshot_hasNoSecondaryWindows() {
+        let snapshot = ServiceUsageSnapshot.connected()
+        XCTAssertNil(snapshot.weeklyWindow)
+        XCTAssertNil(snapshot.weeklySonnetWindow)
     }
 }
 
@@ -192,7 +187,6 @@ final class NotificationServiceEvaluateTests: XCTestCase {
 
     private func snapshot(percent: Double) -> ServiceUsageSnapshot {
         ServiceUsageSnapshot(
-            providerId: .claude,
             sessionWindow: UsageWindow(type: .session, percentUsed: percent,
                                        lastUpdated: Date()),
             capturedAt: Date()
@@ -206,8 +200,7 @@ final class NotificationServiceEvaluateTests: XCTestCase {
     // 5a. Skipping thresholds: jumping from 0% to 76% records the 75% mark.
     func test_skippedThresholds_recordsHighestOnly() {
         let service = NotificationService.shared
-        service.evaluate(snapshot: snapshot(percent: 0.76),
-                         thresholds: thresholds, providerId: .claude)
+        service.evaluate(snapshot: snapshot(percent: 0.76), thresholds: thresholds)
         XCTAssertEqual(mark()["claude:session"], 0.75,
                        "mark should be 0.75 — the highest crossed threshold")
     }
@@ -215,11 +208,9 @@ final class NotificationServiceEvaluateTests: XCTestCase {
     // 5b. Repeated polls at the same usage level fire nothing extra.
     func test_repeatedEvaluate_doesNotReFire() {
         let service = NotificationService.shared
-        service.evaluate(snapshot: snapshot(percent: 0.76),
-                         thresholds: thresholds, providerId: .claude)
+        service.evaluate(snapshot: snapshot(percent: 0.76), thresholds: thresholds)
         let markAfterFirst = mark()
-        service.evaluate(snapshot: snapshot(percent: 0.76),
-                         thresholds: thresholds, providerId: .claude)
+        service.evaluate(snapshot: snapshot(percent: 0.76), thresholds: thresholds)
         XCTAssertEqual(mark(), markAfterFirst,
                        "mark must not change on a second evaluate at the same usage")
     }
@@ -227,11 +218,9 @@ final class NotificationServiceEvaluateTests: XCTestCase {
     // 5c. Crossing a higher threshold on a later poll fires once more.
     func test_newHigher_threshold_fires() {
         let service = NotificationService.shared
-        service.evaluate(snapshot: snapshot(percent: 0.76),
-                         thresholds: thresholds, providerId: .claude)
+        service.evaluate(snapshot: snapshot(percent: 0.76), thresholds: thresholds)
         XCTAssertEqual(mark()["claude:session"], 0.75)
-        service.evaluate(snapshot: snapshot(percent: 0.92),
-                         thresholds: thresholds, providerId: .claude)
+        service.evaluate(snapshot: snapshot(percent: 0.92), thresholds: thresholds)
         XCTAssertEqual(mark()["claude:session"], 0.9,
                        "mark should advance to 0.9 when usage crosses 90%")
     }
@@ -239,15 +228,12 @@ final class NotificationServiceEvaluateTests: XCTestCase {
     // 5d. Window reset: usage drops below the lowest threshold → mark clears.
     func test_windowReset_clearsMark() {
         let service = NotificationService.shared
-        service.evaluate(snapshot: snapshot(percent: 0.76),
-                         thresholds: thresholds, providerId: .claude)
+        service.evaluate(snapshot: snapshot(percent: 0.76), thresholds: thresholds)
         XCTAssertEqual(mark()["claude:session"], 0.75)
-        service.evaluate(snapshot: snapshot(percent: 0.05),
-                         thresholds: thresholds, providerId: .claude)
+        service.evaluate(snapshot: snapshot(percent: 0.05), thresholds: thresholds)
         XCTAssertEqual(mark()["claude:session"], 0,
                        "mark should clear to 0 when usage drops below lowest threshold")
-        service.evaluate(snapshot: snapshot(percent: 0.76),
-                         thresholds: thresholds, providerId: .claude)
+        service.evaluate(snapshot: snapshot(percent: 0.76), thresholds: thresholds)
         XCTAssertEqual(mark()["claude:session"], 0.75,
                        "mark should advance again after window reset")
     }
@@ -255,10 +241,8 @@ final class NotificationServiceEvaluateTests: XCTestCase {
     // 5e. Reset detection works even when all threshold buttons are cleared.
     func test_windowReset_firesWithEmptyThresholds() {
         let service = NotificationService.shared
-        service.evaluate(snapshot: snapshot(percent: 0.82),
-                         thresholds: [], providerId: .claude)
-        service.evaluate(snapshot: snapshot(percent: 0.0),
-                         thresholds: [], providerId: .claude)
+        service.evaluate(snapshot: snapshot(percent: 0.82), thresholds: [])
+        service.evaluate(snapshot: snapshot(percent: 0.0), thresholds: [])
         XCTAssertEqual(mark()["claude:session"], 0,
                        "reset should clear threshold mark even with no thresholds configured")
     }

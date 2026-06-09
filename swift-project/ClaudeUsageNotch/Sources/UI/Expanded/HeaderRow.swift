@@ -13,9 +13,7 @@ struct HeaderRow: View {
         // The spacer spans the notch dead-zone in between.
         HStack(spacing: 6) {
             HStack(spacing: 4) {
-                Text(appState.activeProviderId.displayName)
-                    .font(Theme.headerFont)
-                    .foregroundColor(Theme.textPrimary)
+                ProviderIconView(size: 14, fallbackColor: Theme.textPrimary)
                 if appState.notchState == .expandedPinned {
                     Image(systemName: "pin.fill")
                         .font(.system(size: 8, weight: .semibold))

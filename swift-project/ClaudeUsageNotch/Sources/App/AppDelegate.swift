@@ -61,7 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             appState: appState,
             appSettings: appSettings,
             onCredentialsSaved: { [weak self] in
-                self?.coordinator?.onCredentialsSaved(for: .claude)
+                self?.coordinator?.onCredentialsSaved()
             }
         )
         let window = NSWindow(

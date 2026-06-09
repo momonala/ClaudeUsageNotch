@@ -11,13 +11,12 @@ struct OnboardingView: View {
     private func close() { appState.showOnboarding = false }
 
     @State private var step: Step = .welcome
-    @State private var selectedProvider: ProviderId = .claude
     @State private var credentialInput: String = ""
     @State private var validating: Bool = false
     @State private var validateError: String?
 
     enum Step: Int, CaseIterable {
-        case welcome, provider, credential, validate, notifications
+        case welcome, credential, validate, notifications
     }
 
     // MARK: - Body
@@ -40,7 +39,6 @@ struct OnboardingView: View {
                 Group {
                     switch step {
                     case .welcome:       welcomeStep
-                    case .provider:      providerStep
                     case .credential:    credentialStep
                     case .validate:      validateStep
                     case .notifications: notificationsStep
@@ -69,7 +67,7 @@ struct OnboardingView: View {
     private var welcomeStep: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("See your AI limits at a glance.")
+                Text("See your Claude limits at a glance.")
                     .font(.title3.weight(.semibold))
                     .foregroundColor(Theme.textPrimary)
                 Text("A tiny pill lives in your notch or menu bar. Hover for details. Everything stays on your Mac.")
@@ -80,74 +78,9 @@ struct OnboardingView: View {
         }
     }
 
-    private var providerStep: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Choose a provider")
-                .font(.title3.weight(.semibold))
-                .foregroundColor(Theme.textPrimary)
-            ScrollView {
-                VStack(spacing: 8) {
-                    ForEach(ProviderId.allCases, id: \.self) { p in
-                        providerRow(p)
-                    }
-                }
-            }
-            .frame(maxHeight: 280)
-        }
-    }
-
-    @ViewBuilder
-    private func providerRow(_ p: ProviderId) -> some View {
-        let isSelected = selectedProvider == p
-        Button { selectedProvider = p } label: {
-            HStack {
-                ProviderIconView(id: p, size: 18, fallbackColor: isSelected ? Theme.accentWarm : Theme.textSecondary,
-                                accessibilityLabel: p.displayName)
-                    .frame(width: 22)
-                Text(p.displayName)
-                    .foregroundColor(Theme.textPrimary)
-                Spacer()
-                if usesDetectedOAuth(p) {
-                    Text("CLI detected")
-                        .font(Theme.captionFont)
-                        .foregroundColor(Theme.statusHealthy)
-                } else if isSelected {
-                    Text("Selected")
-                        .font(Theme.captionFont)
-                        .foregroundColor(Theme.textSecondary)
-                }
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(Theme.accentWarm)
-                }
-            }
-            .padding(10)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? Theme.surfaceElevated : Theme.surface)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .strokeBorder(isSelected ? Theme.accentWarm.opacity(0.35) : Theme.stroke, lineWidth: 0.75)
-                    )
-            )
-        }
-        .buttonStyle(.borderless)
-    }
-
-    /// True when the provider is authenticated from a CLI-written OAuth file
-    /// that's present on disk — no credential entry needed.
-    private func usesDetectedOAuth(_ p: ProviderId) -> Bool {
-        AuthService.shared.cliOAuthAvailable(for: p)
-    }
-
-    /// True when this step shows a key/cookie text field the user must fill.
-    private func needsTextInput(_ p: ProviderId) -> Bool {
-        !usesDetectedOAuth(p)
-    }
-
     @ViewBuilder
     private var credentialStep: some View {
-        if usesDetectedOAuth(.claude) { oauthDetectedStep }
+        if usesDetectedOAuth() { oauthDetectedStep }
         else { claudeCookieStep }
     }
 
@@ -190,7 +123,6 @@ struct OnboardingView: View {
                 .font(.title3.weight(.semibold))
                 .foregroundColor(Theme.textPrimary)
 
-            // Security disclosure — honest about the tradeoff
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundColor(Theme.statusWarning)
@@ -233,7 +165,7 @@ struct OnboardingView: View {
             Text(validateHeadline)
                 .font(.title3.weight(.semibold))
                 .foregroundColor(validateError == nil ? Theme.textPrimary : Theme.statusCritical)
-            Text("Checking that the credentials can reach \(selectedProvider.displayName)'s usage endpoint.")
+            Text("Checking that the credentials can reach Claude's usage endpoint.")
                 .font(Theme.captionFont)
                 .foregroundColor(Theme.textSecondary)
             if let err = validateError {
@@ -274,9 +206,8 @@ struct OnboardingView: View {
     private var primaryLabel: String {
         switch step {
         case .welcome:        return "Get started"
-        case .provider:       return "Continue"
         case .credential:
-            return usesDetectedOAuth(selectedProvider) ? "Continue" : "Validate"
+            return usesDetectedOAuth() ? "Continue" : "Validate"
         case .validate:       return validating ? "…" : "Continue"
         case .notifications:  return "Finish"
         }
@@ -285,7 +216,7 @@ struct OnboardingView: View {
     private var nextDisabled: Bool {
         switch step {
         case .credential:
-            return needsTextInput(selectedProvider) && credentialInput.trimmingCharacters(in: .whitespaces).isEmpty
+            return needsTextInput() && credentialInput.trimmingCharacters(in: .whitespaces).isEmpty
         case .validate:
             return validating
         default:
@@ -314,8 +245,7 @@ struct OnboardingView: View {
         validateError = nil
         validating = true
 
-        // Save credential before validating (only providers with a text field).
-        if needsTextInput(selectedProvider) {
+        if needsTextInput() {
             if let saveError = saveCredential() {
                 validateError = saveError
                 validating = false
@@ -331,7 +261,7 @@ struct OnboardingView: View {
                 try await provider.validateCredentials()
                 let snapshot = try await provider.fetchUsage()
                 await MainActor.run {
-                    appState.snapshots[selectedProvider] = snapshot
+                    appState.snapshot = snapshot
                     appState.authStatus = .valid
                     onCredentialsSaved()
                     validating = false
@@ -353,6 +283,16 @@ struct OnboardingView: View {
     private func saveCredential() -> String? {
         let trimmed = credentialInput.trimmingCharacters(in: .whitespacesAndNewlines)
         return AuthService.shared.saveClaudeCredential(ClaudeCredential(cookie: trimmed))
+    }
+
+    // MARK: - Helpers
+
+    private func usesDetectedOAuth() -> Bool {
+        AuthService.shared.cliOAuthAvailable()
+    }
+
+    private func needsTextInput() -> Bool {
+        !usesDetectedOAuth()
     }
 
     // MARK: - Helper sub-views
@@ -452,7 +392,7 @@ private struct SecureCookieEditor: NSViewRepresentable {
     }
 }
 
-// MARK: - Animated pill preview (same as original)
+// MARK: - Animated pill preview
 
 private struct OnboardingPillPreview: View {
     @State private var demoPercent: Double = 0.42

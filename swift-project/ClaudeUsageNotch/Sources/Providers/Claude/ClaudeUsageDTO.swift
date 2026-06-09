@@ -73,7 +73,6 @@ enum ClaudeUsageMapper {
         }
 
         return ServiceUsageSnapshot(
-            providerId: .claude,
             sessionWindow: session,
             weeklyWindow: weekly,
             weeklySonnetWindow: weeklySonnet,

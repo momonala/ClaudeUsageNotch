@@ -1,8 +1,8 @@
 # ClaudeUsageNotch
 
-A native macOS app that shows Claude Code usage (session + weekly quota) live in the hardware notch.
+A native macOS app that displays Claude Code usage (session + weekly quota) live in the hardware notch.
 
-The notch panel works like iOS Dynamic Island: the top portion sits inside the physical camera housing (black on black), and only the visible extension below is rendered. Hover expands it; click pins it open.
+The notch panel works like iOS Dynamic Island: the top portion sits inside the physical camera housing (black on black), and only the visible extension below is rendered. Hover to expand; click to pin open.
 
 ---
 
@@ -61,7 +61,6 @@ Sources/
 │
 ├── Core/
 │   ├── Domain/
-│   │   ├── ProviderId.swift       Supported providers (currently: .claude)
 │   │   ├── ServiceUsageSnapshot.swift
 │   │   ├── UsageRecord.swift      Token-level record parsed from JSONL history
 │   │   ├── UsageWindow.swift      Session / weekly windows, pace, reset helpers
@@ -98,7 +97,6 @@ Sources/
     ├── Compact/
     │   ├── CompactView.swift        Dual bars; countdown at session limit
     │   ├── CompactProgressBar.swift Pace marker tick
-    │   ├── ConstellationView.swift  Multi-provider layout (not wired yet)
     │   └── StatusDot.swift          IncidentBanner
     ├── Expanded/
     │   ├── ExpandedPanelView.swift  Switches on ExpandedMode
@@ -181,7 +179,7 @@ Onboarding skips the cookie step when CLI OAuth is detected.
 
 `AppSettings` persists to `UserDefaults` under `claudeusagenotch.*`: poll interval, notification toggle, thresholds.
 
-`AppState` persists `activeProvider`, `enabledProviders`, and `isNotchUIHidden`. Snapshots are not persisted — the app fetches fresh on launch.
+`AppState` persists `isNotchUIHidden`. Snapshots are not persisted — the app fetches fresh on launch.
 
 ---
 

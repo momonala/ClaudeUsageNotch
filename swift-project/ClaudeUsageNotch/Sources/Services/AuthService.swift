@@ -1,35 +1,31 @@
 import Foundation
 
-/// Provider-credential storage. Backed by macOS Keychain.
+/// Credential storage for Claude. Backed by macOS Keychain.
 public final class AuthService {
     public static let shared = AuthService()
     private init() {}
 
     private let store = KeychainStore(service: "com.claudeusagenotch.ClaudeUsageNotch")
+    private static let account = "claude"
 
-    // MARK: - Generic
-
-    public func hasCredential(for providerId: ProviderId) -> Bool {
-        store.get(account: providerId.rawValue) != nil
+    public func hasCredential() -> Bool {
+        store.get(account: Self.account) != nil
     }
 
-    /// Returns true if any credential exists OR a CLI OAuth token is on disk.
     public func hasAnyConfiguredProvider() -> Bool {
-        ProviderId.allCases.contains { cliOAuthAvailable(for: $0) || hasCredential(for: $0) }
+        cliOAuthAvailable() || hasCredential()
     }
 
-    public func cliOAuthAvailable(for _: ProviderId) -> Bool {
+    public func cliOAuthAvailable() -> Bool {
         ClaudeOAuthCredential.isAvailable()
     }
 
-    public func clearCredential(for providerId: ProviderId) {
-        store.delete(account: providerId.rawValue)
+    public func clearCredential() {
+        store.delete(account: Self.account)
     }
 
     // MARK: - Claude
 
-    /// Returns true if Claude can authenticate without requiring the user to paste a cookie.
-    /// This is the case when Claude CLI credentials are present on disk.
     public var claudeHasOAuthAvailable: Bool {
         ClaudeOAuthCredential.isAvailable()
     }
@@ -54,15 +50,12 @@ public final class AuthService {
         guard let data = try? JSONEncoder().encode(sanitized) else {
             return "Failed to encode credential."
         }
-        store.set(account: ProviderId.claude.rawValue, data: data)
+        store.set(account: Self.account, data: data)
         return nil
     }
 
-    // MARK: - Generic load
-
-    /// Generic load. Returns the decoded credential of type `T` if present.
-    public func loadCredential<T: Decodable>(for providerId: ProviderId) -> T? {
-        guard let data = store.get(account: providerId.rawValue) else { return nil }
+    public func loadCredential<T: Decodable>() -> T? {
+        guard let data = store.get(account: Self.account) else { return nil }
         return try? JSONDecoder().decode(T.self, from: data)
     }
 }

@@ -109,9 +109,9 @@ final class NotchWindowController: NSObject {
             }
             .store(in: &cancellables)
 
-        Publishers.CombineLatest(appState.$snapshots, appState.$activeProviderId)
+        appState.$snapshot
             .receive(on: RunLoop.main)
-            .sink { [weak self] _, _ in self?.updateCompactLayoutIfNeeded() }
+            .sink { [weak self] _ in self?.updateCompactLayoutIfNeeded() }
             .store(in: &cancellables)
     }
 

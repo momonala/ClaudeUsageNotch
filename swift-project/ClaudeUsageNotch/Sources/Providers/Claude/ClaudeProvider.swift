@@ -106,7 +106,7 @@ final class ClaudeProvider {
     }
 
     private func currentCookie() throws -> String {
-        guard let cred: ClaudeCredential = authService.loadCredential(for: .claude),
+        guard let cred: ClaudeCredential = authService.loadCredential(),
               !cred.cookie.isEmpty else {
             throw ProviderError.missingCredentials
         }

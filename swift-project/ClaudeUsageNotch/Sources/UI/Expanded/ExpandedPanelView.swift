@@ -26,7 +26,7 @@ struct ExpandedPanelView: View {
                     switch appState.expandedMode {
                     case .usage:
                         if let incident = appState.activeIncident {
-                            IncidentBanner(providerName: appState.activeProviderId.displayName,
+                            IncidentBanner(providerName: "Claude",
                                            incident: incident)
                         }
                         SessionCard(appState: appState)

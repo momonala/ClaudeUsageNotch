@@ -30,16 +30,14 @@ public final class NotificationService {
 
     // MARK: - Public API
 
-    public func evaluate(snapshot: ServiceUsageSnapshot,
-                         thresholds: [Double],
-                         providerId: ProviderId) {
+    public func evaluate(snapshot: ServiceUsageSnapshot, thresholds: [Double]) {
         let sorted = thresholds.sorted()
         var markDirty = false
         var lastPercentDirty = false
 
         for window in notifiableWindows(in: snapshot) {
             let label = Self.windowLabel(window.type)
-            let key = "\(providerId.rawValue):\(label)"
+            let key = "claude:\(label)"
             let usage = window.percentUsed
             let previous = lastPercent[key] ?? 0
 
@@ -47,7 +45,7 @@ public final class NotificationService {
                 mark[key] = 0
                 markDirty = true
                 fire(
-                    title: "\(providerId.displayName) \(label) reset",
+                    title: "Claude \(label) reset",
                     body: "\(label.capitalized) window reset — you're back to 0%."
                 )
             } else if !sorted.isEmpty, usage > 0 {
@@ -56,8 +54,8 @@ public final class NotificationService {
                     mark[key] = highest
                     markDirty = true
                     let title = highest >= 1.0
-                        ? "\(providerId.displayName) \(label) limit reached"
-                        : "\(providerId.displayName) \(label) \(Int(highest * 100))% used"
+                        ? "Claude \(label) limit reached"
+                        : "Claude \(label) \(Int(highest * 100))% used"
                     fire(title: title, body: usageBody(window: window, label: label))
                 }
             }

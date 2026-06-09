@@ -1,22 +1,19 @@
 import Foundation
 
-/// A complete snapshot from a provider at a moment in time.
+/// A complete snapshot from Claude at a moment in time.
 /// The notch UI consumes one of these and binds compact + expanded views to it.
 public struct ServiceUsageSnapshot: Codable, Hashable {
-    public let providerId: ProviderId
     public let sessionWindow: UsageWindow           // 5-hour rolling session
     public let weeklyWindow: UsageWindow?           // 7-day window
     public let weeklySonnetWindow: UsageWindow?     // 7-day Sonnet sub-window (Pro only)
     public let capturedAt: Date
 
     public init(
-        providerId: ProviderId,
         sessionWindow: UsageWindow,
         weeklyWindow: UsageWindow? = nil,
         weeklySonnetWindow: UsageWindow? = nil,
         capturedAt: Date = Date()
     ) {
-        self.providerId = providerId
         self.sessionWindow = sessionWindow
         self.weeklyWindow = weeklyWindow
         self.weeklySonnetWindow = weeklySonnetWindow
@@ -24,14 +21,13 @@ public struct ServiceUsageSnapshot: Codable, Hashable {
     }
 
     /// True when the provider authenticated successfully but exposes no usable
-    /// quota/usage endpoint (e.g. Gemini, Perplexity). The UI shows an "Active"
-    /// indicator instead of a misleading 0% bar for these snapshots.
+    /// quota/usage endpoint. The UI shows an "Active" indicator instead of a
+    /// misleading 0% bar for these snapshots.
     public var isStatusOnly: Bool {
         sessionWindow.type == .connected
     }
 
-    /// True when the provider reports a remaining credit balance instead of a
-    /// percentage (e.g. DeepSeek). The UI shows the balance text, not a bar.
+    /// True when the provider reports a remaining credit balance instead of a percentage.
     public var isBalance: Bool {
         sessionWindow.type == .balance
     }
@@ -48,42 +44,25 @@ public struct ServiceUsageSnapshot: Codable, Hashable {
         return "\(Int((sessionWindow.percentUsed * 100).rounded()))%"
     }
 
-    /// Builds a status-only snapshot for a provider with no quota endpoint.
-    /// Renders as a healthy "Active" indicator — never a percentage.
-    public static func connected(
-        providerId: ProviderId,
-        capturedAt: Date = Date()
-    ) -> ServiceUsageSnapshot {
+    /// Builds a status-only snapshot with no quota endpoint.
+    public static func connected(capturedAt: Date = Date()) -> ServiceUsageSnapshot {
         let window = UsageWindow(
             type: .connected,
             percentUsed: 0,
             lastUpdated: capturedAt
         )
-        return ServiceUsageSnapshot(
-            providerId: providerId,
-            sessionWindow: window,
-            capturedAt: capturedAt
-        )
+        return ServiceUsageSnapshot(sessionWindow: window, capturedAt: capturedAt)
     }
 
-    /// Builds a balance snapshot for a provider that reports remaining credit
-    /// (e.g. DeepSeek). `label` is the pre-formatted amount, e.g. "$110.00".
-    public static func balance(
-        providerId: ProviderId,
-        label: String,
-        capturedAt: Date = Date()
-    ) -> ServiceUsageSnapshot {
+    /// Builds a balance snapshot. `label` is the pre-formatted amount, e.g. "$110.00".
+    public static func balance(label: String, capturedAt: Date = Date()) -> ServiceUsageSnapshot {
         let window = UsageWindow(
             type: .balance,
             percentUsed: 0,
             lastUpdated: capturedAt,
             label: label
         )
-        return ServiceUsageSnapshot(
-            providerId: providerId,
-            sessionWindow: window,
-            capturedAt: capturedAt
-        )
+        return ServiceUsageSnapshot(sessionWindow: window, capturedAt: capturedAt)
     }
 
     /// The worst status across windows, used for the top-level pill color.

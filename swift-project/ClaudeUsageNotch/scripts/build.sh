@@ -66,7 +66,6 @@ swiftc \
   -o "$APP_CONTENTS/MacOS/$APP_NAME" \
   "$SOURCES_DIR/App/ClaudeUsageNotchApp.swift" \
   "$SOURCES_DIR/App/AppDelegate.swift" \
-  "$SOURCES_DIR/Core/Domain/ProviderId.swift" \
   "$SOURCES_DIR/Core/Domain/Status.swift" \
   "$SOURCES_DIR/Core/Domain/UsageWindow.swift" \
   "$SOURCES_DIR/Core/Domain/ServiceUsageSnapshot.swift" \
@@ -95,7 +94,6 @@ swiftc \
   "$SOURCES_DIR/UI/Compact/StatusDot.swift" \
   "$SOURCES_DIR/UI/Compact/CompactProgressBar.swift" \
   "$SOURCES_DIR/UI/Compact/CompactView.swift" \
-  "$SOURCES_DIR/UI/Compact/ConstellationView.swift" \
   "$SOURCES_DIR/UI/NotchWindowController.swift" \
   "$SOURCES_DIR/UI/Expanded/HeaderRow.swift" \
   "$SOURCES_DIR/UI/Expanded/ResetSubtitleRow.swift" \
