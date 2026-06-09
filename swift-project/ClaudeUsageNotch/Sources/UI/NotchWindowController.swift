@@ -19,6 +19,7 @@ final class NotchWindowController: NSObject {
     private var cancellables = Set<AnyCancellable>()
     private var hoverTimer: Timer?
     private var isCurrentlyHovering = false
+    private var expandWorkItem: DispatchWorkItem?
     private var clickOutsideMonitor: Any?
 
     // MARK: - Layout constants
@@ -32,7 +33,6 @@ final class NotchWindowController: NSObject {
         static let expandedContentHeightChart: CGFloat    = 618
         static let expandedContentHeightSettings: CGFloat = 258
         static let hoverHitInset: CGFloat    = -4
-        static let hoverDelay: TimeInterval  = 0.15
 
         static let expandPhase1Duration: TimeInterval = 0.16
         static let expandPhase2Delay:    TimeInterval = 0.12
@@ -120,6 +120,7 @@ final class NotchWindowController: NSObject {
     /// `deinit` alone is unreliable because AppKit can keep an on-screen window
     /// alive, leaving a ghost pill behind.
     func teardown() {
+        cancelPendingExpand()
         hoverTimer?.invalidate()
         hoverTimer = nil
         if let m = clickOutsideMonitor {
@@ -185,21 +186,33 @@ final class NotchWindowController: NSObject {
 
     func userHoveredIn() {
         switch appState.notchState {
-        case .compactIdle, .compactHover:
+        case .compactIdle:
             appState.notchState = .compactHover
-            DispatchQueue.main.asyncAfter(deadline: .now() + Layout.hoverDelay) { [weak self] in
-                guard let self else { return }
-                if self.appState.notchState == .compactHover {
-                    self.appState.notchState = .expandedHover
-                }
-            }
+            scheduleExpandAfterHoverDelay()
         default: break
         }
     }
 
     func userHoveredOut() {
+        cancelPendingExpand()
         guard appState.notchState != .expandedPinned else { return }
         appState.notchState = .compactIdle
+    }
+
+    private func scheduleExpandAfterHoverDelay() {
+        cancelPendingExpand()
+        performExpand()
+    }
+
+    private func performExpand() {
+        if appState.notchState == .compactHover {
+            appState.notchState = .expandedHover
+        }
+    }
+
+    private func cancelPendingExpand() {
+        expandWorkItem?.cancel()
+        expandWorkItem = nil
     }
 
     func userClicked() {

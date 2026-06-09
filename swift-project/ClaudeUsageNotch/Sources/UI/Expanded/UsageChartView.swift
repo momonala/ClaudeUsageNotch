@@ -46,7 +46,7 @@ struct UsageChartView: View {
     @State private var sessionBuckets: [TimeBucket]  = []
     @State private var weeklyBuckets:  [TimeBucket]  = []
     @State private var analytics:      AnalyticsData = .empty
-    @State private var showQuota  = false
+    @State private var showQuota  = true
     @State private var isLoading  = true
 
     private var sessionWindow: UsageWindow? { appState.activeSnapshot?.sessionWindow }
@@ -137,13 +137,16 @@ struct UsageChartView: View {
     // MARK: - Layout primitives
 
     private var toggleRow: some View {
-        Picker("", selection: $showQuota) {
-            Text("Tokens").tag(false)
-            Text("% Quota").tag(true)
+        HStack {
+            Spacer(minLength: 0)
+            Picker("", selection: $showQuota) {
+                Text("Tokens").tag(false)
+                Text("% Quota").tag(true)
+            }
+            .pickerStyle(.segmented)
+            .controlSize(.small)
+            .font(.system(size: 10, design: .rounded))
         }
-        .pickerStyle(.segmented)
-        .controlSize(.small)
-        .font(.system(size: 10, design: .rounded))
     }
 
     private var divider: some View {
@@ -406,17 +409,16 @@ private struct CostSection: View {
     let data: AnalyticsData
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .bottom, spacing: 0) {
-                statPill(label: "Session", value: formatCost(data.sessionCost))
-                Spacer()
-                statPill(label: "Weekly", value: formatCost(data.weeklyCost))
-            }
+        HStack(alignment: .bottom, spacing: 24) {
+            Spacer(minLength: 0)
+            statPill(label: "Session", value: formatCost(data.sessionCost))
+            statPill(label: "Weekly", value: formatCost(data.weeklyCost))
+            statPill(label: "Avg / day", value: formatCost(data.averageDailyCost))
         }
     }
 
     private func statPill(label: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
+        VStack(alignment: .trailing, spacing: 1) {
             Text(label)
                 .font(.system(size: 9, design: .rounded))
                 .foregroundColor(Theme.textSecondary)
@@ -463,17 +465,21 @@ private struct CacheSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             analyticsHeader("CACHE · 7D")
-            HStack(spacing: 5) {
-                FractionBar(fraction: data.cacheHitRate, color: Theme.statusHealthy, height: 4)
-                Text(String(format: "%.0f%%", data.cacheHitRate * 100))
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                    .foregroundColor(Theme.statusHealthy)
-                    .frame(width: 32, alignment: .trailing)
-            }
-            if data.cacheSavingsUSD > 0.001 {
-                Text("~\(String(format: "$%.2f", data.cacheSavingsUSD)) saved")
-                    .font(.system(size: 9, design: .rounded))
-                    .foregroundColor(Theme.textSecondary)
+            HStack(alignment: .top, spacing: 6) {
+                Spacer().frame(width: 110)
+                FractionBar(fraction: data.cacheHitRate, color: Theme.statusHealthy, height: 5)
+                    .padding(.top, 3)
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(String(format: "%.0f%%", data.cacheHitRate * 100))
+                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .foregroundColor(Theme.statusHealthy)
+                    if data.cacheSavingsUSD > 0.001 {
+                        Text("~\(String(format: "$%.2f", data.cacheSavingsUSD)) saved")
+                            .font(.system(size: 9, design: .rounded))
+                            .foregroundColor(Theme.textSecondary)
+                    }
+                }
+                .frame(width: 40, alignment: .trailing)
             }
         }
     }

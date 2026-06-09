@@ -44,6 +44,10 @@ struct AnalyticsData {
     let totalWebSearches:  Int
     let totalWebFetches:   Int
 
+    var averageDailyCost: Double {
+        weeklyCost / 7
+    }
+
     static let empty = AnalyticsData(
         sessionCost: 0, weeklyCost: 0,
         cacheHitRate: 0, cacheSavingsUSD: 0,
