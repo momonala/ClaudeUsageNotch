@@ -25,11 +25,11 @@ final class NotchWindowController: NSObject {
 
     private enum Layout {
         static let expandedWidth: CGFloat      = 380
-        static let expandedWidthChart: CGFloat = 450
+        static let expandedWidthChart: CGFloat = 1040
         /// Visible strip height below the hardware notch in compact mode.
         static let compactStripHeight: CGFloat = Theme.compactStripHeight
         static let expandedContentHeight: CGFloat         = 184
-        static let expandedContentHeightChart: CGFloat    = 335
+        static let expandedContentHeightChart: CGFloat    = 618
         static let expandedContentHeightSettings: CGFloat = 258
         static let hoverHitInset: CGFloat    = -4
         static let hoverDelay: TimeInterval  = 0.15

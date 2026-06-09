@@ -8,6 +8,11 @@ struct UsageRecord {
     let cacheReadTokens: Int
     let model: String
     let requestId: String?
+    let project: String
+    let attributionSkill: String?
+    let sessionId: String?
+    let webSearches: Int
+    let webFetches: Int
 
     var totalTokens: Int { inputTokens + outputTokens + cacheCreationTokens }
 

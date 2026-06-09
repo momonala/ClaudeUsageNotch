@@ -18,9 +18,8 @@ enum LocalHistoryReader {
 
         for file in jsonlFiles {
             guard let lines = try? String(contentsOf: file, encoding: .utf8) else { continue }
-            for line in lines.components(separatedBy: .newlines) {
-                guard let data = line.data(using: .utf8),
-                      let record = parseAssistantLine(data, since: since) else { continue }
+            for line in lines.split(separator: "\n", omittingEmptySubsequences: true) {
+                guard let record = parseAssistantLine(Data(line.utf8), since: since) else { continue }
                 let key = record.requestId ?? "\(record.timestamp.timeIntervalSince1970)"
                 guard seen.insert(key).inserted else { continue }
                 records.append(record)
@@ -49,6 +48,10 @@ enum LocalHistoryReader {
             let usage     = message["usage"] as? [String: Any]
         else { return nil }
 
+        let serverToolUse = usage["server_tool_use"] as? [String: Any]
+        let cwdPath       = obj["cwd"] as? String ?? ""
+        let project       = (cwdPath as NSString).lastPathComponent
+
         return UsageRecord(
             timestamp:            timestamp,
             inputTokens:          usage["input_tokens"]                  as? Int ?? 0,
@@ -56,7 +59,12 @@ enum LocalHistoryReader {
             cacheCreationTokens:  usage["cache_creation_input_tokens"]   as? Int ?? 0,
             cacheReadTokens:      usage["cache_read_input_tokens"]       as? Int ?? 0,
             model:                message["model"]  as? String ?? "unknown",
-            requestId:            obj["requestId"]  as? String
+            requestId:            obj["requestId"]  as? String,
+            project:              project.isEmpty ? "unknown" : project,
+            attributionSkill:     obj["attributionSkill"] as? String,
+            sessionId:            obj["sessionId"] as? String,
+            webSearches:          serverToolUse?["web_search_requests"] as? Int ?? 0,
+            webFetches:           serverToolUse?["web_fetch_requests"]  as? Int ?? 0
         )
     }
 }

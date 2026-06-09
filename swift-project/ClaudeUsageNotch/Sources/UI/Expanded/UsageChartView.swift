@@ -1,98 +1,153 @@
 import SwiftUI
 import Charts
 
+// MARK: - Time-series bucket (existing)
+
 struct TimeBucket: Identifiable {
     let id: Date
-    let tokens: Int      // delta tokens consumed in this bucket
-    let quotaPct: Double // cumulative % of window quota used up to end of this bucket
+    let tokens: Int
+    let quotaPct: Double
 }
 
-// File-level cache survives view recreation on hover-away/return.
+// MARK: - Chart cache
+
 private struct ChartCache {
-    var sessionBuckets: [TimeBucket] = []
-    var weeklyBuckets:  [TimeBucket] = []
-    var cachedAt:       Date         = .distantPast
+    var sessionBuckets: [TimeBucket]  = []
+    var weeklyBuckets:  [TimeBucket]  = []
+    var analytics:      AnalyticsData = .empty
+    var cachedAt:       Date          = .distantPast
 
     var isValid: Bool { Date().timeIntervalSince(cachedAt) < 60 }
 
-    mutating func store(session: [TimeBucket], weekly: [TimeBucket]) {
+    mutating func store(session: [TimeBucket], weekly: [TimeBucket], analytics: AnalyticsData) {
         sessionBuckets = session
         weeklyBuckets  = weekly
+        self.analytics = analytics
         cachedAt       = Date()
     }
 }
 
 private var chartCache = ChartCache()
 
+// MARK: - Layout constants
+
+private enum AnalyticsLayout {
+    static let leftWidth:  CGFloat = 550
+    static let rightWidth: CGFloat = 445
+    static let colGap:     CGFloat = 1   // vertical divider width
+    static let colSpacing: CGFloat = 10  // gap between col edge and divider
+}
+
+// MARK: - Root view
+
 struct UsageChartView: View {
     @ObservedObject var appState: AppState
 
-    @State private var sessionBuckets: [TimeBucket] = []
-    @State private var weeklyBuckets:  [TimeBucket] = []
-    @State private var showQuota = false
-    @State private var isLoading = true
+    @State private var sessionBuckets: [TimeBucket]  = []
+    @State private var weeklyBuckets:  [TimeBucket]  = []
+    @State private var analytics:      AnalyticsData = .empty
+    @State private var showQuota  = false
+    @State private var isLoading  = true
 
     private var sessionWindow: UsageWindow? { appState.activeSnapshot?.sessionWindow }
     private var weeklyWindow:  UsageWindow? { appState.activeSnapshot?.weeklyWindow }
 
-    private var yLabel: String { showQuota ? "% Quota" : "Tokens" }
-    private func yValue(_ b: TimeBucket) -> Double { showQuota ? b.quotaPct : Double(b.tokens) }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            toggleRow
-
+        Group {
             if isLoading {
                 HStack { Spacer(); ProgressView().scaleEffect(0.7); Spacer() }
                     .frame(maxHeight: .infinity)
             } else {
-                rule.padding(.top, 9)
+                HStack(alignment: .top, spacing: 0) {
+                    leftColumn
+                        .frame(width: AnalyticsLayout.leftWidth)
 
-                sectionHeader("SESSION · 5H",
-                              pct: sessionWindow?.percentUsed ?? 0,
-                              status: sessionWindow?.status ?? .unknown)
-                    .padding(.top, 9)
+                    Rectangle()
+                        .fill(Theme.stroke)
+                        .frame(width: AnalyticsLayout.colGap)
+                        .padding(.horizontal, AnalyticsLayout.colSpacing)
 
-                sessionChart
-                    .frame(height: 86)
-                    .padding(.top, 5)
-
-                rule.padding(.top, 12)
-
-                sectionHeader("WEEKLY · 7D",
-                              pct: weeklyWindow?.percentUsed ?? 0,
-                              status: weeklyWindow?.status ?? .unknown)
-                    .padding(.top, 9)
-
-                weeklyChart
-                    .frame(height: 86)
-                    .padding(.top, 5)
+                    rightColumn
+                        .frame(width: AnalyticsLayout.rightWidth)
+                }
             }
         }
+        .padding(.top, 6)
         .task { await loadData() }
     }
 
-    // MARK: - Layout components
+    // MARK: - Left column
 
-    private var toggleRow: some View {
-        HStack {
-            Spacer()
-            Picker("", selection: $showQuota) {
-                Text("Tokens").tag(false)
-                Text("% Quota").tag(true)
-            }
-            .pickerStyle(.segmented)
-            .controlSize(.small)
-            .font(.system(size: 10, design: .rounded))
-            .frame(width: 120)
-            .padding(.trailing, 8)
+    private var leftColumn: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            toggleRow
+
+            divider.padding(.top, 9)
+            sectionHeader("SESSION · 5H",
+                          pct: sessionWindow?.percentUsed ?? 0,
+                          status: sessionWindow?.status ?? .unknown)
+                .padding(.top, 8)
+            sessionChart
+                .frame(height: 108)
+                .padding(.top, 5)
+
+            divider.padding(.top, 10)
+            sectionHeader("WEEKLY · 7D",
+                          pct: weeklyWindow?.percentUsed ?? 0,
+                          status: weeklyWindow?.status ?? .unknown)
+                .padding(.top, 8)
+            weeklyChart
+                .frame(height: 108)
+                .padding(.top, 5)
+
+            divider.padding(.top, 10)
+            analyticsHeader("SPEND PER DAY · 7D").padding(.top, 8)
+            costChart
+                .frame(height: 88)
+                .padding(.top, 5)
+
+            divider.padding(.top, 10)
+            analyticsHeader("SESSIONS PER DAY · 7D").padding(.top, 8)
+            sessionCountChart
+                .frame(height: 88)
+                .padding(.top, 5)
+
+            Spacer(minLength: 0)
         }
     }
 
-    private var rule: some View {
-        Rectangle()
-            .fill(Theme.stroke)
-            .frame(height: 0.5)
+    // MARK: - Right column
+
+    private var rightColumn: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            CostSection(data: analytics)
+            divider.padding(.top, 10)
+            TokenBreakdownSection(data: analytics).padding(.top, 10)
+            divider.padding(.top, 10)
+            CacheSection(data: analytics).padding(.top, 10)
+            divider.padding(.top, 10)
+            ModelMixSection(data: analytics).padding(.top, 10)
+            divider.padding(.top, 10)
+            RankedBreakdownSection(title: "PROJECTS · 7D", items: analytics.projectBreakdown).padding(.top, 10)
+            divider.padding(.top, 10)
+            RankedBreakdownSection(title: "SKILLS · 7D",   items: analytics.skillBreakdown).padding(.top, 10)
+        }
+    }
+
+    // MARK: - Layout primitives
+
+    private var toggleRow: some View {
+        Picker("", selection: $showQuota) {
+            Text("Tokens").tag(false)
+            Text("% Quota").tag(true)
+        }
+        .pickerStyle(.segmented)
+        .controlSize(.small)
+        .font(.system(size: 10, design: .rounded))
+    }
+
+    private var divider: some View {
+        Rectangle().fill(Theme.stroke).frame(height: 0.5)
     }
 
     @ViewBuilder
@@ -111,7 +166,10 @@ struct UsageChartView: View {
         }
     }
 
-    // MARK: - Charts
+    // MARK: - Left charts
+
+    private var yLabel: String { showQuota ? "% Quota" : "Tokens" }
+    private func yValue(_ b: TimeBucket) -> Double { showQuota ? b.quotaPct : Double(b.tokens) }
 
     private var sessionChart: some View {
         Chart(sessionBuckets) { b in
@@ -146,6 +204,42 @@ struct UsageChartView: View {
         }
         .chartXAxis { dayAxis }
         .chartYAxis { yAxis }
+        .chartPlotStyle { $0.background(Color.clear) }
+    }
+
+    private var costChart: some View {
+        dailyBarChart(analytics.dailyCost) { String(format: "$%.2f", $0) }
+    }
+
+    private var sessionCountChart: some View {
+        dailyBarChart(analytics.dailySessions) { "\(Int($0))" }
+    }
+
+    private func dailyBarChart(_ data: [DailyValue], yLabel: @escaping (Double) -> String) -> some View {
+        Chart(data) { d in
+            BarMark(x: .value("Day", d.date, unit: .day),
+                    y: .value("", d.value))
+                .foregroundStyle(Theme.accentWarm.opacity(0.7))
+                .cornerRadius(2)
+        }
+        .chartXAxis {
+            AxisMarks(values: .stride(by: .day)) { _ in
+                AxisGridLine().foregroundStyle(Theme.stroke)
+                AxisValueLabel(format: .dateTime.weekday(.narrow))
+                    .font(.system(size: 8, design: .rounded))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+        }
+        .chartYAxis {
+            AxisMarks(values: .automatic(desiredCount: 3)) { v in
+                AxisGridLine().foregroundStyle(Theme.stroke)
+                if let n = v.as(Double.self) {
+                    AxisValueLabel(yLabel(n))
+                        .font(.system(size: 8, design: .monospaced))
+                        .foregroundStyle(Theme.textSecondary)
+                }
+            }
+        }
         .chartPlotStyle { $0.background(Color.clear) }
     }
 
@@ -186,10 +280,10 @@ struct UsageChartView: View {
     // MARK: - Data loading
 
     private func loadData() async {
-        // Serve from cache if still fresh — avoids re-parsing JSONL on quick hover-away/return.
         if chartCache.isValid {
             sessionBuckets = chartCache.sessionBuckets
             weeklyBuckets  = chartCache.weeklyBuckets
+            analytics      = chartCache.analytics
             isLoading      = false
             return
         }
@@ -202,50 +296,251 @@ struct UsageChartView: View {
         let sessionPct = sessionWindow?.percentUsed ?? 0
         let weeklyPct  = weeklyWindow?.percentUsed  ?? 0
 
-        let all = await Task.detached(priority: .utility) {
-            LocalHistoryReader.read(since: weeklyCutoff)
+        let (session, weekly, newAnalytics) = await Task.detached(priority: .utility) {
+            let all     = LocalHistoryReader.read(since: weeklyCutoff)
+            let session = all.filter { $0.timestamp >= sessionCutoff }
+
+            let sessionBuckets = makeTimeBuckets(
+                records: session,
+                unit: .minute, from: sessionCutoff, count: 5 * 60,
+                currentPct: sessionPct
+            )
+            let weeklyBuckets = makeTimeBuckets(
+                records: all,
+                unit: .hour, from: weeklyCutoff, count: 7 * 24,
+                currentPct: weeklyPct
+            )
+            let analytics = AnalyticsData.compute(sessionRecords: session, weeklyRecords: all)
+            return (sessionBuckets, weeklyBuckets, analytics)
         }.value
 
-        let session = makeBuckets(
-            records: all.filter { $0.timestamp >= sessionCutoff },
-            unit: .minute, from: sessionCutoff, count: 5 * 60,
-            currentPct: sessionPct
-        )
-        let weekly = makeBuckets(
-            records: all,
-            unit: .hour, from: weeklyCutoff, count: 7 * 24,
-            currentPct: weeklyPct
-        )
-
-        chartCache.store(session: session, weekly: weekly)
+        chartCache.store(session: session, weekly: weekly, analytics: newAnalytics)
         sessionBuckets = session
         weeklyBuckets  = weekly
+        analytics      = newAnalytics
         isLoading      = false
     }
 
-    private func makeBuckets(records: [UsageRecord], unit: Calendar.Component,
+}
+
+// Free function — callable from Task.detached without actor isolation.
+private func makeTimeBuckets(records: [UsageRecord], unit: Calendar.Component,
                               from start: Date, count: Int,
                               currentPct: Double) -> [TimeBucket] {
-        let cal          = Calendar.current
-        let alignedStart = cal.dateInterval(of: unit, for: start)?.start ?? start
+    let cal          = Calendar.current
+    let alignedStart = cal.dateInterval(of: unit, for: start)?.start ?? start
 
-        var grouped: [Date: Int] = [:]
-        for r in records {
-            guard let slot = cal.dateInterval(of: unit, for: r.timestamp)?.start else { continue }
-            grouped[slot] = (grouped[slot] ?? 0) + r.totalTokens
+    var grouped: [Date: Int] = [:]
+    for r in records {
+        guard let slot = cal.dateInterval(of: unit, for: r.timestamp)?.start else { continue }
+        grouped[slot] = (grouped[slot] ?? 0) + r.totalTokens
+    }
+
+    let totalTokens = records.reduce(0) { $0 + $1.totalTokens }
+    var cumulative  = 0
+
+    return (0..<count).map { i in
+        let slot  = cal.date(byAdding: unit, value: i, to: alignedStart)!
+        let delta = grouped[slot] ?? 0
+        cumulative += delta
+        let pct = totalTokens > 0
+            ? Double(cumulative) / Double(totalTokens) * currentPct * 100.0
+            : 0.0
+        return TimeBucket(id: slot, tokens: delta, quotaPct: pct)
+    }
+}
+
+// MARK: - Reusable primitives
+
+private struct FractionBar: View {
+    let fraction: Double
+    let color: Color
+    var height: CGFloat = 4
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: height / 2)
+                    .fill(Color.white.opacity(0.08))
+                RoundedRectangle(cornerRadius: height / 2)
+                    .fill(color)
+                    .frame(width: max(2, geo.size.width * CGFloat(fraction)))
+            }
         }
+        .frame(height: height)
+    }
+}
 
-        let totalTokens = records.reduce(0) { $0 + $1.totalTokens }
-        var cumulative  = 0
+private struct RankedRow: View {
+    let label: String
+    let value: String
+    let fraction: Double
+    var color: Color = Theme.accentWarm
 
-        return (0..<count).map { i in
-            let slot  = cal.date(byAdding: unit, value: i, to: alignedStart)!
-            let delta = grouped[slot] ?? 0
-            cumulative += delta
-            let pct = totalTokens > 0
-                ? Double(cumulative) / Double(totalTokens) * currentPct * 100.0
-                : 0.0
-            return TimeBucket(id: slot, tokens: delta, quotaPct: pct)
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(label)
+                .font(.system(size: 10, design: .rounded))
+                .foregroundColor(Theme.textLabel)
+                .lineLimit(1)
+                .frame(width: 110, alignment: .leading)
+            FractionBar(fraction: fraction, color: color, height: 5)
+            Text(value)
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundColor(Theme.textSecondary)
+                .frame(width: 40, alignment: .trailing)
         }
     }
 }
+
+private func analyticsHeader(_ label: String) -> some View {
+    Text(label)
+        .font(Theme.sectionLabelFont)
+        .kerning(Theme.sectionLabelKerning)
+        .foregroundColor(Theme.textSecondary)
+}
+
+// MARK: - Cost section
+
+private struct CostSection: View {
+    let data: AnalyticsData
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .bottom, spacing: 0) {
+                statPill(label: "Session", value: formatCost(data.sessionCost))
+                Spacer()
+                statPill(label: "Weekly", value: formatCost(data.weeklyCost))
+            }
+        }
+    }
+
+    private func statPill(label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(label)
+                .font(.system(size: 9, design: .rounded))
+                .foregroundColor(Theme.textSecondary)
+            Text(value)
+                .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                .foregroundColor(Theme.textPrimary)
+        }
+    }
+
+    private func formatCost(_ v: Double) -> String {
+        v < 0.01 ? "<$0.01" : String(format: "$%.2f", v)
+    }
+}
+
+// MARK: - Token breakdown section
+
+private struct TokenBreakdownSection: View {
+    let data: AnalyticsData
+
+    private var t: TokenTypeBreakdown { data.tokenTypes }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            analyticsHeader("TOKENS · 7D")
+            RankedRow(label: "Input",       value: fmt(t.inputTokens),       fraction: t.inputFraction,       color: Theme.accentWarm)
+            RankedRow(label: "Output",      value: fmt(t.outputTokens),      fraction: t.outputFraction,      color: Color(nsColor: .systemPurple))
+            RankedRow(label: "Cache write", value: fmt(t.cacheCreateTokens), fraction: t.cacheCreateFraction, color: Color(nsColor: .systemOrange))
+            RankedRow(label: "Cache read",  value: fmt(t.cacheReadTokens),   fraction: t.cacheReadFraction,   color: Theme.statusHealthy)
+        }
+    }
+
+    private func fmt(_ n: Int) -> String {
+        n >= 1_000_000 ? String(format: "%.1fM", Double(n) / 1_000_000)
+            : n >= 1_000 ? String(format: "%.0fK", Double(n) / 1_000)
+            : "\(n)"
+    }
+}
+
+// MARK: - Cache efficiency section
+
+private struct CacheSection: View {
+    let data: AnalyticsData
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            analyticsHeader("CACHE · 7D")
+            HStack(spacing: 5) {
+                FractionBar(fraction: data.cacheHitRate, color: Theme.statusHealthy, height: 4)
+                Text(String(format: "%.0f%%", data.cacheHitRate * 100))
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .foregroundColor(Theme.statusHealthy)
+                    .frame(width: 32, alignment: .trailing)
+            }
+            if data.cacheSavingsUSD > 0.001 {
+                Text("~\(String(format: "$%.2f", data.cacheSavingsUSD)) saved")
+                    .font(.system(size: 9, design: .rounded))
+                    .foregroundColor(Theme.textSecondary)
+            }
+        }
+    }
+}
+
+// MARK: - Model mix section
+
+private struct ModelMixSection: View {
+    let data: AnalyticsData
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            analyticsHeader("MODELS · 7D")
+            if data.modelBreakdown.isEmpty {
+                emptyLabel
+            } else {
+                ForEach(data.modelBreakdown) { item in
+                    RankedRow(
+                        label:    modelLabel(item.label),
+                        value:    String(format: "%.0f%%", item.fraction * 100),
+                        fraction: item.fraction,
+                        color:    modelColor(item.label)
+                    )
+                }
+            }
+        }
+    }
+
+    private var emptyLabel: some View {
+        Text("No data").font(Theme.captionFont).foregroundColor(Theme.textSecondary)
+    }
+
+    private func modelLabel(_ m: String) -> String {
+        if m.contains("opus")   { return "Opus" }
+        if m.contains("haiku")  { return "Haiku" }
+        if m.contains("sonnet") { return "Sonnet" }
+        return m
+    }
+
+    private func modelColor(_ m: String) -> Color {
+        if m.contains("opus")  { return Color(nsColor: .systemPurple) }
+        if m.contains("haiku") { return Theme.statusHealthy }
+        return Theme.accentWarm
+    }
+}
+
+// MARK: - Ranked breakdown section (projects, skills, etc.)
+
+private struct RankedBreakdownSection: View {
+    let title: String
+    let items: [RankedItem]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            analyticsHeader(title)
+            if items.isEmpty {
+                Text("No data").font(Theme.captionFont).foregroundColor(Theme.textSecondary)
+            } else {
+                ForEach(items) { item in
+                    RankedRow(
+                        label:    item.label,
+                        value:    String(format: "%.0f%%", item.fraction * 100),
+                        fraction: item.fraction
+                    )
+                }
+            }
+        }
+    }
+}
+

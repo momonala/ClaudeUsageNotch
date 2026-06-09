@@ -71,6 +71,7 @@ swiftc \
   "$SOURCES_DIR/Core/Domain/UsageWindow.swift" \
   "$SOURCES_DIR/Core/Domain/ServiceUsageSnapshot.swift" \
   "$SOURCES_DIR/Core/Domain/UsageRecord.swift" \
+  "$SOURCES_DIR/Core/Domain/AnalyticsData.swift" \
   "$SOURCES_DIR/Core/State/AppSettings.swift" \
   "$SOURCES_DIR/Core/State/AppState.swift" \
   "$SOURCES_DIR/Core/State/NotchState.swift" \
