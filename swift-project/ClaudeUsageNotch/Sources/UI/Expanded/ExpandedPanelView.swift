@@ -96,7 +96,10 @@ struct ExpandedPanelView: View {
 
     private var panelHeight: CGFloat {
         switch appState.expandedMode {
-        case .usage:     return 168
+        case .usage:
+            let base: CGFloat = 148
+            let incidentExtra: CGFloat = appState.activeIncident != nil ? 32 : 0
+            return base + incidentExtra
         case .analytics: return 590
         case .settings:  return 230
         }

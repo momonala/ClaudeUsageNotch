@@ -27,6 +27,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         )
         coordinator?.start()
 
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.coordinator?.refreshNow() }
+        }
+
         syncLaunchAtLoginState()
 
         appSettings.$launchAtLogin
