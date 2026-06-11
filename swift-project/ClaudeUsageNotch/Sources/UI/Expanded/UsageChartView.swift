@@ -122,10 +122,7 @@ struct UsageChartView: View {
             }
         }
         .padding(.top, 6)
-        .task { await loadData() }
-        .onChange(of: lookback) {
-            Task { await loadData() }
-        }
+        .task(id: lookback) { await loadData() }
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1))
@@ -288,19 +285,22 @@ struct UsageChartView: View {
     }
 
     private var costChart: some View {
-        dailyBarChart(analytics.dailyCost) { String(format: "$%.2f", $0) }
+        dailyLineChart(analytics.dailyCost, yLabel: "Cost") { String(format: "$%.2f", $0) }
     }
 
     private var sessionCountChart: some View {
-        dailyBarChart(analytics.dailySessions) { "\(Int($0))" }
+        dailyLineChart(analytics.dailySessions, yLabel: "Sessions") { $0 == $0.rounded() ? "\(Int($0))" : nil }
     }
 
-    private func dailyBarChart(_ data: [DailyValue], yLabel: @escaping (Double) -> String) -> some View {
+    private func dailyLineChart(_ data: [DailyValue], yLabel: String, formatter: @escaping (Double) -> String?) -> some View {
         Chart(data) { d in
-            BarMark(x: .value("Day", d.date, unit: .day),
-                    y: .value("", d.value))
+            LineMark(x: .value("Day", d.date, unit: .day), y: .value(yLabel, d.value))
                 .foregroundStyle(Theme.accentWarm.opacity(0.7))
-                .cornerRadius(2)
+                .lineStyle(StrokeStyle(lineWidth: 1.5))
+                .interpolationMethod(.catmullRom)
+            PointMark(x: .value("Day", d.date, unit: .day), y: .value(yLabel, d.value))
+                .foregroundStyle(Theme.accentWarm)
+                .symbolSize(20)
         }
         .chartXAxis {
             AxisMarks(values: .stride(by: .day)) { _ in
@@ -313,8 +313,8 @@ struct UsageChartView: View {
         .chartYAxis {
             AxisMarks(values: .automatic(desiredCount: 3)) { v in
                 AxisGridLine().foregroundStyle(Theme.stroke)
-                if let n = v.as(Double.self) {
-                    AxisValueLabel(yLabel(n))
+                if let n = v.as(Double.self), let label = formatter(n) {
+                    AxisValueLabel(label)
                         .font(.system(size: 8, design: .monospaced))
                         .foregroundStyle(Theme.textSecondary)
                 }

@@ -41,8 +41,8 @@ struct AnalyticsData {
     let projectBreakdown:  [RankedItem]   // top 5
     let skillBreakdown:    [RankedItem]   // top 5, nil skills excluded
 
-    let dailyCost:         [DailyValue]   // 7 days
-    let dailySessions:     [DailyValue]   // 7 days (count of distinct sessionIds)
+    let dailyCost:         [DailyValue]   // covers the selected lookback period
+    let dailySessions:     [DailyValue]   // covers the selected lookback period (count of distinct sessionIds)
 
     let totalWebSearches:  Int
     let totalWebFetches:   Int
