@@ -114,15 +114,18 @@ private let iso8601Plain: ISO8601DateFormatter = {
 enum ModelPricing {
     static func cost(input: Int, output: Int, cacheCreate: Int, cacheRead: Int, model: String) -> Double {
         let (inputRate, outputRate) = rates(for: model)
-        let inputCost      = Double(input + cacheCreate) * inputRate  / 1_000_000
-        let outputCost     = Double(output)              * outputRate / 1_000_000
-        let cacheReadCost  = Double(cacheRead)           * inputRate  * 0.1 / 1_000_000
-        return inputCost + outputCost + cacheReadCost
+        let inputCost       = Double(input)       * inputRate          / 1_000_000
+        let cacheCreateCost = Double(cacheCreate) * inputRate  * 1.25  / 1_000_000
+        let outputCost      = Double(output)      * outputRate         / 1_000_000
+        let cacheReadCost   = Double(cacheRead)   * inputRate  * 0.1   / 1_000_000
+        return inputCost + cacheCreateCost + outputCost + cacheReadCost
     }
 
     private static func rates(for model: String) -> (input: Double, output: Double) {
-        if model.contains("opus")  { return (15.0, 75.0) }
-        if model.contains("haiku") { return (0.80,  4.0) }
+        if model.contains("fable")  { return (10.0, 50.0) }
+        if model.contains("mythos") { return (10.0, 50.0) }
+        if model.contains("opus")   { return (5.0,  25.0) }
+        if model.contains("haiku")  { return (1.0,   5.0) }
         return (3.0, 15.0)  // sonnet default
     }
 }
