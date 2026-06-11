@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let appSettings = AppSettings()
     var notchController: NotchWindowController?
     var coordinator: UsageCoordinator?
+    var historySync: HistorySyncService?
     var cancellables = Set<AnyCancellable>()
 
     private var onboardingWindow: NSWindow?
@@ -26,6 +27,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             notifications: NotificationService.shared
         )
         coordinator?.start()
+
+        historySync = HistorySyncService(settings: appSettings)
+        historySync?.start()
 
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification,
@@ -97,6 +101,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         coordinator?.stop()
+        historySync?.stop()
         notchController?.teardown()
     }
 

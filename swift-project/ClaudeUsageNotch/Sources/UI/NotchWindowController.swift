@@ -72,7 +72,7 @@ final class NotchWindowController: NSObject {
         self.appState = appState
         self.appSettings = appSettings
         self.refreshAction = refreshAction
-        self.panel = NSPanel(
+        self.panel = KeyablePanel(
             contentRect: NSRect(origin: .zero, size: NSSize(width: ScreenUtils.compactPanelWidthDefault, height: 30)),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
@@ -284,6 +284,17 @@ final class NotchWindowController: NSObject {
             }
         }
     }
+}
+
+// MARK: - Keyable panel
+
+/// A borderless panel returns `canBecomeKey == false` by default, which blocks
+/// text-field editing (e.g. the sync-server URL in settings). Overriding it lets
+/// the panel take key focus when a control needs it. Paired with
+/// `becomesKeyOnlyIfNeeded = true` and `.nonactivatingPanel`, the panel only
+/// becomes key on click-into-field and never foregrounds the app.
+private final class KeyablePanel: NSPanel {
+    override var canBecomeKey: Bool { true }
 }
 
 // MARK: - Root SwiftUI view

@@ -41,7 +41,7 @@ struct ExpandedPanelView: View {
                         }
                         lastUpdatedFooter
                     case .analytics:
-                        UsageChartView(appState: appState)
+                        UsageChartView(appState: appState, appSettings: appSettings)
                     case .settings:
                         InlineSettingsView(appSettings: appSettings)
                     }
@@ -104,7 +104,7 @@ struct ExpandedPanelView: View {
             let incidentExtra: CGFloat = appState.activeIncident != nil ? 32 : 0
             return base + incidentExtra
         case .analytics: return 590
-        case .settings:  return 230
+        case .settings:  return 340
         }
     }
 }

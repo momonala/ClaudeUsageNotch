@@ -56,7 +56,33 @@ struct InlineSettingsView: View {
                     .fixedSize()
                     .scaleEffect(0.75, anchor: .leading)
             }
+
+            rowDivider
+
+            sectionTitle("Sync Server")
+            row {
+                TextField("http://host:5014", text: $appSettings.apiBaseURL)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 11, design: .monospaced))
+                    .frame(width: 220)
+            }
+            row {
+                Picker("", selection: $appSettings.syncIntervalSeconds) {
+                    Text("1 min").tag(TimeInterval(60))
+                    Text("5 min").tag(TimeInterval(300))
+                    Text("15 min").tag(TimeInterval(900))
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 180)
+                .disabled(syncDisabled)
+                .opacity(syncDisabled ? 0.4 : 1)
+            }
         }
+    }
+
+    private var syncDisabled: Bool {
+        appSettings.apiBaseURL.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
     private func sectionTitle(_ text: String) -> some View {

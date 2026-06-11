@@ -23,6 +23,7 @@ tmp/
 /tests/
 .gitconfig
 .emergent/
+.claude/
 
 # Credentials / secrets
 .env
@@ -48,3 +49,4 @@ dist/
 
 # Deployment
 .vercel
+

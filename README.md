@@ -85,6 +85,8 @@ Sources/
 │   ├── AuthService.swift          Keychain + CLI OAuth detection
 │   ├── NotificationService.swift  In-app banners at configurable thresholds
 │   ├── LocalHistoryReader.swift   Reads ~/.claude/projects/**/*.jsonl for analytics
+│   ├── RemoteHistoryReader.swift  Fetches history from the sync server (remote-first chart source)
+│   ├── HistorySyncService.swift   Timer-driven push of local records to the sync server
 │   └── IncidentMonitor.swift      Polls Anthropic status page
 │
 ├── Platform/
@@ -130,13 +132,17 @@ UsageService (poll loop + backoff)
                                                        ▼
                                               SwiftUI views (CompactView, ExpandedPanelView, …)
 
-LocalHistoryReader (reads ~/.claude/projects/**/*.jsonl on demand)
-    └─► UsageChartView (analytics mode only; not part of the poll loop)
+~/.claude/projects/**/*.jsonl
+    │
+    ├─ HistorySyncService (timer) ──POST──► sync server   (when apiBaseURL set)
+    │
+    └─ UsageChartView (analytics mode only; not part of the poll loop)
+           └─ RemoteHistoryReader.fetch (sync server) ─── falls back to ──► LocalHistoryReader
 ```
 
 `AppState` is the primary `ObservableObject` for runtime data. `AppSettings` holds persisted preferences separately so settings changes don't re-trigger usage observers.
 
-The analytics chart does not poll — it reads local JSONL history when the user switches to analytics mode, with a 60-second in-memory cache to avoid re-parsing on hover-away/return.
+The analytics chart does not poll — on switching to analytics mode it loads history (remote-first, see [Sync server](#sync-server-optional)), with a 60-second in-memory cache to avoid re-parsing on hover-away/return.
 
 ---
 
@@ -177,9 +183,33 @@ Onboarding skips the cookie step when CLI OAuth is detected.
 
 ## State persistence
 
-`AppSettings` persists to `UserDefaults` under `claudeusagenotch.*`: poll interval, notification toggle, thresholds.
+`AppSettings` persists to `UserDefaults` under `claudeusagenotch.*`: poll interval, notification toggle, thresholds, sync server URL (`apiBaseURL`), and `syncIntervalSeconds`.
+
+`HistorySyncService` persists its `lastSyncedAt` cursor under the same prefix.
 
 `AppState` persists `isNotchUIHidden`. Snapshots are not persisted — the app fetches fresh on launch.
+
+---
+
+## Sync server (optional)
+
+`claude-usage-notch-server/` is a companion Flask + SQLite service (runs on a Raspberry
+Pi) that stores `UsageRecord`s parsed from the local JSONL history, so analytics can
+outlive the ~30-day JSONL retention and load faster than re-parsing local files. It is a
+dumb store — no aggregation; Swift does all compute. See its README for the API.
+
+Sync is **off by default** and enabled by setting a base URL in the inline settings
+(e.g. `http://raspberrypi.local:5014`); an empty URL disables it entirely.
+
+- **Producer** — `HistorySyncService` POSTs new records on a timer (`syncIntervalSeconds`,
+  default 10 min). A `lastSyncedAt` cursor (in `UserDefaults`) only advances on a `200`,
+  so failed pushes retry next tick; the server dedupes by `uuid`, making retries safe.
+- **Consumer** — `UsageChartView` is remote-first: it tries `RemoteHistoryReader.fetch`
+  (2 s timeout) and falls back to `LocalHistoryReader` on any error, so the chart still
+  works when the Pi is unreachable.
+
+`UsageRecord` is `Codable` against the server's snake_case schema; local JSONL parsing
+stays manual in `LocalHistoryReader` because the on-disk keys differ from the API's.
 
 ---
 

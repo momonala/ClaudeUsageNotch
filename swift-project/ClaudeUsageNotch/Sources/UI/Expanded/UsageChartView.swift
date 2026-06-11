@@ -42,38 +42,79 @@ private enum AnalyticsLayout {
 
 struct UsageChartView: View {
     @ObservedObject var appState: AppState
+    let appSettings: AppSettings
 
-    @State private var sessionBuckets: [TimeBucket]  = []
-    @State private var weeklyBuckets:  [TimeBucket]  = []
-    @State private var analytics:      AnalyticsData = .empty
-    @State private var showQuota  = true
-    @State private var isLoading  = true
+    @State private var sessionBuckets:  [TimeBucket]  = []
+    @State private var weeklyBuckets:   [TimeBucket]  = []
+    @State private var analytics:       AnalyticsData = .empty
+    @State private var showQuota      = true
+    @State private var isLoading      = true
+    @State private var lastUpdatedAt:  Date?
+    @State private var fetchError:     String?
+    @State private var now:            Date = Date()
 
     private var sessionWindow: UsageWindow? { appState.activeSnapshot?.sessionWindow }
     private var weeklyWindow:  UsageWindow? { appState.activeSnapshot?.weeklyWindow }
 
     var body: some View {
-        Group {
-            if isLoading {
-                HStack { Spacer(); ProgressView().scaleEffect(0.7); Spacer() }
-                    .frame(maxHeight: .infinity)
-            } else {
-                HStack(alignment: .top, spacing: 0) {
-                    leftColumn
-                        .frame(width: AnalyticsLayout.leftWidth)
+        VStack(spacing: 0) {
+            Group {
+                if isLoading {
+                    HStack { Spacer(); ProgressView().scaleEffect(0.7); Spacer() }
+                        .frame(maxHeight: .infinity)
+                } else if let err = fetchError {
+                    Text(err)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(Theme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .padding()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    HStack(alignment: .top, spacing: 0) {
+                        leftColumn
+                            .frame(width: AnalyticsLayout.leftWidth)
 
-                    Rectangle()
-                        .fill(Theme.stroke)
-                        .frame(width: AnalyticsLayout.colGap)
-                        .padding(.horizontal, AnalyticsLayout.colSpacing)
+                        Rectangle()
+                            .fill(Theme.stroke)
+                            .frame(width: AnalyticsLayout.colGap)
+                            .padding(.horizontal, AnalyticsLayout.colSpacing)
 
-                    rightColumn
-                        .frame(width: AnalyticsLayout.rightWidth)
+                        rightColumn
+                            .frame(width: AnalyticsLayout.rightWidth)
+                    }
                 }
+            }
+            .frame(maxHeight: .infinity)
+
+            if let ts = lastUpdatedAt {
+                Rectangle().fill(Theme.stroke).frame(height: 0.5).padding(.top, 6)
+                HStack {
+                    Spacer()
+                    Text("updated \(ts.formatted(.dateTime.hour().minute().second()))  ·  \(relativeTime(from: ts, to: now))")
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundColor(Theme.textSecondary)
+                }
+                .padding(.top, 4)
+                .padding(.bottom, 2)
             }
         }
         .padding(.top, 6)
         .task { await loadData() }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                now = Date()
+            }
+        }
+    }
+
+    private func relativeTime(from date: Date, to reference: Date) -> String {
+        let seconds = Int(reference.timeIntervalSince(date))
+        switch seconds {
+        case ..<60:       return "\(max(0, seconds))s ago"
+        case 60..<3600:   return "\(seconds / 60)m ago"
+        default:          return "\(seconds / 3600)h ago"
+        }
     }
 
     // MARK: - Left column
@@ -287,71 +328,67 @@ struct UsageChartView: View {
             sessionBuckets = chartCache.sessionBuckets
             weeklyBuckets  = chartCache.weeklyBuckets
             analytics      = chartCache.analytics
+            lastUpdatedAt  = chartCache.cachedAt
             isLoading      = false
             return
         }
 
         isLoading = true
-        let now            = Date()
-        let sessionCutoff  = now.addingTimeInterval(-5 * 3600)
-        let weeklyCutoff   = now.addingTimeInterval(-6 * 24 * 3600)
-        let monthlyCutoff  = now.addingTimeInterval(-29 * 24 * 3600)
+        let now          = Date()
+        let sessionSince = now.addingTimeInterval(-5 * 3600)
+        let weeklySince  = now.addingTimeInterval(-6 * 24 * 3600)
+        let monthlySince = now.addingTimeInterval(-29 * 24 * 3600)
 
-        let sessionPct = sessionWindow?.percentUsed ?? 0
-        let weeklyPct  = weeklyWindow?.percentUsed  ?? 0
+        let base = appSettings.apiBaseURL.trimmingCharacters(in: .whitespaces)
+        guard !base.isEmpty, let baseURL = URL(string: base) else {
+            NSLog("[ClaudeUsageNotch] chart: no apiBaseURL set; remote disabled")
+            isLoading = false
+            return
+        }
 
-        let (session, weekly, newAnalytics) = await Task.detached(priority: .utility) {
-            let monthly = LocalHistoryReader.read(since: monthlyCutoff)
-            let all     = monthly.filter { $0.timestamp >= weeklyCutoff }
-            let session = monthly.filter { $0.timestamp >= sessionCutoff }
-
-            let sessionBuckets = makeTimeBuckets(
-                records: session,
-                unit: .minute, from: sessionCutoff, count: 5 * 60,
-                currentPct: sessionPct
+        do {
+            let remote = try await RemoteHistoryReader.fetchAnalytics(
+                sessionSince: sessionSince, weeklySince: weeklySince, monthlySince: monthlySince,
+                baseURL: baseURL
             )
-            let weeklyBuckets = makeTimeBuckets(
-                records: all,
-                unit: .hour, from: weeklyCutoff, count: 7 * 24,
-                currentPct: weeklyPct
-            )
-            let analytics = AnalyticsData.compute(sessionRecords: session, weeklyRecords: all, monthlyRecords: monthly)
-            return (sessionBuckets, weeklyBuckets, analytics)
-        }.value
+            NSLog("[ClaudeUsageNotch] chart: loaded analytics from remote \(baseURL.absoluteString)")
 
-        chartCache.store(session: session, weekly: weekly, analytics: newAnalytics)
-        sessionBuckets = session
-        weeklyBuckets  = weekly
-        analytics      = newAnalytics
-        isLoading      = false
+            let sessionPct = sessionWindow?.percentUsed ?? 0
+            let weeklyPct  = weeklyWindow?.percentUsed  ?? 0
+
+            let (session, weekly, newAnalytics) = await Task.detached(priority: .utility) {
+                let session = toTimeBuckets(remote.sessionBuckets, currentPct: sessionPct)
+                let weekly  = toTimeBuckets(remote.weeklyBuckets,  currentPct: weeklyPct)
+                return (session, weekly, remote.toAnalyticsData())
+            }.value
+
+            chartCache.store(session: session, weekly: weekly, analytics: newAnalytics)
+            sessionBuckets  = session
+            weeklyBuckets   = weekly
+            analytics       = newAnalytics
+            lastUpdatedAt   = Date()
+            fetchError      = nil
+        } catch {
+            NSLog("[ClaudeUsageNotch] chart: remote analytics failed: \(error.localizedDescription)")
+            fetchError = error.localizedDescription
+        }
+
+        isLoading = false
     }
 
 }
 
 // Free function — callable from Task.detached without actor isolation.
-private func makeTimeBuckets(records: [UsageRecord], unit: Calendar.Component,
-                              from start: Date, count: Int,
-                              currentPct: Double) -> [TimeBucket] {
-    let cal          = Calendar.current
-    let alignedStart = cal.dateInterval(of: unit, for: start)?.start ?? start
-
-    var grouped: [Date: Int] = [:]
-    for r in records {
-        guard let slot = cal.dateInterval(of: unit, for: r.timestamp)?.start else { continue }
-        grouped[slot] = (grouped[slot] ?? 0) + r.totalTokens
-    }
-
-    let totalTokens = records.reduce(0) { $0 + $1.totalTokens }
+// Applies cumulative quotaPct scaling on top of the server-aggregated bucket deltas.
+private func toTimeBuckets(_ buckets: [RemoteAnalytics.BucketDTO], currentPct: Double) -> [TimeBucket] {
+    let totalTokens = buckets.reduce(0) { $0 + $1.tokens }
     var cumulative  = 0
-
-    return (0..<count).map { i in
-        let slot  = cal.date(byAdding: unit, value: i, to: alignedStart)!
-        let delta = grouped[slot] ?? 0
-        cumulative += delta
+    return buckets.map { b in
+        cumulative += b.tokens
         let pct = totalTokens > 0
             ? Double(cumulative) / Double(totalTokens) * currentPct * 100.0
             : 0.0
-        return TimeBucket(id: slot, tokens: delta, quotaPct: pct)
+        return TimeBucket(id: b.timestamp, tokens: b.tokens, quotaPct: pct)
     }
 }
 

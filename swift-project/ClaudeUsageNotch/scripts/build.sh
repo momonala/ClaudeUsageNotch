@@ -87,6 +87,8 @@ swiftc \
   "$SOURCES_DIR/Services/UsageCoordinator.swift" \
   "$SOURCES_DIR/Services/UsageService.swift" \
   "$SOURCES_DIR/Services/LocalHistoryReader.swift" \
+  "$SOURCES_DIR/Services/RemoteHistoryReader.swift" \
+  "$SOURCES_DIR/Services/HistorySyncService.swift" \
   "$SOURCES_DIR/UI/Theme/Theme.swift" \
   "$SOURCES_DIR/UI/Theme/BrandIcon.swift" \
   "$SOURCES_DIR/UI/Theme/GlassBackground.swift" \

@@ -10,12 +10,18 @@ public final class AppSettings: ObservableObject {
     @Published public var thresholds: [Double] = [0.25, 0.5, 0.75, 0.9, 1.0] { didSet { persist() } }
     @Published public var launchAtLogin: Bool = false
 
+    /// Base URL of the sync server, e.g. `http://raspberrypi.local:5014`. Empty disables sync.
+    @Published public var apiBaseURL: String = "http://localhost:5014" { didSet { persist() } }
+    @Published public var syncIntervalSeconds: TimeInterval = 600 { didSet { persist() } }
+
     private var isLoading = false
 
     private enum Key {
         static let pollInterval     = "claudeusagenotch.pollIntervalSeconds"
         static let notifications    = "claudeusagenotch.notificationsEnabled"
         static let thresholds       = "claudeusagenotch.thresholds"
+        static let apiBaseURL       = "claudeusagenotch.apiBaseURL"
+        static let syncInterval     = "claudeusagenotch.syncIntervalSeconds"
     }
 
     public init() { load() }
@@ -34,6 +40,15 @@ public final class AppSettings: ObservableObject {
         if let t = d.array(forKey: Key.thresholds) as? [Double], !t.isEmpty {
             thresholds = t
         }
+        // Only override the default when a non-empty value was stored, so the
+        // localhost default still applies for installs that persisted "" earlier.
+        if let url = d.string(forKey: Key.apiBaseURL), !url.isEmpty {
+            apiBaseURL = url
+        }
+        if d.object(forKey: Key.syncInterval) != nil {
+            let v = d.double(forKey: Key.syncInterval)
+            if v >= 60 { syncIntervalSeconds = v }
+        }
     }
 
     private func persist() {
@@ -42,5 +57,7 @@ public final class AppSettings: ObservableObject {
         d.set(pollIntervalSeconds, forKey: Key.pollInterval)
         d.set(notificationsEnabled, forKey: Key.notifications)
         d.set(thresholds, forKey: Key.thresholds)
+        d.set(apiBaseURL, forKey: Key.apiBaseURL)
+        d.set(syncIntervalSeconds, forKey: Key.syncInterval)
     }
 }
