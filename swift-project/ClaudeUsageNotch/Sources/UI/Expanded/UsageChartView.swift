@@ -335,9 +335,10 @@ struct UsageChartView: View {
 
         isLoading = true
         let now          = Date()
+        let cal          = Calendar.current
         let sessionSince = now.addingTimeInterval(-5 * 3600)
-        let weeklySince  = now.addingTimeInterval(-6 * 24 * 3600)
-        let monthlySince = now.addingTimeInterval(-29 * 24 * 3600)
+        let weeklySince  = cal.date(byAdding: .day, value: -6, to: cal.startOfDay(for: now))!
+        let monthlySince = cal.date(byAdding: .day, value: -29, to: cal.startOfDay(for: now))!
 
         let base = appSettings.apiBaseURL.trimmingCharacters(in: .whitespaces)
         guard !base.isEmpty, let baseURL = URL(string: base) else {
