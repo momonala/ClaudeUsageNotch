@@ -9,20 +9,42 @@ struct TimeBucket: Identifiable {
     let quotaPct: Double
 }
 
+// MARK: - Lookback period
+
+enum LookbackPeriod: String, CaseIterable {
+    case week    = "7D"
+    case month   = "30D"
+    case allTime = "All"
+
+    var sinceDate: Date {
+        let cal   = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        switch self {
+        case .week:    return cal.date(byAdding: .day, value: -6,  to: today)!
+        case .month:   return cal.date(byAdding: .day, value: -29, to: today)!
+        case .allTime: return Date(timeIntervalSince1970: 0)
+        }
+    }
+}
+
 // MARK: - Chart cache
 
 private struct ChartCache {
-    var sessionBuckets: [TimeBucket]  = []
-    var weeklyBuckets:  [TimeBucket]  = []
-    var analytics:      AnalyticsData = .empty
-    var cachedAt:       Date          = .distantPast
+    var sessionBuckets: [TimeBucket]   = []
+    var weeklyBuckets:  [TimeBucket]   = []
+    var analytics:      AnalyticsData  = .empty
+    var cachedAt:       Date           = .distantPast
+    var period:         LookbackPeriod = .week
 
-    var isValid: Bool { Date().timeIntervalSince(cachedAt) < 60 }
+    func isValid(for period: LookbackPeriod) -> Bool {
+        self.period == period && Date().timeIntervalSince(cachedAt) < 60
+    }
 
-    mutating func store(session: [TimeBucket], weekly: [TimeBucket], analytics: AnalyticsData) {
+    mutating func store(session: [TimeBucket], weekly: [TimeBucket], analytics: AnalyticsData, period: LookbackPeriod) {
         sessionBuckets = session
         weeklyBuckets  = weekly
         self.analytics = analytics
+        self.period    = period
         cachedAt       = Date()
     }
 }
@@ -48,6 +70,7 @@ struct UsageChartView: View {
     @State private var weeklyBuckets:   [TimeBucket]  = []
     @State private var analytics:       AnalyticsData = .empty
     @State private var showQuota      = true
+    @State private var lookback:        LookbackPeriod = .week
     @State private var isLoading      = true
     @State private var lastUpdatedAt:  Date?
     @State private var fetchError:     String?
@@ -100,6 +123,9 @@ struct UsageChartView: View {
         }
         .padding(.top, 6)
         .task { await loadData() }
+        .onChange(of: lookback) {
+            Task { await loadData() }
+        }
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1))
@@ -142,13 +168,13 @@ struct UsageChartView: View {
                 .padding(.top, 5)
 
             divider.padding(.top, 10)
-            analyticsHeader("SPEND PER DAY · 7D").padding(.top, 8)
+            analyticsHeader("SPEND PER DAY · \(lookback.rawValue)").padding(.top, 8)
             costChart
                 .frame(height: 88)
                 .padding(.top, 5)
 
             divider.padding(.top, 10)
-            analyticsHeader("SESSIONS PER DAY · 7D").padding(.top, 8)
+            analyticsHeader("SESSIONS PER DAY · \(lookback.rawValue)").padding(.top, 8)
             sessionCountChart
                 .frame(height: 88)
                 .padding(.top, 5)
@@ -163,15 +189,15 @@ struct UsageChartView: View {
         VStack(alignment: .leading, spacing: 0) {
             CostSection(data: analytics)
             divider.padding(.top, 10)
-            TokenBreakdownSection(data: analytics).padding(.top, 10)
+            TokenBreakdownSection(data: analytics, periodLabel: lookback.rawValue).padding(.top, 10)
             divider.padding(.top, 10)
-            CacheSection(data: analytics).padding(.top, 10)
+            CacheSection(data: analytics, periodLabel: lookback.rawValue).padding(.top, 10)
             divider.padding(.top, 10)
-            ModelMixSection(data: analytics).padding(.top, 10)
+            ModelMixSection(data: analytics, periodLabel: lookback.rawValue).padding(.top, 10)
             divider.padding(.top, 10)
-            RankedBreakdownSection(title: "PROJECTS · 7D", items: analytics.projectBreakdown).padding(.top, 10)
+            RankedBreakdownSection(title: "PROJECTS · \(lookback.rawValue)", items: analytics.projectBreakdown).padding(.top, 10)
             divider.padding(.top, 10)
-            RankedBreakdownSection(title: "SKILLS · 7D",   items: analytics.skillBreakdown).padding(.top, 10)
+            RankedBreakdownSection(title: "SKILLS · \(lookback.rawValue)",   items: analytics.skillBreakdown).padding(.top, 10)
         }
     }
 
@@ -179,7 +205,17 @@ struct UsageChartView: View {
 
     private var toggleRow: some View {
         HStack {
+            Picker("", selection: $lookback) {
+                ForEach(LookbackPeriod.allCases, id: \.self) { period in
+                    Text(period.rawValue).tag(period)
+                }
+            }
+            .pickerStyle(.segmented)
+            .controlSize(.small)
+            .fixedSize()
+
             Spacer(minLength: 0)
+
             Picker("", selection: $showQuota) {
                 Text("Tokens").tag(false)
                 Text("% Quota").tag(true)
@@ -324,7 +360,7 @@ struct UsageChartView: View {
     // MARK: - Data loading
 
     private func loadData() async {
-        if chartCache.isValid {
+        if chartCache.isValid(for: lookback) {
             sessionBuckets = chartCache.sessionBuckets
             weeklyBuckets  = chartCache.weeklyBuckets
             analytics      = chartCache.analytics
@@ -335,10 +371,9 @@ struct UsageChartView: View {
 
         isLoading = true
         let now          = Date()
-        let cal          = Calendar.current
         let sessionSince = now.addingTimeInterval(-5 * 3600)
-        let weeklySince  = cal.date(byAdding: .day, value: -6, to: cal.startOfDay(for: now))!
-        let monthlySince = cal.date(byAdding: .day, value: -29, to: cal.startOfDay(for: now))!
+        let weeklySince  = LookbackPeriod.week.sinceDate
+        let monthlySince = lookback.sinceDate
 
         let base = appSettings.apiBaseURL.trimmingCharacters(in: .whitespaces)
         guard !base.isEmpty, let baseURL = URL(string: base) else {
@@ -363,7 +398,7 @@ struct UsageChartView: View {
                 return (session, weekly, remote.toAnalyticsData())
             }.value
 
-            chartCache.store(session: session, weekly: weekly, analytics: newAnalytics)
+            chartCache.store(session: session, weekly: weekly, analytics: newAnalytics, period: lookback)
             sessionBuckets  = session
             weeklyBuckets   = weekly
             analytics       = newAnalytics
@@ -480,12 +515,13 @@ private struct CostSection: View {
 
 private struct TokenBreakdownSection: View {
     let data: AnalyticsData
+    let periodLabel: String
 
     private var t: TokenTypeBreakdown { data.tokenTypes }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
-            analyticsHeader("TOKENS · 7D")
+            analyticsHeader("TOKENS · \(periodLabel)")
             RankedRow(label: "Input",       value: fmt(t.inputTokens),       fraction: t.inputFraction,       color: Theme.accentWarm)
             RankedRow(label: "Output",      value: fmt(t.outputTokens),      fraction: t.outputFraction,      color: Color(nsColor: .systemPurple))
             RankedRow(label: "Cache write", value: fmt(t.cacheCreateTokens), fraction: t.cacheCreateFraction, color: Color(nsColor: .systemOrange))
@@ -504,10 +540,11 @@ private struct TokenBreakdownSection: View {
 
 private struct CacheSection: View {
     let data: AnalyticsData
+    let periodLabel: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
-            analyticsHeader("CACHE · 7D")
+            analyticsHeader("CACHE · \(periodLabel)")
             HStack(alignment: .top, spacing: 6) {
                 Spacer().frame(width: 110)
                 FractionBar(fraction: data.cacheHitRate, color: Theme.statusHealthy, height: 5)
@@ -532,10 +569,11 @@ private struct CacheSection: View {
 
 private struct ModelMixSection: View {
     let data: AnalyticsData
+    let periodLabel: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
-            analyticsHeader("MODELS · 7D")
+            analyticsHeader("MODELS · \(periodLabel)")
             if data.modelBreakdown.isEmpty {
                 emptyLabel
             } else {
