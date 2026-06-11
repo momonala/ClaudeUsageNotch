@@ -3,9 +3,12 @@ import SwiftUI
 struct HeaderRow: View {
     @ObservedObject var appState: AppState
     let controller: NotchWindowController
+    let refreshAction: () -> Void
 
     @State private var quitHovered = false
     @State private var quitPressed = false
+    @State private var refreshRotation: Double = 0
+    @State private var refreshBright = false
 
     var body: some View {
         // Mode buttons sit LEFT of the spacer so they stay in the left "ear"
@@ -22,6 +25,22 @@ struct HeaderRow: View {
                 }
             }
             .animation(.easeInOut(duration: 0.15), value: appState.notchState)
+
+            Button {
+                withAnimation(.easeOut(duration: 0.5)) { refreshRotation += 360 }
+                withAnimation(.easeOut(duration: 0.15)) { refreshBright = true }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    withAnimation(.easeIn(duration: 0.25)) { refreshBright = false }
+                }
+                refreshAction()
+            } label: {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 11))
+                    .foregroundColor(refreshBright ? Theme.accentWarm : Theme.textSecondary.opacity(0.6))
+                    .rotationEffect(.degrees(refreshRotation))
+            }
+            .buttonStyle(.borderless)
+            .padding(.trailing, 2)
 
             modeButton(.usage,     icon: "gauge.medium")
             modeButton(.analytics, icon: "chart.bar.fill")

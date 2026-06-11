@@ -329,7 +329,7 @@ struct RootNotchView: View {
                     }
                 }
             case .expandedHover, .expandedPinned:
-                ExpandedPanelView(appState: appState, appSettings: appSettings, controller: controller)
+                ExpandedPanelView(appState: appState, appSettings: appSettings, controller: controller, refreshAction: refreshAction)
                     .transition(.asymmetric(
                         insertion: .identity,
                         removal: .opacity.combined(with: .scale(scale: 0.92, anchor: .top))

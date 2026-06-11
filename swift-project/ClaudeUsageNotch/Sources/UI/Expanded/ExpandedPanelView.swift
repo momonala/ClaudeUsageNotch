@@ -9,6 +9,7 @@ struct ExpandedPanelView: View {
     @ObservedObject var appState: AppState
     let appSettings: AppSettings
     let controller: NotchWindowController
+    let refreshAction: () -> Void
     @State private var appeared = false
 
     var body: some View {
@@ -21,7 +22,7 @@ struct ExpandedPanelView: View {
                     .shadow(color: .black.opacity(0.55), radius: 28, y: 10)
 
                 VStack(alignment: .leading, spacing: 8) {
-                    HeaderRow(appState: appState, controller: controller)
+                    HeaderRow(appState: appState, controller: controller, refreshAction: refreshAction)
 
                     switch appState.expandedMode {
                     case .usage:
@@ -77,9 +78,11 @@ struct ExpandedPanelView: View {
     private var lastUpdatedFooter: some View {
         let label: String = {
             if case .ok(let at) = appState.syncStatus {
+                let secs = Int(Date().timeIntervalSince(at))
+                if secs < 5 { return "Last updated just now" }
                 let f = RelativeDateTimeFormatter()
                 f.unitsStyle = .abbreviated
-                return "Updated \(f.localizedString(for: at, relativeTo: Date()))"
+                return "Last updated \(f.localizedString(for: at, relativeTo: Date()))"
             }
             if case .syncing = appState.syncStatus { return "Syncing…" }
             return "Not yet synced"
@@ -97,7 +100,7 @@ struct ExpandedPanelView: View {
     private var panelHeight: CGFloat {
         switch appState.expandedMode {
         case .usage:
-            let base: CGFloat = 148
+            let base: CGFloat = 120
             let incidentExtra: CGFloat = appState.activeIncident != nil ? 32 : 0
             return base + incidentExtra
         case .analytics: return 590
