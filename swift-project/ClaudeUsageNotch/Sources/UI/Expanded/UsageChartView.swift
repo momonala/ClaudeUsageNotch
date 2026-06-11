@@ -33,7 +33,7 @@ private var chartCache = ChartCache()
 
 private enum AnalyticsLayout {
     static let leftWidth:  CGFloat = 550
-    static let rightWidth: CGFloat = 445
+    static let rightWidth: CGFloat = 495
     static let colGap:     CGFloat = 1   // vertical divider width
     static let colSpacing: CGFloat = 10  // gap between col edge and divider
 }
@@ -454,6 +454,7 @@ private struct CostSection: View {
             statPill(label: "Today", value: formatCost(data.todayCost))
             statPill(label: "Weekly", value: formatCost(data.weeklyCost))
             statPill(label: "Month", value: formatCost(data.monthCost))
+            statPill(label: "Lifetime", value: formatCost(data.lifetimeCost))
             statPill(label: "Avg / day", value: formatCost(data.averageDailyCost))
         }
     }

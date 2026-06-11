@@ -94,7 +94,7 @@ struct ExpandedPanelView: View {
     }
 
     private var panelWidth: CGFloat {
-        appState.expandedMode == .analytics ? 1040 : 380
+        appState.expandedMode == .analytics ? 1090 : 380
     }
 
     private var panelHeight: CGFloat {

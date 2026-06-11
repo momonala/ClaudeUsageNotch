@@ -45,6 +45,7 @@ struct RemoteAnalytics: Decodable {
     let todayCost:        Double
     let weeklyCost:       Double
     let monthCost:        Double
+    let lifetimeCost:     Double
     let cacheHitRate:     Double
     let cacheSavingsUSD:  Double
     let tokenTypes:       TokenTypes
@@ -63,6 +64,7 @@ struct RemoteAnalytics: Decodable {
         case todayCost        = "today_cost"
         case weeklyCost       = "weekly_cost"
         case monthCost        = "month_cost"
+        case lifetimeCost     = "lifetime_cost"
         case cacheHitRate     = "cache_hit_rate"
         case cacheSavingsUSD  = "cache_savings_usd"
         case tokenTypes       = "token_types"
@@ -83,6 +85,7 @@ struct RemoteAnalytics: Decodable {
             todayCost:       todayCost,
             weeklyCost:      weeklyCost,
             monthCost:       monthCost,
+            lifetimeCost:    lifetimeCost,
             cacheHitRate:    cacheHitRate,
             cacheSavingsUSD: cacheSavingsUSD,
             tokenTypes: TokenTypeBreakdown(

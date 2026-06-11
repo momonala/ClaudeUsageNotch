@@ -30,6 +30,7 @@ struct AnalyticsData {
     let todayCost:         Double
     let weeklyCost:        Double
     let monthCost:         Double
+    let lifetimeCost:      Double
 
     let cacheHitRate:      Double   // cacheRead / (input + cacheRead + cacheCreate), 0–1
     let cacheSavingsUSD:   Double
@@ -51,7 +52,7 @@ struct AnalyticsData {
     }
 
     static let empty = AnalyticsData(
-        sessionCost: 0, todayCost: 0, weeklyCost: 0, monthCost: 0,
+        sessionCost: 0, todayCost: 0, weeklyCost: 0, monthCost: 0, lifetimeCost: 0,
         cacheHitRate: 0, cacheSavingsUSD: 0,
         tokenTypes: TokenTypeBreakdown(inputFraction: 0, outputFraction: 0,
                                        cacheCreateFraction: 0, cacheReadFraction: 0,
