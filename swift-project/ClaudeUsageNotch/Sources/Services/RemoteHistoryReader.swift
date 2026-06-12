@@ -148,7 +148,8 @@ enum RemoteHistoryReader {
     static func fetchAnalytics(
         sessionSince: Date,
         weeklySince: Date,
-        monthlySince: Date,
+        monthSince: Date,
+        lookbackSince: Date,
         baseURL: URL
     ) async throws -> RemoteAnalytics {
         var components = URLComponents(
@@ -158,7 +159,8 @@ enum RemoteHistoryReader {
         components?.queryItems = [
             URLQueryItem(name: "session_since",  value: iso8601Millis.string(from: sessionSince)),
             URLQueryItem(name: "weekly_since",   value: iso8601Millis.string(from: weeklySince)),
-            URLQueryItem(name: "monthly_since",  value: iso8601Millis.string(from: monthlySince)),
+            URLQueryItem(name: "month_since",    value: iso8601Millis.string(from: monthSince)),
+            URLQueryItem(name: "lookback_since", value: iso8601Millis.string(from: lookbackSince)),
         ]
         guard let url = components?.url else { throw URLError(.badURL) }
 

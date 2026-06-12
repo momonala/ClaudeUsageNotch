@@ -372,10 +372,11 @@ struct UsageChartView: View {
         }
 
         isLoading = true
-        let now          = Date()
-        let sessionSince = now.addingTimeInterval(-5 * 3600)
-        let weeklySince  = LookbackPeriod.week.sinceDate
-        let monthlySince = lookback.sinceDate
+        let now           = Date()
+        let sessionSince  = now.addingTimeInterval(-5 * 3600)
+        let weeklySince   = LookbackPeriod.week.sinceDate    // fixed 7d  → Weekly pill + chart
+        let monthSince    = LookbackPeriod.month.sinceDate   // fixed 30d → Month pill
+        let lookbackSince = lookback.sinceDate               // selector  → breakdowns + daily charts
 
         let base = appSettings.apiBaseURL.trimmingCharacters(in: .whitespaces)
         guard !base.isEmpty, let baseURL = URL(string: base) else {
@@ -386,7 +387,8 @@ struct UsageChartView: View {
 
         do {
             let remote = try await RemoteHistoryReader.fetchAnalytics(
-                sessionSince: sessionSince, weeklySince: weeklySince, monthlySince: monthlySince,
+                sessionSince: sessionSince, weeklySince: weeklySince,
+                monthSince: monthSince, lookbackSince: lookbackSince,
                 baseURL: baseURL
             )
             NSLog("[ClaudeUsageNotch] chart: loaded analytics from remote \(baseURL.absoluteString)")
