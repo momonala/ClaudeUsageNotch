@@ -16,7 +16,18 @@ bash scripts/build.sh
 open build/ClaudeUsageNotch.app
 ```
 
-Compiles with `swiftc` directly. Produces an **unsigned, ad-hoc signed** binary for local use only. Do not distribute Mode A builds.
+Compiles with `swiftc` directly. Produces an ad-hoc signed binary for local use only. Do not distribute Mode A builds.
+
+To sign with a real Developer certificate (recommended — fixes Keychain ACL prompts on wake):
+
+```bash
+# list available certs
+security find-identity -v -p codesigning
+
+SIGN_IDENTITY="Apple Development: you@example.com (TEAMID)" bash scripts/build.sh
+```
+
+With a stable identity, macOS permanently honors "Always Allow" on the `Claude Code-credentials` Keychain item across rebuilds and sleep/wake cycles. Without it, the prompt recurs.
 
 **Mode B — xcodebuild**
 

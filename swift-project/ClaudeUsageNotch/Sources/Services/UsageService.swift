@@ -34,6 +34,7 @@ public final class UsageService {
     }
 
     public func refreshNow() {
+        consecutiveErrors = 0
         Task { await fetchOnce() }
     }
 

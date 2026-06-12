@@ -1,52 +1,43 @@
 # macOS
 .DS_Store
-*.pem
 
 # IDE / editors
 .idea/
 .vscode/
 
 # Swift / Xcode
-swift-project/NotchyLimit/build/
-swift-project/NotchyLimit/.derived-data/
+swift-project/ClaudeUsageNotch/build/
+swift-project/ClaudeUsageNotch/.derived-data/
 *.xcodeproj/
 *.xcuserstate
 .swiftpm/
+*.app/
 
-# Private / dev-only
-memory/
-plan.md
+# Root build script (local only)
+/build.sh
+
+# Dev-only
 tmp/
-/backend_test.py
-/test_reports/
-/test_result.md
-/tests/
-.gitconfig
-.emergent/
 .claude/
 
 # Credentials / secrets
 .env
 .env.*
-*.env
 credentials.json
 *token.json*
 *credentials.json*
 *.key
-.credentials
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Database (local runtime data)
+*.db
+*.sqlite
 
 # Build artefacts
 build/
-dist/
-.cache/
-**/*.zip
-**/*.tar.gz
-**/*.tar
-**/*.tgz
-*.pack
-*.deb
-*.dylib
-
-# Deployment
-.vercel
-

@@ -143,19 +143,18 @@ fi
 # Strip quarantine attribute so macOS doesn't block launch
 xattr -cr "$APP_BUNDLE" 2>/dev/null || true
 
-# Ad-hoc sign the whole bundle (no Developer ID needed). This seals the
-# Info.plist + resources so a downloaded/quarantined copy shows the mild
-# "unidentified developer" prompt (right-click → Open) instead of the scary
-# "app is damaged" error you get from a half-signed bundle.
-echo "==> Ad-hoc signing the bundle (codesign --sign -)"
-codesign --force --deep --sign - "$APP_BUNDLE" 2>/dev/null \
-  && codesign --verify --strict "$APP_BUNDLE" 2>/dev/null \
-  && echo "    ad-hoc signature OK" \
-  || echo "    (ad-hoc signing skipped/failed — app still runs locally)"
+SIGN_IDENTITY="${SIGN_IDENTITY:-}"
+if [[ -n "$SIGN_IDENTITY" ]]; then
+  echo "==> Signing bundle with: $SIGN_IDENTITY"
+  codesign --force --deep --sign "$SIGN_IDENTITY" "$APP_BUNDLE" \
+    && codesign --verify --strict "$APP_BUNDLE" \
+    && echo "    signature OK" \
+    || { echo "Signing failed — check that the cert is valid in Keychain." >&2; exit 1; }
+else
+  echo "==> Ad-hoc signing (no SIGN_IDENTITY set)"
+  codesign --force --deep --sign - "$APP_BUNDLE" 2>/dev/null || true
+fi
 
 echo ""
-echo "==> Built (unsigned, local use only): $APP_BUNDLE"
+echo "==> Built: $APP_BUNDLE"
 echo "    Run with: open $APP_BUNDLE"
-echo ""
-echo "  This binary is unsigned. Do not share or distribute it."
-echo "  For distribution use: USE_XCODEBUILD=1 bash scripts/build.sh"

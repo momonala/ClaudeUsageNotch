@@ -31,8 +31,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         historySync = HistorySyncService(settings: appSettings)
         historySync?.start()
 
+        // Delay 5 s after wake so Wi-Fi has time to reconnect before the first fetch.
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: 10_000_000_000)
+                self?.coordinator?.refreshNow()
+            }
+        }
+
+        // Retry immediately on screen unlock — Keychain is available and network is stable.
+        DistributedNotificationCenter.default().addObserver(
+            forName: NSNotification.Name("com.apple.screenIsUnlocked"),
             object: nil,
             queue: .main
         ) { [weak self] _ in
