@@ -13,6 +13,7 @@ import AppKit
 ///
 /// Does not use `resets_at` for deduplication — Claude shifts that timestamp
 /// on every API call.
+@MainActor
 public final class NotificationService {
     public static let shared = NotificationService()
     private init() {
@@ -41,12 +42,12 @@ public final class NotificationService {
             let usage = window.percentUsed
             let previous = lastPercent[key] ?? 0
 
-            if Self.didUsageDecrease(previous: previous, current: usage) {
+            if Self.didWindowReset(previous: previous, current: usage) {
                 mark[key] = 0
                 markDirty = true
                 fire(
                     title: "Claude \(label) reset",
-                    body: "\(label.capitalized) window reset — you're back to 0%."
+                    body: "\(label.capitalized) window reset — now at \(Int(usage * 100))%."
                 )
             } else if !sorted.isEmpty, usage > 0 {
                 let currentMark = mark[key] ?? 0
@@ -70,9 +71,11 @@ public final class NotificationService {
         if lastPercentDirty { saveLastPercent() }
     }
 
-    /// True when the current reading is lower than the previous poll.
-    static func didUsageDecrease(previous: Double, current: Double) -> Bool {
-        current < previous - 0.001
+    /// True when usage dropped to near-zero — i.e. the window actually reset,
+    /// not just a rolling-window dip as old usage ages out (which would otherwise
+    /// fire a spurious "reset" banner while usage is still meaningfully high).
+    static func didWindowReset(previous: Double, current: Double) -> Bool {
+        current < previous - 0.001 && current < 0.10
     }
 
     public func send(title: String, body: String) {

@@ -11,6 +11,7 @@ final class HistorySyncService {
     private let settings: AppSettings
     private var timer: Timer?
     private var cancellables = Set<AnyCancellable>()
+    private var isSyncing = false
 
     private static let lastSyncedKey = "claudeusagenotch.lastSyncedAt"
 
@@ -22,7 +23,7 @@ final class HistorySyncService {
         // Reschedule when the interval changes, or the URL settles (debounced so we
         // don't fire a sync on every keystroke while the user types the URL).
         let urlChanges = settings.$apiBaseURL.dropFirst()
-            .debounce(for: .seconds(1), scheduler: RunLoop.main)
+            .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
             .map { _ in () }
         let intervalChanges = settings.$syncIntervalSeconds.dropFirst().map { _ in () }
 
@@ -60,6 +61,11 @@ final class HistorySyncService {
 
     private func syncNow() async {
         guard let url = recordsURL() else { return }
+        // A slow scan/POST can overlap the next timer tick (or a settings-change
+        // reschedule); both would read the same cursor and push overlapping batches.
+        guard !isSyncing else { return }
+        isSyncing = true
+        defer { isSyncing = false }
 
         let since = lastSyncedAt
         let syncStart = Date()

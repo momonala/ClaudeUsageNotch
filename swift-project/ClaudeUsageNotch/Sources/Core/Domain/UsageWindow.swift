@@ -53,11 +53,15 @@ public struct UsageWindow: Codable, Hashable {
         self.label = label
     }
 
-    /// Derive a health classification using the default thresholds.
+    /// Percent-used cutoffs for the color/health classification (distinct from
+    /// `AppSettings.thresholds`, which drives *notifications*). Bar colors live here.
+    public static let warningThreshold  = 0.7
+    public static let criticalThreshold = 0.9
+
+    /// Derive a health classification from percent used.
     public var status: UsageStatus {
-        let p = percentUsed
-        if p >= 0.9 { return .critical }
-        if p >= 0.7 { return .warning }
+        if percentUsed >= Self.criticalThreshold { return .critical }
+        if percentUsed >= Self.warningThreshold  { return .warning }
         return .healthy
     }
 

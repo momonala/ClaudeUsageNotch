@@ -72,7 +72,9 @@ public final class UsageService {
         } catch let error as ProviderError {
             consecutiveErrors += 1
             if case .rateLimited = error {
-                let minBackoffExponent = Int(ceil(log2(300 / intervalSeconds + 1)))
+                // Floor the next wait at 300s on a 429, regardless of the configured
+                // interval: pick the smallest exponent n where interval·2ⁿ ≥ 300.
+                let minBackoffExponent = max(0, Int(ceil(log2(300.0 / intervalSeconds))))
                 consecutiveErrors = max(consecutiveErrors, minBackoffExponent)
             }
             errorPublisher.send(error)

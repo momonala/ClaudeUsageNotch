@@ -28,7 +28,7 @@ public final class UsageCoordinator {
 
     public func start() {
         usageService.snapshotPublisher
-            .receive(on: RunLoop.main)
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] snapshot in
                 guard let self else { return }
                 self.appState.snapshot = snapshot
@@ -40,7 +40,7 @@ public final class UsageCoordinator {
             .store(in: &cancellables)
 
         usageService.errorPublisher
-            .receive(on: RunLoop.main)
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] err in
                 guard let self else { return }
                 self.appState.providerError = err
@@ -59,7 +59,7 @@ public final class UsageCoordinator {
             .store(in: &cancellables)
 
         IncidentMonitor.shared.incidentPublisher
-            .receive(on: RunLoop.main)
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] incident in
                 self?.appState.incident = incident
             }
@@ -68,7 +68,7 @@ public final class UsageCoordinator {
 
         appSettings.$pollIntervalSeconds
             .dropFirst()
-            .receive(on: RunLoop.main)
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] interval in self?.usageService.updateInterval(interval) }
             .store(in: &cancellables)
 

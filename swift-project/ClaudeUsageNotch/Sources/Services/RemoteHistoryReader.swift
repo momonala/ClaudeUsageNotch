@@ -163,7 +163,9 @@ enum RemoteHistoryReader {
         guard let url = components?.url else { throw URLError(.badURL) }
 
         var request = URLRequest(url: url)
-        request.timeoutInterval = 2
+        // Snappy enough that an unreachable Pi surfaces an error fast, but not so
+        // tight that a slow LAN/Tailscale aggregate times out spuriously.
+        request.timeoutInterval = 5
 
         let (data, response) = try await URLSession.shared.data(for: request)
         let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0

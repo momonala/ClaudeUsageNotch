@@ -31,10 +31,10 @@ struct ExpandedPanelView: View {
                                            incident: incident)
                         }
                         SessionCard(appState: appState)
-                        if let weekly = appState.activeSnapshot?.weeklyWindow {
+                        if let weekly = appState.snapshot?.weeklyWindow {
                             WeeklyCard(window: weekly)
                         }
-                        if let weeklySonnet = appState.activeSnapshot?.weeklySonnetWindow {
+                        if let weeklySonnet = appState.snapshot?.weeklySonnetWindow {
                             WeeklyCard(window: weeklySonnet,
                                        title: "Weekly Sonnet",
                                        subtitle: "Pro plan")

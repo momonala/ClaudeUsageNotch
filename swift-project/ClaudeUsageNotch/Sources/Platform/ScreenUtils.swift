@@ -8,7 +8,10 @@ enum ScreenUtils {
     ///   1. Screen with a hardware notch (safeAreaInsets.top > 0) — macOS 12+
     ///   2. Built-in display by name
     ///   3. NSScreen.main fallback
-    static func notchScreen() -> NSScreen {
+    ///
+    /// Returns nil only when there are no screens at all (e.g. mid-reconfiguration),
+    /// in which case the panel has nothing to anchor to.
+    static func notchScreen() -> NSScreen? {
         // 1. Find a screen with an actual notch cutout.
         if let notched = NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 }) {
             return notched
@@ -22,11 +25,11 @@ enum ScreenUtils {
             return builtIn
         }
         // 3. Main screen fallback.
-        return NSScreen.main ?? NSScreen.screens.first!
+        return NSScreen.main ?? NSScreen.screens.first
     }
 
     /// Height of the hardware notch area (safeAreaInsets.top). 0 on non-notch screens.
-    static var notchHeight: CGFloat { notchScreen().safeAreaInsets.top }
+    static var notchHeight: CGFloat { notchScreen()?.safeAreaInsets.top ?? 0 }
 
     static var hasHardwareNotch: Bool {
         NSScreen.screens.contains { $0.safeAreaInsets.top > 0 }
@@ -41,7 +44,7 @@ enum ScreenUtils {
     /// On non-notch screens `safeAreaInsets.top` is 0, so behaviour is
     /// unchanged.
     static func topCenteredOrigin(forPanelSize size: NSSize) -> NSPoint {
-        let frame = notchScreen().frame
+        guard let frame = notchScreen()?.frame else { return .zero }
         let originX = frame.midX - (size.width / 2)
         // Panel anchored to the very top of the screen.
         // The caller is responsible for embedding `safeAreaInsets.top` worth

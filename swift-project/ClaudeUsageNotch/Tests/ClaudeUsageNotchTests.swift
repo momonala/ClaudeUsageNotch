@@ -247,12 +247,15 @@ final class NotificationServiceEvaluateTests: XCTestCase {
                        "reset should clear threshold mark even with no thresholds configured")
     }
 
-    // 5f. Reset detection: any decrease from the previous poll counts as a reset.
-    func test_usageDecrease_detectsReset() {
-        XCTAssertTrue(NotificationService.didUsageDecrease(previous: 1.0, current: 0.0))
-        XCTAssertTrue(NotificationService.didUsageDecrease(previous: 0.76, current: 0.05))
-        XCTAssertFalse(NotificationService.didUsageDecrease(previous: 0.5, current: 0.76))
-        XCTAssertFalse(NotificationService.didUsageDecrease(previous: 0.76, current: 0.76))
+    // 5f. Reset detection: a drop to near-zero is a reset; a rolling-window dip
+    // while usage is still high is not.
+    func test_windowReset_detectsReset() {
+        XCTAssertTrue(NotificationService.didWindowReset(previous: 1.0, current: 0.0))
+        XCTAssertTrue(NotificationService.didWindowReset(previous: 0.76, current: 0.05))
+        XCTAssertFalse(NotificationService.didWindowReset(previous: 0.5, current: 0.76))
+        XCTAssertFalse(NotificationService.didWindowReset(previous: 0.76, current: 0.76))
+        // Rolling-window dip — old usage ages out but usage is still high: NOT a reset.
+        XCTAssertFalse(NotificationService.didWindowReset(previous: 0.42, current: 0.40))
     }
 
     // 6. KeychainStore round-trip: write → read → delete.

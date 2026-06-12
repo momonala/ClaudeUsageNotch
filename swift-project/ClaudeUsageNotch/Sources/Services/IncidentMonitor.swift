@@ -101,15 +101,16 @@ final class IncidentMonitor {
 
     private var task: Task<Void, Never>?
 
-    func start(interval: TimeInterval = 300) {
-        stop()
-        let clamped = max(120, interval)
+    /// Outages are public and slow-moving, so a fixed slow cadence is plenty.
+    private static let pollInterval: TimeInterval = 300
 
+    func start() {
+        stop()
         task = Task { [weak self] in
             guard let self else { return }
             while !Task.isCancelled {
                 await self.pollOnce()
-                try? await Task.sleep(nanoseconds: UInt64(clamped * 1_000_000_000))
+                try? await Task.sleep(nanoseconds: UInt64(Self.pollInterval * 1_000_000_000))
             }
         }
     }

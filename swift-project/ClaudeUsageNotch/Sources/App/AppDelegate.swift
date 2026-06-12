@@ -56,7 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         appSettings.$launchAtLogin
             .dropFirst()
-            .receive(on: RunLoop.main)
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] enabled in self?.setLaunchAtLogin(enabled) }
             .store(in: &cancellables)
 
@@ -67,7 +67,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         )
         notchController?.present()
 
-        appState.$showOnboarding.removeDuplicates().receive(on: RunLoop.main)
+        appState.$showOnboarding.removeDuplicates().receive(on: DispatchQueue.main)
             .sink { [weak self] show in self?.presentOnboarding(show: show) }
             .store(in: &cancellables)
 

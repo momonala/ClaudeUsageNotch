@@ -31,14 +31,14 @@ struct CompactView: View {
                         .foregroundColor(incident.level.tint)
                 }
 
-                if appState.activeShowsPercentBar {
+                if appState.showsPercentBar {
                     VStack(spacing: 3) {
                         // Session row
                         HStack(spacing: 6) {
                             CompactProgressBar(
                                 progress: appState.sessionPercent,
                                 color: statusColor,
-                                expectedProgress: appState.activeSnapshot?.sessionWindow.expectedProgress()
+                                expectedProgress: appState.snapshot?.sessionWindow.expectedProgress()
                             )
                                 .frame(height: Theme.barHeightNotch)
                             if appState.isAtSessionLimit {
@@ -54,7 +54,7 @@ struct CompactView: View {
                             }
                         }
                         // Weekly row
-                        if let weekly = appState.activeSnapshot?.weeklyWindow {
+                        if let weekly = appState.snapshot?.weeklyWindow {
                             HStack(spacing: 6) {
                                 CompactProgressBar(
                                     progress: weekly.percentUsed,
@@ -71,7 +71,7 @@ struct CompactView: View {
                     }
                 } else {
                     // Balance ("$110.00") or connected-only ("Active") — no fake bar.
-                    Text(appState.activeShortLabel)
+                    Text(appState.shortLabel)
                         .font(Theme.notchFont)
                         .foregroundColor(Theme.textLabel)
                         .frame(minWidth: 40, alignment: .trailing)
@@ -89,6 +89,6 @@ struct CompactView: View {
 
     private var statusColor: Color { appState.sessionStatus.color }
     private var weeklyColor: Color {
-        (appState.activeSnapshot?.weeklyWindow?.status ?? .healthy).color
+        (appState.snapshot?.weeklyWindow?.status ?? .healthy).color
     }
 }

@@ -25,7 +25,7 @@ final class NotificationBannerController {
         isShowing = true
         let item = queue.removeFirst()
 
-        let screen = ScreenUtils.notchScreen()
+        guard let screen = ScreenUtils.notchScreen() else { isShowing = false; return }
         let w: CGFloat = 300
         let h: CGFloat = 72
         let margin: CGFloat = 14

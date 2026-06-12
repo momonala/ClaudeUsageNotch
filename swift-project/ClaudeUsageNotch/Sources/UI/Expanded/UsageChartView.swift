@@ -49,7 +49,9 @@ private struct ChartCache {
     }
 }
 
-private var chartCache = ChartCache()
+/// Process-global so the 60s cache survives view teardown on hover-away/return.
+/// `@MainActor` pins all access to the main actor (the only place it's touched).
+@MainActor private var chartCache = ChartCache()
 
 // MARK: - Layout constants
 
@@ -76,8 +78,8 @@ struct UsageChartView: View {
     @State private var fetchError:     String?
     @State private var now:            Date = Date()
 
-    private var sessionWindow: UsageWindow? { appState.activeSnapshot?.sessionWindow }
-    private var weeklyWindow:  UsageWindow? { appState.activeSnapshot?.weeklyWindow }
+    private var sessionWindow: UsageWindow? { appState.snapshot?.sessionWindow }
+    private var weeklyWindow:  UsageWindow? { appState.snapshot?.weeklyWindow }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -415,7 +417,9 @@ struct UsageChartView: View {
 }
 
 // Free function — callable from Task.detached without actor isolation.
-// Applies cumulative quotaPct scaling on top of the server-aggregated bucket deltas.
+// The `quotaPct` line is a *synthetic reconstruction*: it scales each bucket's
+// cumulative token share by the current window percentage, so it approximates
+// "% quota over time" — it is not real historical quota and shouldn't be read as such.
 private func toTimeBuckets(_ buckets: [RemoteAnalytics.BucketDTO], currentPct: Double) -> [TimeBucket] {
     let totalTokens = buckets.reduce(0) { $0 + $1.tokens }
     var cumulative  = 0

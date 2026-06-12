@@ -21,20 +21,16 @@ public final class AppState: ObservableObject {
     @Published public var showOnboarding: Bool = false
     @Published public var expandedMode: ExpandedMode = .usage
 
-    // MARK: - Snapshot access
-
-    public var activeSnapshot: ServiceUsageSnapshot? { snapshot }
-
     // MARK: - Convenience
 
     public var sessionPercent: Double { snapshot?.sessionWindow.percentUsed ?? 0 }
     public var sessionStatus: UsageStatus { snapshot?.sessionWindow.status ?? .unknown }
     public var sessionResetString: String? { snapshot?.sessionWindow.timeToResetString() }
     public var isAtSessionLimit: Bool { sessionPercent >= 1.0 }
-    public var activeIsStatusOnly: Bool { snapshot?.isStatusOnly ?? false }
-    public var activeIsBalance: Bool { snapshot?.isBalance ?? false }
-    public var activeShowsPercentBar: Bool { snapshot?.showsPercentBar ?? true }
-    public var activeShortLabel: String { snapshot?.shortLabel ?? "—" }
+    public var isStatusOnly: Bool { snapshot?.isStatusOnly ?? false }
+    public var isBalance: Bool { snapshot?.isBalance ?? false }
+    public var showsPercentBar: Bool { snapshot?.showsPercentBar ?? true }
+    public var shortLabel: String { snapshot?.shortLabel ?? "—" }
     public var sessionResetShortString: String? { snapshot?.sessionWindow.timeToResetShortString() }
 
     public var combinedStatus: UsageStatus { snapshot?.combinedStatus ?? .unknown }

@@ -60,10 +60,13 @@ struct ClaudeOAuthCredential {
     }
 
     static func parseExpiry(from json: [String: Any]) -> Date? {
-        if let ms = json["expiresAt"] as? TimeInterval {
-            return ms > 1_000_000_000_000
-                ? Date(timeIntervalSince1970: ms / 1000)
-                : Date(timeIntervalSince1970: ms)
+        if let value = json["expiresAt"] as? TimeInterval {
+            // The Claude Code Keychain blob stores ms since epoch; older file
+            // formats may use seconds. A 2001-era seconds value is ~1e9, while
+            // any plausible ms value is ~1e12, so the magnitude disambiguates.
+            return value > 1_000_000_000_000
+                ? Date(timeIntervalSince1970: value / 1000)
+                : Date(timeIntervalSince1970: value)
         }
         if let str = json["expiresAt"] as? String {
             let f = ISO8601DateFormatter()
