@@ -32,7 +32,7 @@ struct RemoteAnalytics: Decodable {
     }
 
     struct DailyValueDTO: Decodable {
-        let date:  String   // "YYYY-MM-DD"
+        let date:  Date     // bucket start (ISO8601); hour/day/month per requested granularity
         let value: Double
     }
 
@@ -108,18 +108,8 @@ struct RemoteAnalytics: Decodable {
         )
     }
 
-    private static let dailyDateFormatter: DateFormatter = {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "yyyy-MM-dd"
-        fmt.timeZone = TimeZone(identifier: "UTC")
-        return fmt
-    }()
-
     private static func toDailyValues(_ dtos: [DailyValueDTO]) -> [DailyValue] {
-        dtos.compactMap { dto in
-            guard let date = dailyDateFormatter.date(from: dto.date) else { return nil }
-            return DailyValue(date: date, value: dto.value)
-        }
+        dtos.map { DailyValue(date: $0.date, value: $0.value) }
     }
 
     private static func toRankedItems(_ dtos: [RankedItemDTO]) -> [RankedItem] {
@@ -150,6 +140,7 @@ enum RemoteHistoryReader {
         weeklySince: Date,
         monthSince: Date,
         lookbackSince: Date,
+        granularity: String,
         baseURL: URL
     ) async throws -> RemoteAnalytics {
         var components = URLComponents(
@@ -161,6 +152,7 @@ enum RemoteHistoryReader {
             URLQueryItem(name: "weekly_since",   value: iso8601Millis.string(from: weeklySince)),
             URLQueryItem(name: "month_since",    value: iso8601Millis.string(from: monthSince)),
             URLQueryItem(name: "lookback_since", value: iso8601Millis.string(from: lookbackSince)),
+            URLQueryItem(name: "granularity",    value: granularity),
         ]
         guard let url = components?.url else { throw URLError(.badURL) }
 

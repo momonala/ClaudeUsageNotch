@@ -12,6 +12,7 @@ struct TimeBucket: Identifiable {
 // MARK: - Lookback period
 
 enum LookbackPeriod: String, CaseIterable {
+    case day     = "1D"
     case week    = "7D"
     case month   = "30D"
     case allTime = "All"
@@ -20,9 +21,40 @@ enum LookbackPeriod: String, CaseIterable {
         let cal   = Calendar.current
         let today = cal.startOfDay(for: Date())
         switch self {
-        case .week:    return cal.date(byAdding: .day, value: -6,  to: today)!
-        case .month:   return cal.date(byAdding: .day, value: -29, to: today)!
+        case .day:     return cal.date(byAdding: .hour, value: -24, to: Date())!
+        case .week:    return cal.date(byAdding: .day,  value: -6,  to: today)!
+        case .month:   return cal.date(byAdding: .day,  value: -29, to: today)!
         case .allTime: return Date(timeIntervalSince1970: 0)
+        }
+    }
+
+    /// Rollup width for the spend/sessions-per-period charts: hourly for 1D,
+    /// monthly for All, daily in between.
+    var granularity: SeriesGranularity {
+        switch self {
+        case .day:          return .hour
+        case .week, .month: return .day
+        case .allTime:      return .month
+        }
+    }
+}
+
+enum SeriesGranularity: String {
+    case hour, day, month
+
+    var unitLabel: String {
+        switch self {
+        case .hour:  return "HOUR"
+        case .day:   return "DAY"
+        case .month: return "MONTH"
+        }
+    }
+
+    var axisUnit: Calendar.Component {
+        switch self {
+        case .hour:  return .hour
+        case .day:   return .day
+        case .month: return .month
         }
     }
 }
@@ -34,7 +66,7 @@ private struct ChartCache {
     var weeklyBuckets:  [TimeBucket]   = []
     var analytics:      AnalyticsData  = .empty
     var cachedAt:       Date           = .distantPast
-    var period:         LookbackPeriod = .week
+    var period:         LookbackPeriod = .month
 
     func isValid(for period: LookbackPeriod) -> Bool {
         self.period == period && Date().timeIntervalSince(cachedAt) < 60
@@ -72,7 +104,7 @@ struct UsageChartView: View {
     @State private var weeklyBuckets:   [TimeBucket]  = []
     @State private var analytics:       AnalyticsData = .empty
     @State private var showQuota      = true
-    @State private var lookback:        LookbackPeriod = .week
+    @State private var lookback:        LookbackPeriod = .month
     @State private var isLoading      = true
     @State private var lastUpdatedAt:  Date?
     @State private var fetchError:     String?
@@ -158,7 +190,7 @@ struct UsageChartView: View {
                 .padding(.top, 5)
 
             divider.padding(.top, 10)
-            sectionHeader("WEEKLY · 7D",
+            sectionHeader("WEEK · 7D",
                           pct: weeklyWindow?.percentUsed ?? 0,
                           status: weeklyWindow?.status ?? .unknown)
                 .padding(.top, 8)
@@ -167,13 +199,13 @@ struct UsageChartView: View {
                 .padding(.top, 5)
 
             divider.padding(.top, 10)
-            analyticsHeader("SPEND PER DAY · \(lookback.rawValue)").padding(.top, 8)
+            analyticsHeader("SPEND PER \(lookback.granularity.unitLabel) · \(lookback.rawValue)").padding(.top, 8)
             costChart
                 .frame(height: 88)
                 .padding(.top, 5)
 
             divider.padding(.top, 10)
-            analyticsHeader("SESSIONS PER DAY · \(lookback.rawValue)").padding(.top, 8)
+            analyticsHeader("SESSIONS PER \(lookback.granularity.unitLabel) · \(lookback.rawValue)").padding(.top, 8)
             sessionCountChart
                 .frame(height: 88)
                 .padding(.top, 5)
@@ -287,31 +319,25 @@ struct UsageChartView: View {
     }
 
     private var costChart: some View {
-        dailyLineChart(analytics.dailyCost, yLabel: "Cost") { String(format: "$%.2f", $0) }
+        seriesChart(analytics.dailyCost, yLabel: "Cost") { String(format: "$%.2f", $0) }
     }
 
     private var sessionCountChart: some View {
-        dailyLineChart(analytics.dailySessions, yLabel: "Sessions") { $0 == $0.rounded() ? "\(Int($0))" : nil }
+        seriesChart(analytics.dailySessions, yLabel: "Sessions") { $0 == $0.rounded() ? "\(Int($0))" : nil }
     }
 
-    private func dailyLineChart(_ data: [DailyValue], yLabel: String, formatter: @escaping (Double) -> String?) -> some View {
-        Chart(data) { d in
-            LineMark(x: .value("Day", d.date, unit: .day), y: .value(yLabel, d.value))
+    private func seriesChart(_ data: [DailyValue], yLabel: String, formatter: @escaping (Double) -> String?) -> some View {
+        let unit = lookback.granularity.axisUnit
+        return Chart(data) { d in
+            LineMark(x: .value("Time", d.date, unit: unit), y: .value(yLabel, d.value))
                 .foregroundStyle(Theme.accentWarm.opacity(0.7))
                 .lineStyle(StrokeStyle(lineWidth: 1.5))
                 .interpolationMethod(.catmullRom)
-            PointMark(x: .value("Day", d.date, unit: .day), y: .value(yLabel, d.value))
+            PointMark(x: .value("Time", d.date, unit: unit), y: .value(yLabel, d.value))
                 .foregroundStyle(Theme.accentWarm)
                 .symbolSize(20)
         }
-        .chartXAxis {
-            AxisMarks(values: .stride(by: .day)) { _ in
-                AxisGridLine().foregroundStyle(Theme.stroke)
-                AxisValueLabel(format: .dateTime.weekday(.narrow))
-                    .font(.system(size: 8, design: .rounded))
-                    .foregroundStyle(Theme.textSecondary)
-            }
-        }
+        .chartXAxis { seriesXAxis(lookback.granularity) }
         .chartYAxis {
             AxisMarks(values: .automatic(desiredCount: 3)) { v in
                 AxisGridLine().foregroundStyle(Theme.stroke)
@@ -323,6 +349,34 @@ struct UsageChartView: View {
             }
         }
         .chartPlotStyle { $0.background(Color.clear) }
+    }
+
+    // Spend/sessions chart x-axis: hour-of-day for 1D, weekday for 7D/30D, month for All.
+    @AxisContentBuilder
+    private func seriesXAxis(_ granularity: SeriesGranularity) -> some AxisContent {
+        switch granularity {
+        case .hour:
+            AxisMarks(values: .stride(by: .hour, count: 6)) { _ in
+                AxisGridLine().foregroundStyle(Theme.stroke)
+                AxisValueLabel(format: .dateTime.hour(.defaultDigits(amPM: .narrow)))
+                    .font(.system(size: 8, design: .rounded))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+        case .day:
+            AxisMarks(values: .stride(by: .day)) { _ in
+                AxisGridLine().foregroundStyle(Theme.stroke)
+                AxisValueLabel(format: .dateTime.weekday(.narrow))
+                    .font(.system(size: 8, design: .rounded))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+        case .month:
+            AxisMarks(values: .stride(by: .month)) { _ in
+                AxisGridLine().foregroundStyle(Theme.stroke)
+                AxisValueLabel(format: .dateTime.month(.abbreviated))
+                    .font(.system(size: 8, design: .rounded))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+        }
     }
 
     @AxisContentBuilder
@@ -389,6 +443,7 @@ struct UsageChartView: View {
             let remote = try await RemoteHistoryReader.fetchAnalytics(
                 sessionSince: sessionSince, weeklySince: weeklySince,
                 monthSince: monthSince, lookbackSince: lookbackSince,
+                granularity: lookback.granularity.rawValue,
                 baseURL: baseURL
             )
             NSLog("[ClaudeUsageNotch] chart: loaded analytics from remote \(baseURL.absoluteString)")
@@ -494,7 +549,7 @@ private struct CostSection: View {
             Spacer(minLength: 0)
             statPill(label: "Session", value: formatCost(data.sessionCost))
             statPill(label: "Today", value: formatCost(data.todayCost))
-            statPill(label: "Weekly", value: formatCost(data.weeklyCost))
+            statPill(label: "Week", value: formatCost(data.weeklyCost))
             statPill(label: "Month", value: formatCost(data.monthCost))
             statPill(label: "Lifetime", value: formatCost(data.lifetimeCost))
             statPill(label: "Avg / day", value: formatCost(data.averageDailyCost))
