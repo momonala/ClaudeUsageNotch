@@ -72,7 +72,7 @@ public final class UsageCoordinator {
             .sink { [weak self] interval in self?.usageService.updateInterval(interval) }
             .store(in: &cancellables)
 
-        if isConfigured() {
+        if authService.hasAnyConfiguredProvider() {
             appState.authStatus = .valid
             usageService.start(interval: appSettings.pollIntervalSeconds)
         } else {
@@ -98,10 +98,6 @@ public final class UsageCoordinator {
     }
 
     // MARK: - Helpers
-
-    private func isConfigured() -> Bool {
-        authService.cliOAuthAvailable() || authService.hasCredential()
-    }
 
     private func handleNotifications(for snapshot: ServiceUsageSnapshot) {
         guard appSettings.notificationsEnabled else { return }

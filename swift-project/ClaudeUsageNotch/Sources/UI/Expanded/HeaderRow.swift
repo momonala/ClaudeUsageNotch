@@ -94,18 +94,4 @@ struct HeaderRow: View {
         .padding(.trailing, 6)
     }
 
-    private var syncSubtitle: String {
-        switch appState.syncStatus {
-        case .idle:           return "Idle"
-        case .syncing:        return "Syncing…"
-        case .ok(let at):     return "Updated \(relative(at))"
-        case .error(let e):   return e.description
-        }
-    }
-
-    private func relative(_ date: Date) -> String {
-        let f = RelativeDateTimeFormatter()
-        f.unitsStyle = .abbreviated
-        return f.localizedString(for: date, relativeTo: Date())
-    }
 }

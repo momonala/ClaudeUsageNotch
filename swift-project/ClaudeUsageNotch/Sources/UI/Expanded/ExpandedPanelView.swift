@@ -56,13 +56,9 @@ struct ExpandedPanelView: View {
             .opacity(appeared ? 1 : 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(
-            VStack(spacing: 0) {
-                Color.black.frame(height: notchH)
-                Spacer()
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        )
+        .background(alignment: .top) {
+            Color.black.frame(height: notchH)
+        }
         .task {
             try? await Task.sleep(nanoseconds: 140_000_000)
             withAnimation(.spring(response: Theme.springResponse, dampingFraction: Theme.springDamping)) {
@@ -74,15 +70,19 @@ struct ExpandedPanelView: View {
         })
     }
 
+    private static let relativeDateFormatter: RelativeDateTimeFormatter = {
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .abbreviated
+        return f
+    }()
+
     @ViewBuilder
     private var lastUpdatedFooter: some View {
         let label: String = {
             if case .ok(let at) = appState.syncStatus {
                 let secs = Int(Date().timeIntervalSince(at))
                 if secs < 5 { return "Last updated just now" }
-                let f = RelativeDateTimeFormatter()
-                f.unitsStyle = .abbreviated
-                return "Last updated \(f.localizedString(for: at, relativeTo: Date()))"
+                return "Last updated \(Self.relativeDateFormatter.localizedString(for: at, relativeTo: Date()))"
             }
             if case .syncing = appState.syncStatus { return "Syncing…" }
             return "Not yet synced"
@@ -98,13 +98,14 @@ struct ExpandedPanelView: View {
     }
 
     private var panelHeight: CGFloat {
+        let notchH = ScreenUtils.notchHeight
         switch appState.expandedMode {
         case .usage:
             let base: CGFloat = 120
             let incidentExtra: CGFloat = appState.activeIncident != nil ? 32 : 0
             return base + incidentExtra
         case .analytics: return 590
-        case .settings:  return 340
+        case .settings:  return notchH + 303
         }
     }
 }

@@ -13,10 +13,10 @@ struct TokenTypeBreakdown {
     let cacheCreateFraction: Double
     let cacheReadFraction:   Double
 
-    var inputTokens:       Int
-    var outputTokens:      Int
-    var cacheCreateTokens: Int
-    var cacheReadTokens:   Int
+    let inputTokens:       Int
+    let outputTokens:      Int
+    let cacheCreateTokens: Int
+    let cacheReadTokens:   Int
 }
 
 struct DailyValue: Identifiable {

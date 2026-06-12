@@ -80,9 +80,7 @@ final class StatusPageService {
         }
 
         let level = IncidentLevel(indicator: dto.status.indicator)
-        let summary = dto.status.description?.isEmpty == false
-            ? dto.status.description!
-            : level.defaultSummary
+        let summary = dto.status.description.flatMap { $0.isEmpty ? nil : $0 } ?? level.defaultSummary
         return ServiceIncident(level: level, summary: summary)
     }
 }

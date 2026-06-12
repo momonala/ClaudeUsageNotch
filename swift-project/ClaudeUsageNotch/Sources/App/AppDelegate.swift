@@ -31,7 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         historySync = HistorySyncService(settings: appSettings)
         historySync?.start()
 
-        // Delay 5 s after wake so Wi-Fi has time to reconnect before the first fetch.
+        // Delay 10 s after wake so Wi-Fi has time to reconnect before the first fetch.
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification,
             object: nil,

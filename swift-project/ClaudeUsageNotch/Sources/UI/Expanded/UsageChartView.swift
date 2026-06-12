@@ -282,8 +282,8 @@ struct UsageChartView: View {
     private var yLabel: String { showQuota ? "% Quota" : "Tokens" }
     private func yValue(_ b: TimeBucket) -> Double { showQuota ? b.quotaPct : Double(b.tokens) }
 
-    private var sessionChart: some View {
-        Chart(sessionBuckets) { b in
+    private func tokenChart(_ data: [TimeBucket], @AxisContentBuilder xAxis: () -> some AxisContent) -> some View {
+        Chart(data) { b in
             AreaMark(x: .value("Time", b.id), y: .value(yLabel, yValue(b)))
                 .foregroundStyle(LinearGradient(
                     colors: [Theme.accentWarm.opacity(0.55), Theme.accentWarm.opacity(0.05)],
@@ -295,28 +295,13 @@ struct UsageChartView: View {
                 .lineStyle(StrokeStyle(lineWidth: 1.5))
                 .interpolationMethod(.catmullRom)
         }
-        .chartXAxis { hourAxis }
+        .chartXAxis(content: xAxis)
         .chartYAxis { yAxis }
         .chartPlotStyle { $0.background(Color.clear) }
     }
 
-    private var weeklyChart: some View {
-        Chart(weeklyBuckets) { b in
-            AreaMark(x: .value("Day", b.id), y: .value(yLabel, yValue(b)))
-                .foregroundStyle(LinearGradient(
-                    colors: [Theme.accentWarm.opacity(0.55), Theme.accentWarm.opacity(0.05)],
-                    startPoint: .top, endPoint: .bottom
-                ))
-                .interpolationMethod(.catmullRom)
-            LineMark(x: .value("Day", b.id), y: .value(yLabel, yValue(b)))
-                .foregroundStyle(Theme.accentWarm)
-                .lineStyle(StrokeStyle(lineWidth: 1.5))
-                .interpolationMethod(.catmullRom)
-        }
-        .chartXAxis { dayAxis }
-        .chartYAxis { yAxis }
-        .chartPlotStyle { $0.background(Color.clear) }
-    }
+    private var sessionChart: some View { tokenChart(sessionBuckets) { hourAxis } }
+    private var weeklyChart:  some View { tokenChart(weeklyBuckets)  { dayAxis  } }
 
     private var costChart: some View {
         seriesChart(analytics.dailyCost, yLabel: "Cost") { String(format: "$%.2f", $0) }

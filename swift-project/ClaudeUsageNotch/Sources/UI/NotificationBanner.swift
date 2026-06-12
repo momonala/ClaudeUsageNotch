@@ -41,7 +41,7 @@ final class NotificationBannerController {
             backing: .buffered,
             defer: false
         )
-        panel.level           = NSWindow.Level(rawValue: Int(NSWindow.Level.popUpMenu.rawValue))
+        panel.level           = .popUpMenu
         panel.isOpaque        = false
         panel.backgroundColor = .clear
         panel.hasShadow       = true

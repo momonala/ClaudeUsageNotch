@@ -30,7 +30,9 @@ final class NotchWindowController: NSObject {
         static let compactStripHeight: CGFloat = Theme.compactStripHeight
         static let expandedContentHeight: CGFloat         = 184
         static let expandedContentHeightChart: CGFloat    = 618
-        static let expandedContentHeightSettings: CGFloat = 258
+        static let expandedContentHeightSettings: CGFloat = 303
+        /// Minimum height delta above compact that indicates the panel is already expanded.
+        static let expandedHeightThreshold: CGFloat = 80
         static let hoverHitInset: CGFloat    = -4
 
         static let expandPhase1Duration: TimeInterval = 0.16
@@ -81,7 +83,7 @@ final class NotchWindowController: NSObject {
 
         // .popUpMenu (101) sits above the menu bar compositor (mainMenu = 24),
         // which is required to render inside the notch area on MacBook.
-        panel.level = NSWindow.Level(rawValue: Int(NSWindow.Level.popUpMenu.rawValue))
+        panel.level = .popUpMenu
         panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
         panel.isOpaque         = false
         panel.backgroundColor  = .clear
@@ -234,7 +236,7 @@ final class NotchWindowController: NSObject {
         }
 
         let isExpanding = (state == .expandedHover || state == .expandedPinned)
-                       && panel.frame.height < (ScreenUtils.notchHeight + 80)
+                       && panel.frame.height < (ScreenUtils.notchHeight + Layout.expandedHeightThreshold)
 
         if isExpanding {
             // Phase 1: stretch width first (pill → wide strip)

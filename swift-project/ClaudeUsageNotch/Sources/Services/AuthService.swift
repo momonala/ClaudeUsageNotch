@@ -26,10 +26,6 @@ public final class AuthService {
 
     // MARK: - Claude
 
-    public var claudeHasOAuthAvailable: Bool {
-        ClaudeOAuthCredential.isAvailable()
-    }
-
     /// Sanitizes, validates, then stores the Claude session cookie.
     /// Returns a user-facing error string if validation fails, nil on success.
     @discardableResult
