@@ -3,10 +3,18 @@ import Security
 
 /// Reads Claude OAuth credentials, preferring the Claude CLI / Claude Code login.
 ///
-/// Two sources, in order:
+/// Sources, in order:
 ///   1. `~/.claude/credentials.json` (older Claude CLI file format)
-///   2. macOS Keychain item `Claude Code-credentials` (current Claude Code) —
+///   2. App-owned mirror (`mirror`) — our own copy of the CLI blob, read silently
+///   3. macOS Keychain item `Claude Code-credentials` (current Claude Code) —
 ///      a JSON blob with `claudeAiOauth.accessToken` + top-level `organizationUuid`.
+///
+/// The CLI item (3) is owned by the Claude CLI, so reading it cross-app prompts for
+/// access whenever the CLI rewrites the item on token refresh (which resets its ACL).
+/// To avoid prompting on every poll/launch, a successful read is copied into an
+/// app-owned Keychain item (2); since we own that item, reads are silent. We only
+/// fall back to the CLI item — and risk a prompt — once the mirrored token expires,
+/// i.e. roughly once per token rotation rather than on every read.
 ///
 /// Using this scoped, auto-refreshed OAuth token avoids the full browser session
 /// cookie. When the org id is known (Keychain case) the provider can skip the
@@ -24,8 +32,24 @@ struct ClaudeOAuthCredential {
     // MARK: - Reading
 
     static func readFromDisk() -> ClaudeOAuthCredential? {
+        // 1. Legacy file format (older Claude CLI). Never prompts.
         if let data = fileData(), let cred = parse(from: data) { return cred }
-        if let data = keychainData(), let cred = parse(from: data) { return cred }
+
+        // 2. App-owned mirror — a copy of the CLI blob this app wrote itself, so
+        //    reads are silent (no ACL prompt). Use it while the token is unexpired.
+        if let data = mirror.get(account: mirrorAccount),
+           let cred = parse(from: data), !cred.isLikelyExpired {
+            return cred
+        }
+
+        // 3. Cross-app CLI Keychain item. This is the read that may prompt, because
+        //    the item is owned by the Claude CLI and its ACL drops us whenever the
+        //    CLI rewrites it on token refresh. Re-mirror on success so subsequent
+        //    reads stay silent until the token next rotates.
+        if let data = keychainData(), let cred = parse(from: data) {
+            mirror.set(account: mirrorAccount, data: data)
+            return cred
+        }
         return nil
     }
 
@@ -87,6 +111,12 @@ struct ClaudeOAuthCredential {
     }
 
     private static let keychainService = "Claude Code-credentials"
+
+    /// App-owned mirror of the CLI OAuth blob. Reads are silent (we created the
+    /// item), so polling never re-triggers the cross-app ACL prompt while the
+    /// mirrored token is still valid.
+    private static let mirror = KeychainStore(service: "com.claudeusagenotch.oauth-mirror")
+    private static let mirrorAccount = "claude-oauth"
 
     /// Decrypts the Keychain blob (may prompt for access on first read).
     private static func keychainData() -> Data? {

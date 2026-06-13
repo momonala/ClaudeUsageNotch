@@ -190,6 +190,16 @@ Claude auth is tried in this order:
 
 Onboarding skips the cookie step when CLI OAuth is detected.
 
+The `Claude Code-credentials` Keychain item is owned by the Claude CLI, so reading it
+is a cross-app access that prompts whenever the CLI rewrites the item on token refresh
+(a rewrite resets its ACL). To avoid prompting on every poll, `ClaudeOAuthCredential`
+mirrors a successful read into an app-owned Keychain item and reads from that mirror
+while the token is unexpired, only falling back to the CLI item (and a possible prompt)
+once the mirrored token rotates. The mirror stays silent across rebuilds **only with a
+stable code signature** — build with `SIGN_IDENTITY` set, not an ad-hoc Mode A build.
+`UsageService` also retries auth failures on a short fixed interval instead of its
+exponential backoff, so the access prompt re-surfaces in seconds rather than minutes.
+
 ---
 
 ## State persistence
