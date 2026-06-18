@@ -1,0 +1,43 @@
+# macOS
+.DS_Store
+
+# IDE / editors
+.idea/
+.vscode/
+
+# Swift / Xcode
+swift-project/ClaudeUsageNotch/build/
+swift-project/ClaudeUsageNotch/.derived-data/
+*.xcodeproj/
+*.xcuserstate
+.swiftpm/
+*.app/
+
+# Root build script (local only)
+/build.sh
+
+# Dev-only
+tmp/
+.claude/
+
+# Credentials / secrets
+.env
+.env.*
+credentials.json
+*token.json*
+*credentials.json*
+*.key
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Database (local runtime data)
+*.db
+*.sqlite
+
+# Build artefacts
+build/

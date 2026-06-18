@@ -1,0 +1,3 @@
+[submodule "claude-usage-notch-server"]
+	path = claude-usage-notch-server
+	url = https://github.com/momonala/claude-usage-notch-server.git
