@@ -68,19 +68,13 @@ final class ClaudeProvider {
         // ── Tier 1: OAuth ──────────────────────────────────────────────────
         if let oauthCred = ClaudeOAuthCredential.readFromDisk(),
            !oauthCred.isLikelyExpired {
-            // Claude Code stores the org id alongside the token — use it directly
-            // and skip the bootstrap round-trip.
-            if let orgId = oauthCred.orgId {
-                return AuthContext(auth: .bearer(oauthCred.accessToken), orgId: orgId)
-            }
-            do {
-                let orgId = try await bootstrapOrgId(auth: .bearer(oauthCred.accessToken))
-                return AuthContext(auth: .bearer(oauthCred.accessToken), orgId: orgId)
-            } catch ProviderError.unauthorized {
-                // Token rejected — fall through to cookie tier
-            }
-            // Other errors (network, decoding) propagate immediately; they're not
-            // auth failures and retrying with the cookie won't help.
+            // The OAuth usage endpoint (api.anthropic.com/api/oauth/usage) is
+            // org-agnostic — fetchUsage's .bearer branch never reads orgId. So we
+            // skip the claude.ai/api/bootstrap round-trip entirely: it exists only
+            // to populate an org id the bearer path doesn't use, and it's now
+            // Cloudflare-gated (returns 403 to non-browser clients), which would
+            // otherwise look like a rejected token and drop us to the cookie tier.
+            return AuthContext(auth: .bearer(oauthCred.accessToken), orgId: oauthCred.orgId ?? "")
         }
 
         // ── Tier 2: Session cookie ─────────────────────────────────────────
