@@ -68,6 +68,26 @@ public struct UsageWindow: Codable, Hashable {
     /// Whether the window is at or past its limit.
     public var isAtLimit: Bool { percentUsed >= 1.0 }
 
+    /// Whether `resetAt` has passed, meaning a fresh cycle should already be
+    /// underway even if the last poll hasn't confirmed it yet.
+    public func hasResetPassed(now: Date = Date()) -> Bool {
+        guard let resetAt else { return false }
+        return now >= resetAt
+    }
+
+    /// Usage percent to display: the last polled value, optimistically zeroed
+    /// once `resetAt` has passed. A poll always lands within moments of a
+    /// reset, so the UI shouldn't stay pinned to the stale pre-reset value
+    /// in the meantime.
+    public func effectivePercentUsed(now: Date = Date()) -> Double {
+        hasResetPassed(now: now) ? 0 : percentUsed
+    }
+
+    /// Health classification for `effectivePercentUsed`.
+    public func effectiveStatus(now: Date = Date()) -> UsageStatus {
+        hasResetPassed(now: now) ? .healthy : status
+    }
+
     /// Known rolling-window length for this type. Nil when pace can't be inferred.
     public var windowDuration: TimeInterval? {
         switch type {

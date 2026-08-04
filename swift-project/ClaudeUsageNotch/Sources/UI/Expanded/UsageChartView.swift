@@ -184,8 +184,8 @@ struct UsageChartView: View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
                 sectionHeader("SESSION · 5H",
-                              pct: sessionWindow?.percentUsed ?? 0,
-                              status: sessionWindow?.status ?? .unknown,
+                              pct: sessionWindow?.effectivePercentUsed() ?? 0,
+                              status: sessionWindow?.effectiveStatus() ?? .unknown,
                               nextReset: sessionWindow?.resetAtLabel())
                     .padding(.top, 8)
                 sessionChart
@@ -194,8 +194,8 @@ struct UsageChartView: View {
 
                 divider.padding(.top, 10)
                 sectionHeader("WEEK · 7D",
-                              pct: weeklyWindow?.percentUsed ?? 0,
-                              status: weeklyWindow?.status ?? .unknown,
+                              pct: weeklyWindow?.effectivePercentUsed() ?? 0,
+                              status: weeklyWindow?.effectiveStatus() ?? .unknown,
                               nextReset: weeklyWindow?.resetAtLabel())
                     .padding(.top, 8)
                 weeklyChart
@@ -348,12 +348,12 @@ struct UsageChartView: View {
     private var sessionChart: some View {
         tokenChart(sessionBuckets, resetTimes: sessionResetTimes, nextReset: sessionNextReset,
                    expectedPct: sessionWindow?.expectedProgress().map { $0 * 100 },
-                   currentPct: (sessionWindow?.percentUsed ?? 0) * 100) { hourAxis }
+                   currentPct: (sessionWindow?.effectivePercentUsed() ?? 0) * 100) { hourAxis }
     }
     private var weeklyChart: some View {
         tokenChart(weeklyBuckets, resetTimes: weeklyResetTimes, nextReset: weeklyNextReset,
                    expectedPct: weeklyWindow?.expectedProgress().map { $0 * 100 },
-                   currentPct: (weeklyWindow?.percentUsed ?? 0) * 100) { dayAxis }
+                   currentPct: (weeklyWindow?.effectivePercentUsed() ?? 0) * 100) { dayAxis }
     }
 
     private var costChart: some View {
@@ -560,8 +560,8 @@ struct UsageChartView: View {
             )
             NSLog("[ClaudeUsageNotch] chart: loaded analytics from remote \(baseURL.absoluteString)")
 
-            let sessionPct      = sessionWindow?.percentUsed ?? 0
-            let weeklyPct       = weeklyWindow?.percentUsed  ?? 0
+            let sessionPct      = sessionWindow?.effectivePercentUsed() ?? 0
+            let weeklyPct       = weeklyWindow?.effectivePercentUsed() ?? 0
             let sessionReset    = sessionWindow?.resetAt
             let sessionDuration = sessionWindow?.windowDuration
             let weeklyReset     = weeklyWindow?.resetAt
@@ -708,10 +708,18 @@ private func realTimeBuckets(
 ) -> [TimeBucket] {
     var nextReading = 0
     var heldPct: Double = 0
+    var heldResetAt: Date? = nil
     return buckets.map { b in
         while nextReading < quotaHistory.count, quotaHistory[nextReading].timestamp <= b.timestamp {
             heldPct = quotaHistory[nextReading].percentUsed * 100.0
+            heldResetAt = quotaHistory[nextReading].resetsAt
             nextReading += 1
+        }
+        // The held reading's own reset time has passed by this bucket — its
+        // window already rolled over, so show 0 instead of pinning to the
+        // stale pre-reset value until a fresh post-reset poll lands.
+        if let heldResetAt, b.timestamp >= heldResetAt {
+            return TimeBucket(id: b.timestamp, tokens: b.tokens, quotaPct: 0)
         }
         return TimeBucket(id: b.timestamp, tokens: b.tokens, quotaPct: heldPct)
     }

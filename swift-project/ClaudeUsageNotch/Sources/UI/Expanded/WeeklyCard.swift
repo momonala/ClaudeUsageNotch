@@ -6,8 +6,8 @@ struct WeeklyCard: View {
     var subtitle: String? = nil
 
     var body: some View {
-        let pct    = window.percentUsed
-        let status = window.status
+        let pct    = window.effectivePercentUsed()
+        let status = window.effectiveStatus()
         let color  = status.color
 
         VStack(alignment: .leading, spacing: 3) {

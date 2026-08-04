@@ -57,12 +57,12 @@ struct CompactView: View {
                         if let weekly = appState.snapshot?.weeklyWindow {
                             HStack(spacing: 6) {
                                 CompactProgressBar(
-                                    progress: weekly.percentUsed,
+                                    progress: weekly.effectivePercentUsed(),
                                     color: weeklyColor,
                                     expectedProgress: weekly.expectedProgress()
                                 )
                                     .frame(height: Theme.barHeightNotch)
-                                Text("\(Int((weekly.percentUsed * 100).rounded()))%")
+                                Text("\(Int((weekly.effectivePercentUsed() * 100).rounded()))%")
                                     .font(Theme.notchFont)
                                     .foregroundColor(Theme.textLabel)
                                     .frame(minWidth: 25, alignment: .trailing)
@@ -89,6 +89,6 @@ struct CompactView: View {
 
     private var statusColor: Color { appState.sessionStatus.color }
     private var weeklyColor: Color {
-        (appState.snapshot?.weeklyWindow?.status ?? .healthy).color
+        (appState.snapshot?.weeklyWindow?.effectiveStatus() ?? .healthy).color
     }
 }

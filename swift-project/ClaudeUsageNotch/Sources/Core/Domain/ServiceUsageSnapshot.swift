@@ -41,7 +41,7 @@ public struct ServiceUsageSnapshot: Codable, Hashable {
     public var shortLabel: String {
         if isStatusOnly { return "Active" }
         if isBalance    { return sessionWindow.label ?? "—" }
-        return "\(Int((sessionWindow.percentUsed * 100).rounded()))%"
+        return "\(Int((sessionWindow.effectivePercentUsed() * 100).rounded()))%"
     }
 
     /// Builds a status-only snapshot with no quota endpoint.
@@ -68,9 +68,9 @@ public struct ServiceUsageSnapshot: Codable, Hashable {
     /// The worst status across windows, used for the top-level pill color.
     public var combinedStatus: UsageStatus {
         let candidates: [UsageStatus] = [
-            sessionWindow.status,
-            weeklyWindow?.status ?? .healthy,
-            weeklySonnetWindow?.status ?? .healthy
+            sessionWindow.effectiveStatus(),
+            weeklyWindow?.effectiveStatus() ?? .healthy,
+            weeklySonnetWindow?.effectiveStatus() ?? .healthy
         ]
         if candidates.contains(.critical) { return .critical }
         if candidates.contains(.warning)  { return .warning }

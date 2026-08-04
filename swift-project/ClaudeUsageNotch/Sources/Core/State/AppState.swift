@@ -23,8 +23,8 @@ public final class AppState: ObservableObject {
 
     // MARK: - Convenience
 
-    public var sessionPercent: Double { snapshot?.sessionWindow.percentUsed ?? 0 }
-    public var sessionStatus: UsageStatus { snapshot?.sessionWindow.status ?? .unknown }
+    public var sessionPercent: Double { snapshot?.sessionWindow.effectivePercentUsed() ?? 0 }
+    public var sessionStatus: UsageStatus { snapshot?.sessionWindow.effectiveStatus() ?? .unknown }
     public var sessionResetString: String? { snapshot?.sessionWindow.timeToResetString() }
     public var isAtSessionLimit: Bool { sessionPercent >= 1.0 }
     public var isStatusOnly: Bool { snapshot?.isStatusOnly ?? false }
