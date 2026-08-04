@@ -185,7 +185,8 @@ struct UsageChartView: View {
             VStack(alignment: .leading, spacing: 0) {
                 sectionHeader("SESSION · 5H",
                               pct: sessionWindow?.percentUsed ?? 0,
-                              status: sessionWindow?.status ?? .unknown)
+                              status: sessionWindow?.status ?? .unknown,
+                              nextReset: sessionWindow?.resetAtLabel())
                     .padding(.top, 8)
                 sessionChart
                     .frame(height: 108)
@@ -194,7 +195,8 @@ struct UsageChartView: View {
                 divider.padding(.top, 10)
                 sectionHeader("WEEK · 7D",
                               pct: weeklyWindow?.percentUsed ?? 0,
-                              status: weeklyWindow?.status ?? .unknown)
+                              status: weeklyWindow?.status ?? .unknown,
+                              nextReset: weeklyWindow?.resetAtLabel())
                     .padding(.top, 8)
                 weeklyChart
                     .frame(height: 108)
@@ -275,12 +277,19 @@ struct UsageChartView: View {
     }
 
     @ViewBuilder
-    private func sectionHeader(_ label: String, pct: Double, status: UsageStatus) -> some View {
+    private func sectionHeader(_ label: String, pct: Double, status: UsageStatus, nextReset: String? = nil) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 0) {
             Text(label)
                 .font(Theme.sectionLabelFont)
                 .kerning(Theme.sectionLabelKerning)
                 .foregroundColor(Theme.textSecondary)
+            if let nextReset {
+                Text("· next \(nextReset)")
+                    .font(Theme.sectionLabelFont)
+                    .kerning(Theme.sectionLabelKerning)
+                    .foregroundColor(Theme.textSecondary.opacity(0.6))
+                    .padding(.leading, 4)
+            }
             Spacer()
             if pct > 0 {
                 Text("\(Int((pct * 100).rounded()))%")

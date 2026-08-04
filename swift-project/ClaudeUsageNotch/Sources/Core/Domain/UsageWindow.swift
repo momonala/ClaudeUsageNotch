@@ -149,8 +149,7 @@ public struct UsageWindow: Codable, Hashable {
 
     private static let resetDateFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.timeStyle = .none
-        f.dateStyle = .medium
+        f.dateFormat = "EEE d MMM, h:mm a"
         return f
     }()
 
