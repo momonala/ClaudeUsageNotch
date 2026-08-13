@@ -2,6 +2,7 @@ import SwiftUI
 
 struct InlineSettingsView: View {
     @ObservedObject var appSettings: AppSettings
+    @ObservedObject var appState: AppState
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -9,6 +10,23 @@ struct InlineSettingsView: View {
                 .font(Theme.headerFont)
                 .foregroundColor(Theme.textPrimary)
                 .padding(.bottom, 8)
+
+            sectionTitle("Account")
+            row {
+                Circle()
+                    .fill(accountStatusColor)
+                    .frame(width: 6, height: 6)
+                Text(accountStatusLabel)
+                    .font(.system(size: 11, design: .rounded))
+                    .foregroundColor(Theme.textSecondary)
+                Spacer()
+                Button(accountButtonTitle) { appState.showOnboarding = true }
+                    .buttonStyle(.bordered)
+                    .controlSize(.mini)
+                    .font(.system(size: 11, design: .rounded))
+            }
+
+            rowDivider
 
             sectionTitle("Notifications")
             row {
@@ -83,6 +101,26 @@ struct InlineSettingsView: View {
 
     private var syncDisabled: Bool {
         appSettings.apiBaseURL.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private var accountStatusColor: Color {
+        switch appState.authStatus {
+        case .valid:         return Theme.statusHealthy
+        case .expired:       return Theme.statusWarning
+        case .notConfigured: return Theme.statusUnknown
+        }
+    }
+
+    private var accountStatusLabel: String {
+        switch appState.authStatus {
+        case .valid:         return "Connected"
+        case .expired:       return "Credentials expired"
+        case .notConfigured: return "Not signed in"
+        }
+    }
+
+    private var accountButtonTitle: String {
+        appState.authStatus == .valid ? "Reconnect" : "Sign In"
     }
 
     private func sectionTitle(_ text: String) -> some View {

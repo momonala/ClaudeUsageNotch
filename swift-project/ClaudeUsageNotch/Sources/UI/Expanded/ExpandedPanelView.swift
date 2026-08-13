@@ -43,7 +43,7 @@ struct ExpandedPanelView: View {
                     case .analytics:
                         UsageChartView(appState: appState, appSettings: appSettings)
                     case .settings:
-                        InlineSettingsView(appSettings: appSettings)
+                        InlineSettingsView(appSettings: appSettings, appState: appState)
                     }
 
                     Spacer(minLength: 0)
@@ -105,7 +105,7 @@ struct ExpandedPanelView: View {
             let incidentExtra: CGFloat = appState.activeIncident != nil ? 32 : 0
             return base + incidentExtra
         case .analytics: return 590
-        case .settings:  return notchH + 303
+        case .settings:  return notchH + 351
         }
     }
 }
