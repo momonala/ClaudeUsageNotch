@@ -30,7 +30,7 @@ final class NotchWindowController: NSObject {
         static let compactStripHeight: CGFloat = Theme.compactStripHeight
         static let expandedContentHeight: CGFloat         = 184
         static let expandedContentHeightChart: CGFloat    = 618
-        static let expandedContentHeightSettings: CGFloat = 303
+        static let expandedContentHeightSettings: CGFloat = 351
         /// Minimum height delta above compact that indicates the panel is already expanded.
         static let expandedHeightThreshold: CGFloat = 80
         static let hoverHitInset: CGFloat    = -4
