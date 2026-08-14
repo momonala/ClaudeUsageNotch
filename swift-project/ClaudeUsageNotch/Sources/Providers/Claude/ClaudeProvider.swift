@@ -20,10 +20,6 @@ final class ClaudeProvider {
 
     // MARK: - UsageProvider
 
-    func validateCredentials() async throws {
-        _ = try await resolveAuthContext()
-    }
-
     func fetchUsage() async throws -> ServiceUsageSnapshot {
         let ctx = try await resolveAuthContext()
 

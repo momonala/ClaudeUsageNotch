@@ -258,7 +258,6 @@ struct OnboardingView: View {
         Task {
             do {
                 let provider = ClaudeProvider()
-                try await provider.validateCredentials()
                 let snapshot = try await provider.fetchUsage()
                 await MainActor.run {
                     appState.snapshot = snapshot
