@@ -32,7 +32,7 @@ struct InlineSettingsView: View {
             row {
                 Toggle("", isOn: $appSettings.notificationsEnabled)
                     .toggleStyle(.switch)
-                    .tint(Color(nsColor: .controlAccentColor))
+                    .tint(Theme.accentWarm)
                     .labelsHidden()
                     .fixedSize()
                     .scaleEffect(0.75, anchor: .leading)
@@ -69,7 +69,7 @@ struct InlineSettingsView: View {
             row {
                 Toggle("", isOn: $appSettings.launchAtLogin)
                     .toggleStyle(.switch)
-                    .tint(Color(nsColor: .controlAccentColor))
+                    .tint(Theme.accentWarm)
                     .labelsHidden()
                     .fixedSize()
                     .scaleEffect(0.75, anchor: .leading)

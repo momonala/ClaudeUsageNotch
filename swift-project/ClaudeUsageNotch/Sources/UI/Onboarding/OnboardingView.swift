@@ -181,6 +181,7 @@ struct OnboardingView: View {
                 .foregroundColor(Theme.textPrimary)
             Toggle("Alert me at 25/50/75/90% usage", isOn: $appSettings.notificationsEnabled)
                 .toggleStyle(.switch)
+                .tint(Theme.accentWarm)
                 .foregroundColor(Theme.textPrimary)
             Text("You can change this any time from Settings.")
                 .font(Theme.captionFont)
