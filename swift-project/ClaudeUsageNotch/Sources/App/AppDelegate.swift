@@ -87,10 +87,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             appSettings: appSettings,
             onCredentialsSaved: { [weak self] in
                 self?.coordinator?.onCredentialsSaved()
+            },
+            onContentHeightChange: { [weak self] height in
+                self?.resizeOnboardingWindow(toContentHeight: height)
             }
         )
         let window = NSWindow(
-            contentRect: NSRect(origin: .zero, size: NSSize(width: 420, height: 480)),
+            contentRect: NSRect(origin: .zero, size: NSSize(width: 420, height: 365)),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -104,6 +107,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         onboardingWindow = window
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
+    }
+
+    /// Resizes the onboarding window to hug the current step's content instead
+    /// of leaving empty space below shorter steps. Keeps the top edge anchored
+    /// so the header/progress dots don't jump around as the height changes.
+    private func resizeOnboardingWindow(toContentHeight height: CGFloat) {
+        guard let window = onboardingWindow else { return }
+        let targetContentSize = NSSize(width: 420, height: height)
+        let targetFrame = window.frameRect(forContentRect: NSRect(origin: .zero, size: targetContentSize))
+        guard abs(targetFrame.height - window.frame.height) > 0.5 else { return }
+        var newFrame = window.frame
+        let deltaHeight = targetFrame.height - newFrame.height
+        newFrame.size.height = targetFrame.height
+        newFrame.origin.y -= deltaHeight
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.22
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            window.animator().setFrame(newFrame, display: true)
+        }
     }
 
     func windowWillClose(_ notification: Notification) {

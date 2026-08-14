@@ -82,7 +82,7 @@ struct InlineSettingsView: View {
                 TextField("http://host:5014", text: $appSettings.apiBaseURL)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 11, design: .monospaced))
-                    .frame(width: 220)
+                    .frame(maxWidth: .infinity)
             }
             row {
                 Picker("", selection: $appSettings.syncIntervalSeconds) {
@@ -153,14 +153,16 @@ struct InlineSettingsView: View {
                     if on { appSettings.thresholds.removeAll { $0 == t } }
                     else  { appSettings.thresholds.append(t) }
                 }
-                .buttonStyle(.borderless)
-                .font(.system(size: 11, design: .rounded))
-                .foregroundColor(on ? Theme.accentWarm : Theme.textSecondary.opacity(0.6))
-                .padding(.horizontal, 4)
+                .buttonStyle(.plain)
+                .font(.system(size: 11, weight: on ? .semibold : .regular, design: .rounded))
+                .foregroundColor(on ? .white : Theme.textSecondary)
+                .padding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(on ? Theme.accentWarm.opacity(0.15) : Color.clear)
+                    Capsule().fill(on ? Theme.accentWarm : Theme.surfaceElevated)
+                )
+                .overlay(
+                    Capsule().strokeBorder(Theme.stroke, lineWidth: on ? 0 : 0.75)
                 )
             }
         }

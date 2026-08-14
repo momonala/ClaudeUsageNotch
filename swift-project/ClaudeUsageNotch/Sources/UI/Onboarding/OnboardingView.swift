@@ -8,6 +8,9 @@ struct OnboardingView: View {
     @ObservedObject var appState: AppState
     @ObservedObject var appSettings: AppSettings
     let onCredentialsSaved: () -> Void
+    /// Called whenever the ideal window content height changes, so the host
+    /// window can resize to fit instead of leaving empty space below short steps.
+    var onContentHeightChange: (CGFloat) -> Void = { _ in }
     private func close() { appState.showOnboarding = false }
 
     @State private var step: Step = .welcome
@@ -45,11 +48,36 @@ struct OnboardingView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                Spacer()
                 navButtons
             }
             .padding(20)
         }
+        .onAppear { onContentHeightChange(windowContentHeight) }
+        .onChange(of: step) { _ in onContentHeightChange(windowContentHeight) }
+        .onChange(of: validateError) { _ in onContentHeightChange(windowContentHeight) }
+    }
+
+    // MARK: - Sizing
+
+    /// Chrome shared by every step: header row + progress dots + nav buttons
+    /// + the VStack spacing between them + the outer 20pt padding.
+    private static let chromeHeight: CGFloat = 155
+
+    /// Ideal content height for the current step, so the onboarding window can
+    /// hug its content instead of leaving a fixed-size gap below shorter steps.
+    private var windowContentHeight: CGFloat {
+        let stepHeight: CGFloat
+        switch step {
+        case .welcome:
+            stepHeight = 210
+        case .credential:
+            stepHeight = usesDetectedOAuth() ? 140 : 225
+        case .validate:
+            stepHeight = validateError == nil ? 85 : 135
+        case .notifications:
+            stepHeight = 90
+        }
+        return Self.chromeHeight + stepHeight
     }
 
     // MARK: - Step views
