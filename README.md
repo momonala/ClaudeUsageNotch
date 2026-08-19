@@ -8,6 +8,8 @@ The notch panel works like iOS Dynamic Island: the top portion sits inside the p
 
 ## Build
 
+For local iteration, `./build.sh` from the repo root kills any running instance, builds a signed binary (Mode A, with the maintainer's `SIGN_IDENTITY` baked in), and relaunches the app. For a from-scratch build or a different signing identity, use the modes below directly.
+
 **Mode A — no Xcode required (default)**
 
 ```bash
@@ -75,7 +77,9 @@ Sources/
 │   │   ├── ServiceUsageSnapshot.swift
 │   │   ├── UsageRecord.swift      Token-level record parsed from JSONL history
 │   │   ├── UsageWindow.swift      Session / weekly windows, pace, reset helpers
-│   │   └── Status.swift           UsageStatus, ProviderError, AuthStatus, SyncStatus
+│   │   ├── Status.swift           UsageStatus, ProviderError, AuthStatus, SyncStatus
+│   │   ├── AnalyticsData.swift    Cost/token/model/project/skill breakdowns for the analytics chart
+│   │   └── QuotaSnapshotPayload.swift  Payload POSTed to the sync server's quota_snapshots table
 │   └── State/
 │       ├── AppState.swift         Runtime state; snapshots, notch state, incidents
 │       │                          Also defines ExpandedMode (.usage | .analytics | .settings)
@@ -118,10 +122,10 @@ Sources/
     │   ├── SessionCard.swift
     │   ├── WeeklyCard.swift
     │   ├── ResetSubtitleRow.swift   Countdown · reset time/date · expected usage
-    │   ├── UsageChartView.swift     Bar chart of token consumption; session + weekly views
+    │   ├── UsageChartView.swift     Cost/token analytics: model/project/skill breakdowns, daily & hourly charts
     │   └── InlineSettingsView.swift Settings rendered inline in the notch panel
     ├── Onboarding/OnboardingView.swift
-    └── Theme/                       Theme · BrandIcon · NotchPillShape · RetroMascot
+    └── Theme/                       Theme · BrandIcon · GlassBackground/NotchPillShape · RetroMascot
 ```
 
 ---
@@ -155,7 +159,7 @@ UsageChartView (analytics mode only; not part of the poll loop)
 
 `AppState` is the primary `ObservableObject` for runtime data. `AppSettings` holds persisted preferences separately so settings changes don't re-trigger usage observers.
 
-The analytics chart does not poll — on switching to analytics mode it fetches pre-aggregated analytics from the sync server (see [Sync server](#sync-server-optional)), with a 60-second in-memory cache to avoid re-fetching on hover-away/return. It requires `apiBaseURL`; there is no local fallback, so with no sync server configured (or an unreachable one) the chart shows nothing/an error rather than re-parsing local files.
+The analytics chart does not poll — on switching to analytics mode it fetches pre-aggregated analytics from the sync server (see [Sync server](#sync-server-optional)), with a 60-second in-memory cache to avoid re-fetching on hover-away/return.
 
 ---
 
@@ -166,7 +170,7 @@ The analytics chart does not poll — on switching to analytics mode it fetches 
 | Mode | Content |
 |------|---------|
 | `.usage` | Session card + weekly card + reset countdown |
-| `.analytics` | Bar chart of token consumption over session or week (`UsageChartView`) |
+| `.analytics` | Cost/token breakdowns by model, project, and skill, plus daily/hourly activity charts (`UsageChartView`, backed by `AnalyticsData`) |
 | `.settings` | Inline settings: poll interval, notification thresholds, hide toggle |
 
 Mode buttons live in `HeaderRow`. Settings are no longer a separate window — they render directly in the notch panel.
@@ -243,17 +247,13 @@ merges into one deduped table regardless of which machine produced a given turn.
 
 ### Quota snapshots — real history for the % Quota chart
 
-`UsageChartView`'s "% Quota" toggle used to be a synthetic reconstruction: it scaled
-each time bucket's cumulative token share by the *current* poll's percentage, since
-the server only ever stored token counts, never the percentage Claude actually reports.
-`QuotaSyncService` closes that gap — on every successful poll, it POSTs the live
-`five_hour`/`seven_day` utilization straight to `quota_snapshots`
-(`source` = hostname, mainly useful when several laptops poll the same account).
-`GET /api/analytics` returns this as `session_quota_history` / `weekly_quota_history`;
-`UsageChartView` plots it as a step function (each reading held until the next one)
-and only falls back to the old token-based estimate where no real reading exists yet
-— e.g. for the stretch of history that predates this feature, or before the app has
-been open long enough to cover the chart's full lookback span.
+On every successful poll, `QuotaSyncService` POSTs the live `five_hour`/`seven_day`
+utilization straight to `quota_snapshots` (`source` = hostname, useful when several
+laptops poll the same account). `GET /api/analytics` returns this as
+`session_quota_history` / `weekly_quota_history`; `UsageChartView`'s "% Quota" toggle
+plots it as a step function (each reading held until the next one), falling back to a
+token-share estimate only where no real reading exists yet (history predating this
+feature, or before the app has been open long enough to cover the chart's lookback).
 
 ---
 
