@@ -81,6 +81,7 @@ struct RemoteAnalytics: Decodable {
     let weeklyBuckets:    [BucketDTO]
     let sessionQuotaHistory: [QuotaPointDTO]
     let weeklyQuotaHistory:  [QuotaPointDTO]
+    let creditQuotaHistory:  [QuotaPointDTO]
 
     enum CodingKeys: String, CodingKey {
         case sessionCost      = "session_cost"
@@ -103,6 +104,7 @@ struct RemoteAnalytics: Decodable {
         case weeklyBuckets    = "weekly_buckets"
         case sessionQuotaHistory = "session_quota_history"
         case weeklyQuotaHistory  = "weekly_quota_history"
+        case creditQuotaHistory  = "credit_quota_history"
     }
 
     func toAnalyticsData() -> AnalyticsData {

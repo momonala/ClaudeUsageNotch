@@ -40,6 +40,7 @@ enum Theme {
     // Status cards (expanded panel)
     static let cardTitleFont    = Font.system(size: 12, weight: .semibold, design: .rounded)
     static let cardSubtitleFont = Font.system(size: 10,                    design: .rounded)
+    static let cardResetDateFont = Font.system(size: 9,                    design: .rounded)
     static let cardValueFont    = Font.system(size: 14, weight: .bold,     design: .monospaced)
     static let weeklyValueFont  = Font.system(size: 13, weight: .bold,     design: .monospaced)
 
@@ -52,7 +53,11 @@ enum Theme {
     // MARK: - Layout
 
     /// Height of the visible strip below the hardware notch in compact mode.
-    static let compactStripHeight: CGFloat = 22
+    /// Must match the content height CompactView actually lays out (2 bar
+    /// rows), or the top row renders partially inside the hidden notch area.
+    static let compactStripHeight: CGFloat = 28
+    /// Extra strip height for the optional third (credit) bar row.
+    static let compactStripHeightCredit: CGFloat = 12
 
     // MARK: - Progress bar
 

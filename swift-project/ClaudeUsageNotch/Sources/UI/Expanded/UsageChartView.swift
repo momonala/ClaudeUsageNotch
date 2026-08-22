@@ -64,11 +64,14 @@ enum SeriesGranularity: String {
 private struct ChartCache {
     var sessionBuckets:    [TimeBucket]   = []
     var weeklyBuckets:     [TimeBucket]   = []
+    var creditBuckets:     [TimeBucket]   = []
     var analytics:         AnalyticsData  = .empty
     var sessionResetTimes: [Date]         = []
     var weeklyResetTimes:  [Date]         = []
+    var creditResetTimes:  [Date]         = []
     var sessionNextReset:  Date?
     var weeklyNextReset:   Date?
+    var creditNextReset:   Date?
     var cachedAt:          Date           = .distantPast
     var period:            LookbackPeriod = .month
 
@@ -98,6 +101,7 @@ struct UsageChartView: View {
 
     @State private var sessionBuckets:  [TimeBucket]  = []
     @State private var weeklyBuckets:   [TimeBucket]  = []
+    @State private var creditBuckets:   [TimeBucket]  = []
     @State private var analytics:       AnalyticsData = .empty
     @State private var showQuota      = true
     @State private var lookback:        LookbackPeriod = .month
@@ -107,11 +111,14 @@ struct UsageChartView: View {
     @State private var now:            Date = Date()
     @State private var sessionResetTimes: [Date] = []
     @State private var weeklyResetTimes:  [Date] = []
+    @State private var creditResetTimes:  [Date] = []
     @State private var sessionNextReset:  Date?
     @State private var weeklyNextReset:   Date?
+    @State private var creditNextReset:   Date?
 
     private var sessionWindow: UsageWindow? { appState.snapshot?.sessionWindow }
     private var weeklyWindow:  UsageWindow? { appState.snapshot?.weeklyWindow }
+    private var creditWindow:  UsageWindow? { appState.snapshot?.creditWindow }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -201,6 +208,18 @@ struct UsageChartView: View {
                 weeklyChart
                     .frame(height: 108)
                     .padding(.top, 5)
+
+                if let creditWindow {
+                    divider.padding(.top, 10)
+                    sectionHeader("USAGE CREDITS · MONTH",
+                                  pct: creditWindow.effectivePercentUsed(),
+                                  status: creditWindow.effectiveStatus(),
+                                  nextReset: creditWindow.resetAtLabel())
+                        .padding(.top, 8)
+                    creditChart
+                        .frame(height: 108)
+                        .padding(.top, 5)
+                }
 
                 divider.padding(.top, 10)
                 analyticsHeader("SPEND PER \(lookback.granularity.unitLabel) · \(lookback.rawValue)").padding(.top, 8)
@@ -356,6 +375,45 @@ struct UsageChartView: View {
                    currentPct: (weeklyWindow?.effectivePercentUsed() ?? 0) * 100) { dayAxis }
     }
 
+    /// Unlike `sessionChart`/`weeklyChart`, always plots real % of the credit
+    /// pool (a step function held between polls) — there's no per-request
+    /// token analog to dual-render with the Tokens/% Quota toggle.
+    private var creditChart: some View {
+        let allResets = creditResetTimes + (creditNextReset.map { [$0] } ?? [])
+        return Chart {
+            ForEach(creditBuckets) { b in
+                AreaMark(x: .value("Time", b.id), y: .value("% Used", b.quotaPct))
+                    .foregroundStyle(LinearGradient(
+                        colors: [Theme.accentWarm.opacity(0.55), Theme.accentWarm.opacity(0.05)],
+                        startPoint: .top, endPoint: .bottom
+                    ))
+                    .interpolationMethod(.stepEnd)
+                LineMark(x: .value("Time", b.id), y: .value("% Used", b.quotaPct))
+                    .foregroundStyle(Theme.accentWarm)
+                    .lineStyle(StrokeStyle(lineWidth: 1.5))
+                    .interpolationMethod(.stepEnd)
+            }
+            ForEach(allResets, id: \.self) { t in
+                RuleMark(x: .value("Reset", t))
+                    .foregroundStyle(Color.green.opacity(0.55))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 2]))
+            }
+        }
+        .chartXAxis { monthAxis }
+        .chartYScale(domain: 0...100)
+        .chartYAxis {
+            AxisMarks(values: .automatic(desiredCount: 3)) { value in
+                AxisGridLine().foregroundStyle(Theme.stroke)
+                if let v = value.as(Double.self) {
+                    AxisValueLabel(String(format: "%.0f%%", v))
+                        .font(.system(size: 8, design: .monospaced))
+                        .foregroundStyle(Theme.textSecondary)
+                }
+            }
+        }
+        .chartPlotStyle { $0.background(Color.clear) }
+    }
+
     private var costChart: some View {
         seriesChart(analytics.dailyCost, yLabel: "Cost") { String(format: "$%.2f", $0) }
     }
@@ -499,6 +557,16 @@ struct UsageChartView: View {
     }
 
     @AxisContentBuilder
+    private var monthAxis: some AxisContent {
+        AxisMarks(values: .stride(by: .day, count: 5)) { _ in
+            AxisGridLine().foregroundStyle(Theme.stroke)
+            AxisValueLabel(format: .dateTime.day())
+                .font(.system(size: 8, design: .rounded))
+                .foregroundStyle(Theme.textSecondary)
+        }
+    }
+
+    @AxisContentBuilder
     private var yAxis: some AxisContent {
         AxisMarks(values: .automatic(desiredCount: 3)) { value in
             AxisGridLine().foregroundStyle(Theme.stroke)
@@ -518,11 +586,14 @@ struct UsageChartView: View {
         if chartCache.isValid(for: lookback) {
             sessionBuckets    = chartCache.sessionBuckets
             weeklyBuckets     = chartCache.weeklyBuckets
+            creditBuckets     = chartCache.creditBuckets
             analytics         = chartCache.analytics
             sessionResetTimes = chartCache.sessionResetTimes
             weeklyResetTimes  = chartCache.weeklyResetTimes
+            creditResetTimes  = chartCache.creditResetTimes
             sessionNextReset  = chartCache.sessionNextReset
             weeklyNextReset   = chartCache.weeklyNextReset
+            creditNextReset   = chartCache.creditNextReset
             lastUpdatedAt     = chartCache.cachedAt
             isLoading         = false
             return
@@ -567,33 +638,40 @@ struct UsageChartView: View {
             let weeklyReset     = weeklyWindow?.resetAt
             let weeklyDuration  = weeklyWindow?.windowDuration
 
-            let (session, weekly, newAnalytics) = await Task.detached(priority: .utility) {
+            let (session, weekly, credit, newAnalytics) = await Task.detached(priority: .utility) {
                 let session = toTimeBuckets(remote.sessionBuckets, quotaHistory: remote.sessionQuotaHistory,
                                             currentPct: sessionPct,
                                             resetAt: sessionReset, windowDuration: sessionDuration)
                 let weekly  = toTimeBuckets(remote.weeklyBuckets, quotaHistory: remote.weeklyQuotaHistory,
                                             currentPct: weeklyPct,
                                             resetAt: weeklyReset, windowDuration: weeklyDuration)
-                return (session, weekly, remote.toAnalyticsData())
+                let credit  = creditTimeBuckets(from: remote.creditQuotaHistory)
+                return (session, weekly, credit, remote.toAnalyticsData())
             }.value
 
             sessionBuckets    = session
             weeklyBuckets     = weekly
+            creditBuckets     = credit
             analytics         = newAnalytics
             sessionResetTimes = extractResetTimes(from: remote.sessionQuotaHistory, after: sessionSince, before: now)
             weeklyResetTimes  = extractResetTimes(from: remote.weeklyQuotaHistory,  after: weeklySince,  before: now)
+            creditResetTimes  = extractResetTimes(from: remote.creditQuotaHistory,  after: monthSince,   before: now)
             sessionNextReset  = nextResetTime(from: remote.sessionQuotaHistory)
             weeklyNextReset   = nextResetTime(from: remote.weeklyQuotaHistory)
+            creditNextReset   = nextResetTime(from: remote.creditQuotaHistory)
             lastUpdatedAt     = Date()
             fetchError        = nil
 
             chartCache.sessionBuckets    = session
             chartCache.weeklyBuckets     = weekly
+            chartCache.creditBuckets     = credit
             chartCache.analytics         = newAnalytics
             chartCache.sessionResetTimes = sessionResetTimes
             chartCache.weeklyResetTimes  = weeklyResetTimes
+            chartCache.creditResetTimes  = creditResetTimes
             chartCache.sessionNextReset  = sessionNextReset
             chartCache.weeklyNextReset   = weeklyNextReset
+            chartCache.creditNextReset   = creditNextReset
             chartCache.period            = lookback
             chartCache.cachedAt          = Date()
         } catch {
@@ -723,6 +801,13 @@ private func realTimeBuckets(
         }
         return TimeBucket(id: b.timestamp, tokens: b.tokens, quotaPct: heldPct)
     }
+}
+
+// Credit history has no per-request token analog to bucket against, so each real
+// polled reading becomes its own point directly (no session/weekly-style bucket
+// grid, and no synthetic fallback — the chart is simply empty until readings exist).
+private func creditTimeBuckets(from quotaHistory: [RemoteAnalytics.QuotaPointDTO]) -> [TimeBucket] {
+    quotaHistory.map { TimeBucket(id: $0.timestamp, tokens: 0, quotaPct: $0.percentUsed * 100.0) }
 }
 
 // Fallback when the reset boundary is unknown: a single cumulative normalized so

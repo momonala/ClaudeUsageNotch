@@ -24,6 +24,51 @@ final class ClaudeUsageMappingTests: XCTestCase {
         XCTAssertNotNil(snapshot.sessionWindow.resetAt)
     }
 
+    // 1b. Team-plan `spend` block maps to a `.monthly` credit window.
+    func test_snapshot_parsesCreditWindowFromSpend() throws {
+        let json = """
+        {
+          "five_hour": { "utilization": 3.0, "resets_at": "2026-08-22T08:30:00Z" },
+          "spend": {
+            "used":  { "amount_minor": 420,   "currency": "USD", "exponent": 2 },
+            "limit": { "amount_minor": 35000, "currency": "USD", "exponent": 2 },
+            "percent": 1.2,
+            "enabled": true
+          }
+        }
+        """.data(using: .utf8)!
+
+        let dto = try JSONDecoder().decode(ClaudeUsageDTO.self, from: json)
+        let snapshot = try ClaudeUsageMapper.snapshot(from: dto)
+
+        let credit = try XCTUnwrap(snapshot.creditWindow)
+        XCTAssertEqual(credit.type, .monthly)
+        XCTAssertEqual(credit.percentUsed, 0.012, accuracy: 0.0001)
+        XCTAssertEqual(credit.usedAmount, 4.20, accuracy: 0.001)
+        XCTAssertEqual(credit.limitAmount, 350.00, accuracy: 0.001)
+        XCTAssertNotNil(credit.resetAt)
+    }
+
+    // 1c. `spend.enabled == false` (or the block absent) → no credit window.
+    func test_snapshot_omitsCreditWindowWhenSpendDisabled() throws {
+        let json = """
+        {
+          "five_hour": { "utilization": 3.0, "resets_at": "2026-08-22T08:30:00Z" },
+          "spend": {
+            "used":  { "amount_minor": 0, "currency": "USD", "exponent": 2 },
+            "limit": { "amount_minor": 0, "currency": "USD", "exponent": 2 },
+            "percent": 0,
+            "enabled": false
+          }
+        }
+        """.data(using: .utf8)!
+
+        let dto = try JSONDecoder().decode(ClaudeUsageDTO.self, from: json)
+        let snapshot = try ClaudeUsageMapper.snapshot(from: dto)
+
+        XCTAssertNil(snapshot.creditWindow)
+    }
+
     // 2. Missing five_hour → decoding error.
     func test_snapshot_throwsWhenFiveHourMissing() throws {
         let json = """

@@ -26,6 +26,9 @@ enum QuotaSyncService {
         if let weeklySonnet = snapshot.weeklySonnetWindow {
             payloads.append(payload(for: weeklySonnet, capturedAt: snapshot.capturedAt))
         }
+        if let credit = snapshot.creditWindow {
+            payloads.append(payload(for: credit, capturedAt: snapshot.capturedAt))
+        }
 
         Task { await post(payloads, to: url) }
     }

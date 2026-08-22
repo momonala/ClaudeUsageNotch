@@ -10,9 +10,15 @@ struct SessionCard: View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(windowTitle)
-                        .font(Theme.cardTitleFont)
-                        .foregroundColor(Theme.textPrimary)
+                    HStack(spacing: 5) {
+                        Text(windowTitle)
+                            .font(Theme.cardTitleFont)
+                            .foregroundColor(Theme.textPrimary)
+                        if !appState.isBalance, !appState.isStatusOnly,
+                           let window = appState.snapshot?.sessionWindow {
+                            ResetHeaderLabel(window: window)
+                        }
+                    }
                     if appState.isBalance {
                         Text(appState.shortLabel)
                             .font(Theme.cardTitleFont)
@@ -45,10 +51,7 @@ struct SessionCard: View {
                         .animation(.spring(response: Theme.springResponse), value: pct)
                 }
             }
-            if let window = appState.snapshot?.sessionWindow,
-               !appState.isBalance, !appState.isStatusOnly {
-                ResetSubtitleRow(window: window)
-            } else if let reset = appState.sessionResetString {
+            if appState.isBalance || appState.isStatusOnly, let reset = appState.sessionResetString {
                 Text(reset)
                     .font(Theme.cardSubtitleFont)
                     .foregroundColor(Theme.textSecondary)

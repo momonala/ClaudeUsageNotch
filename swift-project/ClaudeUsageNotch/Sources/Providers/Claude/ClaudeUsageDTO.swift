@@ -14,11 +14,13 @@ struct ClaudeUsageDTO: Decodable {
     let fiveHour:       Window?
     let sevenDay:       Window?
     let sevenDaySonnet: Window?
+    let spend:          Spend?
 
     enum CodingKeys: String, CodingKey {
         case fiveHour       = "five_hour"
         case sevenDay       = "seven_day"
         case sevenDaySonnet = "seven_day_sonnet"
+        case spend          = "spend"
     }
 
     struct Window: Decodable {
@@ -28,6 +30,37 @@ struct ClaudeUsageDTO: Decodable {
         enum CodingKeys: String, CodingKey {
             case utilization
             case resetsAt = "resets_at"
+        }
+    }
+
+    /// Org-wide monthly usage-credit pool (Team plans). Distinct from the
+    /// five_hour/seven_day rate-limit windows above — this is a dollar budget,
+    /// not a rolling percentage window.
+    struct Spend: Decodable {
+        let used: Money?
+        let limit: Money?
+        let percent: Double?
+        let enabled: Bool?
+
+        enum CodingKeys: String, CodingKey {
+            case used, limit, percent, enabled
+        }
+
+        struct Money: Decodable {
+            let amountMinor: Int?
+            let exponent: Int?
+
+            enum CodingKeys: String, CodingKey {
+                case amountMinor = "amount_minor"
+                case exponent
+            }
+
+            /// Minor units (cents) converted to a decimal dollar amount.
+            var dollars: Double? {
+                guard let amountMinor else { return nil }
+                let places = exponent ?? 2
+                return Double(amountMinor) / pow(10.0, Double(places))
+            }
         }
     }
 }
@@ -72,12 +105,35 @@ enum ClaudeUsageMapper {
             )
         }
 
+        let credit: UsageWindow? = {
+            guard let spend = dto.spend, spend.enabled == true,
+                  let used = spend.used?.dollars, let limit = spend.limit?.dollars else { return nil }
+            return UsageWindow(
+                type: .monthly,
+                percentUsed: (spend.percent ?? 0) / 100.0,
+                usedAmount: used,
+                limitAmount: limit,
+                resetAt: startOfNextMonth(after: capturedAt),
+                lastUpdated: capturedAt
+            )
+        }()
+
         return ServiceUsageSnapshot(
             sessionWindow: session,
             weeklyWindow: weekly,
             weeklySonnetWindow: weeklySonnet,
+            creditWindow: credit,
             capturedAt: capturedAt
         )
+    }
+
+    /// The Claude usage-credit pool resets on the first of the next calendar
+    /// month; the API doesn't report a `resets_at` for `spend`, unlike the
+    /// five_hour/seven_day windows.
+    private static func startOfNextMonth(after date: Date) -> Date? {
+        let cal = Calendar.current
+        guard let startOfMonth = cal.date(from: cal.dateComponents([.year, .month], from: date)) else { return nil }
+        return cal.date(byAdding: .month, value: 1, to: startOfMonth)
     }
 
     private static let isoWithFrac: ISO8601DateFormatter = {

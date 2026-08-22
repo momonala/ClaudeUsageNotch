@@ -10,28 +10,26 @@ struct WeeklyCard: View {
         let status = window.effectiveStatus()
         let color  = status.color
 
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 10) {
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 5) {
-                        Text(title)
-                            .font(Theme.cardTitleFont)
-                            .foregroundColor(Theme.textPrimary)
-                        if let sub = subtitle {
-                            Text(sub)
-                                .font(Theme.cardSubtitleFont)
-                                .foregroundColor(Theme.textSecondary)
-                        }
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 5) {
+                    Text(title)
+                        .font(Theme.cardTitleFont)
+                        .foregroundColor(Theme.textPrimary)
+                    if let sub = subtitle {
+                        Text(sub)
+                            .font(Theme.cardSubtitleFont)
+                            .foregroundColor(Theme.textSecondary)
                     }
-                    CompactProgressBar(progress: pct, color: color, expectedProgress: window.expectedProgress())
-                        .frame(height: Theme.barHeightExpanded)
+                    ResetHeaderLabel(window: window)
                 }
-                Spacer()
-                Text("\(Int((pct * 100).rounded()))%")
-                    .font(Theme.weeklyValueFont)
-                    .foregroundColor(color)
+                CompactProgressBar(progress: pct, color: color, expectedProgress: window.expectedProgress())
+                    .frame(height: Theme.barHeightExpanded)
             }
-            ResetSubtitleRow(window: window)
+            Spacer()
+            Text("\(Int((pct * 100).rounded()))%")
+                .font(Theme.weeklyValueFont)
+                .foregroundColor(color)
         }
         .padding(.horizontal, Theme.cardPaddingH)
         .padding(.vertical, Theme.cardPaddingV)

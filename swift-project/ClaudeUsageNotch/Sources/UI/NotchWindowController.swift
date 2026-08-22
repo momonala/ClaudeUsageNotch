@@ -24,11 +24,15 @@ final class NotchWindowController: NSObject {
     // MARK: - Layout constants
 
     private enum Layout {
-        static let expandedWidth: CGFloat      = 380
+        static let expandedWidth: CGFloat      = 420
         static let expandedWidthChart: CGFloat = 1090
         /// Visible strip height below the hardware notch in compact mode.
         static let compactStripHeight: CGFloat = Theme.compactStripHeight
-        static let expandedContentHeight: CGFloat         = 184
+        /// Extra compact-strip height for the optional third (credit) bar.
+        static let compactStripHeightCredit: CGFloat      = Theme.compactStripHeightCredit
+        static let expandedContentHeight: CGFloat         = 158
+        /// Extra height for the optional "Usage credits" card (Team plans only).
+        static let expandedContentHeightCredit: CGFloat   = 5
         static let expandedContentHeightChart: CGFloat    = 618
         static let expandedContentHeightSettings: CGFloat = 351
         /// Minimum height delta above compact that indicates the panel is already expanded.
@@ -47,19 +51,21 @@ final class NotchWindowController: NSObject {
     // hardware) and only the lower "visible extension" is seen by the user.
     // This is identical to how the iOS Dynamic Island works.
     private var compactSize: NSSize {
-        NSSize(
+        let creditExtra = appState.snapshot?.creditWindow != nil ? Layout.compactStripHeightCredit : 0
+        return NSSize(
             width: ScreenUtils.compactPanelWidth(
                 atSessionLimit: appState.isAtSessionLimit,
                 countdownText: appState.sessionResetShortString
             ),
-            height: ScreenUtils.notchHeight + Layout.compactStripHeight
+            height: ScreenUtils.notchHeight + Layout.compactStripHeight + creditExtra
         )
     }
     private var expandedSize: NSSize {
         switch appState.expandedMode {
         case .usage:
+            let creditExtra = appState.snapshot?.creditWindow != nil ? Layout.expandedContentHeightCredit : 0
             return NSSize(width: Layout.expandedWidth,
-                          height: ScreenUtils.notchHeight + Layout.expandedContentHeight)
+                          height: ScreenUtils.notchHeight + Layout.expandedContentHeight + creditExtra)
         case .analytics:
             return NSSize(width: Layout.expandedWidthChart,
                           height: ScreenUtils.notchHeight + Layout.expandedContentHeightChart)

@@ -68,6 +68,21 @@ struct CompactView: View {
                                     .frame(minWidth: 25, alignment: .trailing)
                             }
                         }
+                        // Credit row (Team plans only)
+                        if let credit = appState.snapshot?.creditWindow {
+                            HStack(spacing: 6) {
+                                CompactProgressBar(
+                                    progress: credit.effectivePercentUsed(),
+                                    color: creditColor,
+                                    expectedProgress: credit.expectedProgress()
+                                )
+                                    .frame(height: Theme.barHeightNotch)
+                                Text("\(Int((credit.effectivePercentUsed() * 100).rounded()))%")
+                                    .font(Theme.notchFont)
+                                    .foregroundColor(Theme.textLabel)
+                                    .frame(minWidth: 25, alignment: .trailing)
+                            }
+                        }
                     }
                 } else {
                     // Balance ("$110.00") or connected-only ("Active") — no fake bar.
@@ -78,7 +93,8 @@ struct CompactView: View {
                 }
             }
             .padding(.horizontal, 10)
-            .frame(height: 28)
+            .frame(height: Theme.compactStripHeight
+                + (appState.snapshot?.creditWindow != nil ? Theme.compactStripHeightCredit : 0))
         }
         .opacity(appeared ? 1 : 0)
         .onAppear {
@@ -90,5 +106,8 @@ struct CompactView: View {
     private var statusColor: Color { appState.sessionStatus.color }
     private var weeklyColor: Color {
         (appState.snapshot?.weeklyWindow?.effectiveStatus() ?? .healthy).color
+    }
+    private var creditColor: Color {
+        (appState.snapshot?.creditWindow?.effectiveStatus() ?? .healthy).color
     }
 }

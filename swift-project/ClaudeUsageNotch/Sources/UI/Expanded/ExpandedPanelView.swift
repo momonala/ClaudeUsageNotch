@@ -39,6 +39,9 @@ struct ExpandedPanelView: View {
                                        title: "Weekly Sonnet",
                                        subtitle: "Pro plan")
                         }
+                        if let credit = appState.snapshot?.creditWindow {
+                            WeeklyCard(window: credit, title: "Usage credits")
+                        }
                         lastUpdatedFooter
                     case .analytics:
                         UsageChartView(appState: appState, appSettings: appSettings)
@@ -94,7 +97,7 @@ struct ExpandedPanelView: View {
     }
 
     private var panelWidth: CGFloat {
-        appState.expandedMode == .analytics ? 1090 : 380
+        appState.expandedMode == .analytics ? 1090 : 420
     }
 
     private var panelHeight: CGFloat {

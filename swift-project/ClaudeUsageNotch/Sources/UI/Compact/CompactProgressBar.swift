@@ -9,7 +9,7 @@ struct CompactProgressBar: View {
 
     var body: some View {
         GeometryReader { geo in
-            ZStack(alignment: .leading) {
+            ZStack(alignment: .topLeading) {
                 Capsule()
                     .fill(Color.white.opacity(Theme.progressTrackOpacity))
                 Capsule()
@@ -36,7 +36,7 @@ struct CompactProgressBar: View {
         let x = min(size.width, max(0, pace * size.width))
         return Rectangle()
             .fill(Theme.paceMarkerColor)
-            .frame(width: Theme.paceMarkerWidth, height: size.height + 1)
+            .frame(width: Theme.paceMarkerWidth, height: size.height)
             .offset(x: x - Theme.paceMarkerWidth / 2)
     }
 }
