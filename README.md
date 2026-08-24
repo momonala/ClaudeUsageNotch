@@ -229,8 +229,8 @@ unhovered state (`NotchState.compactIdle`), reflecting the most-actionable state
 across your local Claude Code CLI sessions: amber pulse = a session needs your
 input, cyan pulse = a session is working, steady green = a session finished
 within the last 30 s (suppressed while any other session is working or waiting,
-so it can never mask one that needs you). It disappears the instant you hover, and stays off entirely when no
-session is active. Toggle it off in Settings ("Agent Status Pulse") without
+so it can never mask one that needs you). It disappears the instant you hover,
+and stays off entirely when no session is active. Toggle it off in Settings ("Agent Status Pulse") without
 affecting the rest of the app.
 
 This only sees **local** CLI sessions on this Mac — there's no visibility into

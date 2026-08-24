@@ -60,7 +60,6 @@ struct ExpandedPanelView: View {
             Color.black.frame(height: notchH)
         }
         .task {
-            try? await Task.sleep(nanoseconds: 140_000_000)
             withAnimation(.spring(response: Theme.springResponse, dampingFraction: Theme.springDamping)) {
                 appeared = true
             }

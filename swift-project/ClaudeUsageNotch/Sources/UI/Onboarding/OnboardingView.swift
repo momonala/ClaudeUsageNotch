@@ -53,8 +53,8 @@ struct OnboardingView: View {
             .padding(20)
         }
         .onAppear { onContentHeightChange(windowContentHeight) }
-        .onChange(of: step) { _ in onContentHeightChange(windowContentHeight) }
-        .onChange(of: validateError) { _ in onContentHeightChange(windowContentHeight) }
+        .onChange(of: step) { onContentHeightChange(windowContentHeight) }
+        .onChange(of: validateError) { onContentHeightChange(windowContentHeight) }
     }
 
     // MARK: - Sizing
