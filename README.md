@@ -79,7 +79,8 @@ Sources/
 │   │   ├── UsageWindow.swift      Session / weekly windows, pace, reset helpers
 │   │   ├── Status.swift           UsageStatus, ProviderError, AuthStatus, SyncStatus
 │   │   ├── AnalyticsData.swift    Cost/token/model/project/skill breakdowns for the analytics chart
-│   │   └── QuotaSnapshotPayload.swift  Payload POSTed to the sync server's quota_snapshots table
+│   │   ├── QuotaSnapshotPayload.swift  Payload POSTed to the sync server's quota_snapshots table
+│   │   └── AgentStatus.swift      Aggregated local Claude Code session status (idle/working/needsInput)
 │   └── State/
 │       ├── AppState.swift         Runtime state; snapshots, notch state, incidents
 │       │                          Also defines ExpandedMode (.usage | .analytics | .settings)
@@ -103,7 +104,8 @@ Sources/
 │   ├── RemoteHistoryReader.swift  Fetches pre-aggregated analytics from the sync server (the chart's only source)
 │   ├── HistorySyncService.swift   Timer-driven push of local records to the sync server
 │   ├── QuotaSyncService.swift     Pushes each polled session/weekly % to the sync server (ground truth for the chart)
-│   └── IncidentMonitor.swift      Polls Anthropic status page
+│   ├── IncidentMonitor.swift      Polls Anthropic status page
+│   └── AgentStatusService.swift   Polls the agent-status-hook status file
 │
 ├── Platform/
 │   ├── KeychainStore.swift
@@ -115,7 +117,8 @@ Sources/
     ├── Compact/
     │   ├── CompactView.swift        Dual bars; countdown at session limit
     │   ├── CompactProgressBar.swift Pace marker tick
-    │   └── StatusDot.swift          IncidentBanner
+    │   ├── StatusDot.swift          IncidentBanner
+    │   └── AgentStatusGlow.swift    Perimeter pulse for agent status (compact-idle only)
     ├── Expanded/
     │   ├── ExpandedPanelView.swift  Switches on ExpandedMode
     │   ├── HeaderRow.swift          Provider name, sync time, mode buttons, quit
@@ -215,6 +218,49 @@ exponential backoff, so the access prompt re-surfaces in seconds rather than min
 `HistorySyncService` persists its `lastSyncedAt` cursor under the same prefix.
 
 `AppState` persists `isNotchUIHidden`. Snapshots are not persisted — the app fetches fresh on launch.
+
+---
+
+## Agent status pulse (optional)
+
+A thin animated stroke around the notch perimeter, visible only in the compact,
+unhovered state (`NotchState.compactIdle`), reflecting the most-actionable state
+across your local Claude Code CLI sessions: amber pulse = a session needs your
+input, cyan pulse = a session is working, steady green = a session finished
+within the last 30 s (suppressed while any other session is working or waiting,
+so it can never mask one that needs you). It disappears the instant you hover, and stays off entirely when no
+session is active. Toggle it off in Settings ("Agent Status Pulse") without
+affecting the rest of the app.
+
+This only sees **local** CLI sessions on this Mac — there's no visibility into
+remote/cloud-hosted sessions.
+
+**Mechanism.** `agent-status-hook/hook.py` (stdlib-only Python) is invoked by
+Claude Code hooks and read-modify-writes a small JSON file at
+`~/Library/Application Support/ClaudeUsageNotch/agent-status.json`, keyed by
+`session_id`. `AgentStatusService` polls that file (~1.5 s), drops entries that
+are stale and non-idle (a session that never sent `Stop`/`SessionEnd` — e.g. a
+killed terminal — so it can't hold `working`/`needsInput` forever), and
+aggregates the rest with `needsInput` > `working` > `idle` priority so a session
+waiting on you is never hidden behind one that's merely working.
+
+To enable it, add this to `~/.claude/settings.json` (adjust the path to where
+you cloned this repo):
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "python3 /path/to/ClaudeUsageNotch/agent-status-hook/hook.py" }] }],
+    "PreToolUse":       [{ "hooks": [{ "type": "command", "command": "python3 /path/to/ClaudeUsageNotch/agent-status-hook/hook.py" }] }],
+    "Notification":     [{ "hooks": [{ "type": "command", "command": "python3 /path/to/ClaudeUsageNotch/agent-status-hook/hook.py" }] }],
+    "Stop":             [{ "hooks": [{ "type": "command", "command": "python3 /path/to/ClaudeUsageNotch/agent-status-hook/hook.py" }] }],
+    "SessionEnd":       [{ "hooks": [{ "type": "command", "command": "python3 /path/to/ClaudeUsageNotch/agent-status-hook/hook.py" }] }]
+  }
+}
+```
+
+If you already have hooks configured for these events, append to the existing
+arrays rather than replacing them.
 
 ---
 

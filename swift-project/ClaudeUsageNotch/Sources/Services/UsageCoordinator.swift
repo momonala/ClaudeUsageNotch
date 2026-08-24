@@ -67,6 +67,30 @@ public final class UsageCoordinator {
             .store(in: &cancellables)
         IncidentMonitor.shared.start()
 
+        AgentStatusService.shared.readingPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] reading in
+                self?.appState.agentStatus = reading.status
+                self?.appState.agentJustCompleted = reading.justCompleted
+            }
+            .store(in: &cancellables)
+
+        // Polling the status file is pointless work when the pulse is off, so
+        // the setting drives the service rather than only hiding the glow.
+        appSettings.$showAgentStatusPulse
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] enabled in
+                guard let self else { return }
+                if enabled {
+                    AgentStatusService.shared.start()
+                } else {
+                    AgentStatusService.shared.stop()
+                    self.appState.agentStatus = .idle
+                    self.appState.agentJustCompleted = false
+                }
+            }
+            .store(in: &cancellables)
+
         appSettings.$pollIntervalSeconds
             .dropFirst()
             .receive(on: DispatchQueue.main)
@@ -84,6 +108,7 @@ public final class UsageCoordinator {
     public func stop() {
         usageService.stopAll()
         IncidentMonitor.shared.stop()
+        AgentStatusService.shared.stop()
         cancellables.removeAll()
     }
 

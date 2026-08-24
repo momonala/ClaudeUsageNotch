@@ -21,6 +21,9 @@ public final class AppState: ObservableObject {
     @Published public var showOnboarding: Bool = false
     @Published public var expandedMode: ExpandedMode = .usage
 
+    @Published public var agentStatus: AgentStatus = .idle
+    @Published public var agentJustCompleted: Bool = false
+
     // MARK: - Convenience
 
     public var sessionPercent: Double { snapshot?.sessionWindow.effectivePercentUsed() ?? 0 }

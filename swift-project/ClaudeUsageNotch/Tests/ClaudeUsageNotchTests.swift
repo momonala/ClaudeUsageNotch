@@ -315,3 +315,109 @@ final class NotificationServiceEvaluateTests: XCTestCase {
         XCTAssertNil(store.get(account: "roundtrip"))
     }
 }
+
+// MARK: - AgentStatus Tests
+
+final class AgentStatusTests: XCTestCase {
+
+    // 1. Aggregation priority: needsInput beats working beats idle.
+    func test_aggregate_needsInputWinsOverWorking() {
+        XCTAssertEqual(AgentStatus.aggregate([.working, .needsInput, .idle]), .needsInput)
+    }
+
+    func test_aggregate_workingWinsOverIdle() {
+        XCTAssertEqual(AgentStatus.aggregate([.idle, .working]), .working)
+    }
+
+    func test_aggregate_allIdle_isIdle() {
+        XCTAssertEqual(AgentStatus.aggregate([.idle, .idle]), .idle)
+    }
+
+    func test_aggregate_empty_isIdle() {
+        XCTAssertEqual(AgentStatus.aggregate([]), .idle)
+    }
+
+    // 2. Status-file decoding round-trips through the same shape the hook writes.
+    func test_sessionEntry_decodesHookShape() throws {
+        let json = """
+        {"status": "working", "event": "PreToolUse", "ts": 1737657600.2, "cwd": "/tmp/project"}
+        """.data(using: .utf8)!
+        let entry = try JSONDecoder().decode(AgentSessionEntry.self, from: json)
+        XCTAssertEqual(entry.status, .working)
+        XCTAssertEqual(entry.event, "PreToolUse")
+        XCTAssertEqual(entry.cwd, "/tmp/project")
+    }
+
+    // 3. A crashed session (no Stop/SessionEnd, stale timestamp) is dropped
+    // rather than holding a needs-input/working state forever.
+    func test_reading_dropsStaleNonIdleEntry() {
+        let now: TimeInterval = 1_000_000
+        let stale = AgentSessionEntry(status: .needsInput, event: "Notification", ts: now - 500, cwd: "")
+        let reading = AgentStatusReading.from([stale], now: now, staleAfter: 180)
+        XCTAssertEqual(reading.status, .idle)
+    }
+
+    // 4. A fresh entry within the staleness window still counts.
+    func test_reading_keepsFreshEntry() {
+        let now: TimeInterval = 1_000_000
+        let fresh = AgentSessionEntry(status: .working, event: "PreToolUse", ts: now - 10, cwd: "")
+        let reading = AgentStatusReading.from([fresh], now: now, staleAfter: 180)
+        XCTAssertEqual(reading.status, .working)
+    }
+
+    // 5. A second, needs-input session overrides a first, merely-working session.
+    func test_reading_multiSession_needsInputOverridesWorking() {
+        let now: TimeInterval = 1_000_000
+        let working = AgentSessionEntry(status: .working, event: "PreToolUse", ts: now, cwd: "/a")
+        let waiting = AgentSessionEntry(status: .needsInput, event: "Notification", ts: now, cwd: "/b")
+        let reading = AgentStatusReading.from([working, waiting], now: now)
+        XCTAssertEqual(reading.status, .needsInput)
+    }
+
+    // 6. justCompleted flashes briefly after a Stop, then expires.
+    func test_reading_justCompleted_withinWindow() {
+        let now: TimeInterval = 1_000_000
+        let stopped = AgentSessionEntry(status: .idle, event: "Stop", ts: now - 2, cwd: "")
+        let reading = AgentStatusReading.from([stopped], now: now, completedWithin: 4)
+        XCTAssertTrue(reading.justCompleted)
+        XCTAssertEqual(reading.status, .idle)
+    }
+
+    func test_reading_justCompleted_expiresAfterWindow() {
+        let now: TimeInterval = 1_000_000
+        let stopped = AgentSessionEntry(status: .idle, event: "Stop", ts: now - 10, cwd: "")
+        let reading = AgentStatusReading.from([stopped], now: now, completedWithin: 4)
+        XCTAssertFalse(reading.justCompleted)
+    }
+
+    // 7. The completion flash holds for the full default window (30s), so a
+    // finished session stays visible long enough to notice.
+    func test_reading_justCompleted_defaultWindowHoldsFor30s() {
+        let now: TimeInterval = 1_000_000
+        let stopped = AgentSessionEntry(status: .idle, event: "Stop", ts: now - 25, cwd: "")
+        XCTAssertTrue(AgentStatusReading.from([stopped], now: now).justCompleted)
+
+        let older = AgentSessionEntry(status: .idle, event: "Stop", ts: now - 31, cwd: "")
+        XCTAssertFalse(AgentStatusReading.from([older], now: now).justCompleted)
+    }
+
+    // 8. A live session outranks another session's completion flash — the green
+    // pulse must never mask one that is working or wants input.
+    func test_reading_justCompleted_supersededByWorkingSession() {
+        let now: TimeInterval = 1_000_000
+        let stopped = AgentSessionEntry(status: .idle, event: "Stop", ts: now - 2, cwd: "/done")
+        let working = AgentSessionEntry(status: .working, event: "PreToolUse", ts: now, cwd: "/busy")
+        let reading = AgentStatusReading.from([stopped, working], now: now)
+        XCTAssertEqual(reading.status, .working)
+        XCTAssertFalse(reading.justCompleted)
+    }
+
+    func test_reading_justCompleted_supersededByNeedsInputSession() {
+        let now: TimeInterval = 1_000_000
+        let stopped = AgentSessionEntry(status: .idle, event: "Stop", ts: now - 2, cwd: "/done")
+        let waiting = AgentSessionEntry(status: .needsInput, event: "Notification", ts: now, cwd: "/ask")
+        let reading = AgentStatusReading.from([stopped, waiting], now: now)
+        XCTAssertEqual(reading.status, .needsInput)
+        XCTAssertFalse(reading.justCompleted)
+    }
+}

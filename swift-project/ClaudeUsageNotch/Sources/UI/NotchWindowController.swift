@@ -325,7 +325,7 @@ struct RootNotchView: View {
                     if appState.isNotchUIHidden {
                         Color.clear
                     } else {
-                        CompactView(appState: appState)
+                        CompactView(appState: appState, appSettings: appSettings)
                     }
                 }
                 .onTapGesture { controller.userClicked() }

@@ -16,6 +16,9 @@ public final class AppSettings: ObservableObject {
     @Published public var apiBaseURL: String = "http://localhost:5014" { didSet { persist() } }
     @Published public var syncIntervalSeconds: TimeInterval = 600 { didSet { persist() } }
 
+    /// Perimeter glow reflecting local Claude Code session status. See `agent-status-hook/`.
+    @Published public var showAgentStatusPulse: Bool = true { didSet { persist() } }
+
     private var isLoading = false
 
     private enum Key {
@@ -24,6 +27,7 @@ public final class AppSettings: ObservableObject {
         static let thresholds       = "claudeusagenotch.thresholds"
         static let apiBaseURL       = "claudeusagenotch.apiBaseURL"
         static let syncInterval     = "claudeusagenotch.syncIntervalSeconds"
+        static let showAgentPulse   = "claudeusagenotch.showAgentStatusPulse"
     }
 
     public init() { load() }
@@ -51,6 +55,9 @@ public final class AppSettings: ObservableObject {
             let v = d.double(forKey: Key.syncInterval)
             if v >= 60 { syncIntervalSeconds = v }
         }
+        if d.object(forKey: Key.showAgentPulse) != nil {
+            showAgentStatusPulse = d.bool(forKey: Key.showAgentPulse)
+        }
     }
 
     private func persist() {
@@ -61,5 +68,6 @@ public final class AppSettings: ObservableObject {
         d.set(thresholds, forKey: Key.thresholds)
         d.set(apiBaseURL, forKey: Key.apiBaseURL)
         d.set(syncIntervalSeconds, forKey: Key.syncInterval)
+        d.set(showAgentStatusPulse, forKey: Key.showAgentPulse)
     }
 }

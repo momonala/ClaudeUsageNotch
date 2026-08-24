@@ -10,6 +10,7 @@ import SwiftUI
 /// notch grew a thin glowing status strip — identical to the Dynamic Island.
 struct CompactView: View {
     @ObservedObject var appState: AppState
+    @ObservedObject var appSettings: AppSettings
     @State private var appeared = false
 
     var body: some View {
@@ -18,6 +19,10 @@ struct CompactView: View {
             NotchPillShape(topRadius: 0, bottomRadius: 14)
                 .fill(Color.black)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            if showAgentGlow {
+                AgentStatusGlow(status: appState.agentStatus, justCompleted: appState.agentJustCompleted)
+            }
 
             // Visible content strip (bottom 22 pt, below the notch edge).
             HStack(spacing: 7) {
@@ -109,5 +114,14 @@ struct CompactView: View {
     }
     private var creditColor: Color {
         (appState.snapshot?.creditWindow?.effectiveStatus() ?? .healthy).color
+    }
+
+    /// Only in the untouched idle state — `.compactHover` is a brief transient
+    /// en route to `.expandedHover`, so this hides the glow the instant the
+    /// mouse arrives rather than waiting for the expansion animation.
+    private var showAgentGlow: Bool {
+        appSettings.showAgentStatusPulse
+            && appState.notchState == .compactIdle
+            && (appState.agentStatus != .idle || appState.agentJustCompleted)
     }
 }

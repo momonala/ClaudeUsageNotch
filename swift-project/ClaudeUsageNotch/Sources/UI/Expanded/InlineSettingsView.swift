@@ -77,6 +77,21 @@ struct InlineSettingsView: View {
 
             rowDivider
 
+            sectionTitle("Agent Status Pulse")
+            row {
+                Toggle("", isOn: $appSettings.showAgentStatusPulse)
+                    .toggleStyle(.switch)
+                    .tint(Theme.accentWarm)
+                    .labelsHidden()
+                    .fixedSize()
+                    .scaleEffect(0.75, anchor: .leading)
+                Text("Glow around the notch when a Claude Code session needs input or is working")
+                    .font(.system(size: 10, design: .rounded))
+                    .foregroundColor(Theme.textSecondary)
+            }
+
+            rowDivider
+
             sectionTitle("Sync Server")
             row {
                 TextField("http://host:5014", text: $appSettings.apiBaseURL)
