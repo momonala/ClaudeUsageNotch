@@ -121,6 +121,7 @@ Sources/
     │   └── AgentStatusGlow.swift    Perimeter pulse for agent status (compact-idle only)
     ├── Expanded/
     │   ├── ExpandedPanelView.swift  Switches on ExpandedMode
+    │   ├── ExpandedPanelGeometry.swift  Panel width/height per mode; shared with NotchWindowController
     │   ├── HeaderRow.swift          Provider name, sync time, mode buttons, quit
     │   ├── SessionCard.swift
     │   ├── WeeklyCard.swift

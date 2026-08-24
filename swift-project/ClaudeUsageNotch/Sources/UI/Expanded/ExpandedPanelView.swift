@@ -4,7 +4,8 @@ import SwiftUI
 ///
 /// Panel frame is `notchH + content` tall, anchored at screen top.
 /// The top `notchH` points are pure black and overlap the hardware notch.
-/// A 28 pt transparent gap separates the notch from the glass card.
+/// A transparent gap separates the notch from the glass card. All of these
+/// sizes come from `ExpandedPanelGeometry`, shared with the window controller.
 struct ExpandedPanelView: View {
     @ObservedObject var appState: AppState
     let appSettings: AppSettings
@@ -97,19 +98,18 @@ struct ExpandedPanelView: View {
     }
 
     private var panelWidth: CGFloat {
-        appState.expandedMode == .analytics ? 1090 : 420
+        ExpandedPanelGeometry.width(for: appState.expandedMode)
     }
 
+    /// Card height only — the notch overlap and the gap below it are the
+    /// window's business, not the card's. `.settings` used to add `notchH`
+    /// here, which sized the card to the whole window and drew it up under
+    /// the physical notch.
     private var panelHeight: CGFloat {
-        let notchH = ScreenUtils.notchHeight
-        switch appState.expandedMode {
-        case .usage:
-            let base: CGFloat = 120
-            let incidentExtra: CGFloat = appState.activeIncident != nil ? 32 : 0
-            return base + incidentExtra
-        case .analytics: return 590
-        case .settings:  return notchH + 351
-        }
+        let mode = appState.expandedMode
+        let creditExtra = (mode == .usage && appState.snapshot?.creditWindow != nil)
+            ? ExpandedPanelGeometry.usageCreditExtra : 0
+        return ExpandedPanelGeometry.cardHeight(for: mode) + creditExtra
     }
 }
 

@@ -24,17 +24,12 @@ final class NotchWindowController: NSObject {
     // MARK: - Layout constants
 
     private enum Layout {
-        static let expandedWidth: CGFloat      = 420
-        static let expandedWidthChart: CGFloat = 1090
+        // Expanded panel width/height live in `ExpandedPanelGeometry`, shared
+        // with `ExpandedPanelView` so the window and its card can't desync.
         /// Visible strip height below the hardware notch in compact mode.
         static let compactStripHeight: CGFloat = Theme.compactStripHeight
         /// Extra compact-strip height for the optional third (credit) bar.
         static let compactStripHeightCredit: CGFloat      = Theme.compactStripHeightCredit
-        static let expandedContentHeight: CGFloat         = 158
-        /// Extra height for the optional "Usage credits" card (Team plans only).
-        static let expandedContentHeightCredit: CGFloat   = 5
-        static let expandedContentHeightChart: CGFloat    = 618
-        static let expandedContentHeightSettings: CGFloat = 351
         /// Minimum height delta above compact that indicates the panel is already expanded.
         static let expandedHeightThreshold: CGFloat = 80
         static let hoverHitInset: CGFloat    = -4
@@ -61,18 +56,13 @@ final class NotchWindowController: NSObject {
         )
     }
     private var expandedSize: NSSize {
-        switch appState.expandedMode {
-        case .usage:
-            let creditExtra = appState.snapshot?.creditWindow != nil ? Layout.expandedContentHeightCredit : 0
-            return NSSize(width: Layout.expandedWidth,
-                          height: ScreenUtils.notchHeight + Layout.expandedContentHeight + creditExtra)
-        case .analytics:
-            return NSSize(width: Layout.expandedWidthChart,
-                          height: ScreenUtils.notchHeight + Layout.expandedContentHeightChart)
-        case .settings:
-            return NSSize(width: Layout.expandedWidth,
-                          height: ScreenUtils.notchHeight + Layout.expandedContentHeightSettings)
-        }
+        let mode = appState.expandedMode
+        let hasCredit = appState.snapshot?.creditWindow != nil
+        return NSSize(
+            width: ExpandedPanelGeometry.width(for: mode),
+            height: ScreenUtils.notchHeight
+                + ExpandedPanelGeometry.windowContentHeight(for: mode, hasCredit: hasCredit)
+        )
     }
 
     init(appState: AppState, appSettings: AppSettings, refreshAction: @escaping () -> Void) {

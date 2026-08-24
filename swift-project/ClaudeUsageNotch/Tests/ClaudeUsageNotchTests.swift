@@ -421,3 +421,32 @@ final class AgentStatusTests: XCTestCase {
         XCTAssertFalse(reading.justCompleted)
     }
 }
+
+// MARK: - ExpandedPanelGeometry Tests
+
+final class ExpandedPanelGeometryTests: XCTestCase {
+
+    /// The card must always be strictly shorter than the window content it sits
+    /// in, or it renders up under the hardware notch — the bug that made the
+    /// settings panel look misformatted.
+    func test_cardAlwaysFitsInsideWindowContentWithGap() {
+        for mode in [ExpandedMode.usage, .analytics, .settings] {
+            let card = ExpandedPanelGeometry.cardHeight(for: mode)
+            let content = ExpandedPanelGeometry.windowContentHeight(for: mode, hasCredit: false)
+            XCTAssertGreaterThan(content, card, "\(mode) card must leave room for the notch gap")
+            XCTAssertEqual(content - card, ExpandedPanelGeometry.notchGap(for: mode), accuracy: 0.001)
+        }
+    }
+
+    func test_creditExtraAppliesToUsageOnly() {
+        XCTAssertEqual(
+            ExpandedPanelGeometry.windowContentHeight(for: .usage, hasCredit: true)
+                - ExpandedPanelGeometry.windowContentHeight(for: .usage, hasCredit: false),
+            ExpandedPanelGeometry.usageCreditExtra, accuracy: 0.001
+        )
+        XCTAssertEqual(
+            ExpandedPanelGeometry.windowContentHeight(for: .settings, hasCredit: true),
+            ExpandedPanelGeometry.windowContentHeight(for: .settings, hasCredit: false), accuracy: 0.001
+        )
+    }
+}
