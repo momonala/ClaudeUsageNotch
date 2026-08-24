@@ -54,22 +54,50 @@ enum ScreenUtils {
         return NSPoint(x: originX, y: originY)
     }
 
+    // MARK: - Hardware notch width
+
+    /// Width of the physical notch cutout, derived from the areas macOS reports
+    /// on either side of it (available since macOS 12 on any screen with a notch).
+    /// Falls back to `compactPanelWidthDefault` on screens without a notch, or if
+    /// those areas aren't reported for some reason.
+    static var notchWidth: CGFloat {
+        guard let screen = notchScreen(), screen.safeAreaInsets.top > 0 else {
+            return compactPanelWidthDefault
+        }
+        let leftWidth = screen.auxiliaryTopLeftArea?.width ?? 0
+        let rightWidth = screen.auxiliaryTopRightArea?.width ?? 0
+        guard leftWidth > 0 || rightWidth > 0 else { return compactPanelWidthDefault }
+        return screen.frame.width - leftWidth - rightWidth
+    }
+
     // MARK: - Compact panel width
 
-    static let compactPanelWidthDefault: CGFloat = 220
+    static let compactPanelWidthDefault: CGFloat = 176
     /// Extra width when the session row shows a countdown instead of "%".
     private static let compactCountdownWidthBump: CGFloat = 32
     private static let compactPercentSlotWidth: CGFloat = 25
 
+    /// Baseline compact pill width: exactly this machine's notch cutout, floored
+    /// at the tuned default so screens without a notch still get a usable pill.
+    ///
+    /// Deliberately carries no margin. The agent-status ring traces the pill's
+    /// perimeter, so any extra width pushes the pill — and the ring with it —
+    /// onto the filleted chamfer flanking the notch, where the ring reads as
+    /// curving inward instead of running flush with the cutout.
+    static var compactPanelWidthBase: CGFloat {
+        max(compactPanelWidthDefault, notchWidth)
+    }
+
     /// Widen the compact pill for session-limit countdowns (e.g. "2h 1m") so the
     /// label sits further into the visible "ear" beside the hardware notch.
     static func compactPanelWidth(atSessionLimit: Bool, countdownText: String?) -> CGFloat {
-        guard atSessionLimit else { return compactPanelWidthDefault }
+        let base = compactPanelWidthBase
+        guard atSessionLimit else { return base }
         let font = NSFont.monospacedSystemFont(ofSize: 9, weight: .bold)
         let text = countdownText ?? "LIMIT"
         let textWidth = ceil((text as NSString).size(withAttributes: [.font: font]).width)
         let measuredExtra = max(0, textWidth + 12 - compactPercentSlotWidth)
         let extra = max(measuredExtra, compactCountdownWidthBump)
-        return min(compactPanelWidthDefault + extra, 280)
+        return min(base + extra, base + 48)
     }
 }

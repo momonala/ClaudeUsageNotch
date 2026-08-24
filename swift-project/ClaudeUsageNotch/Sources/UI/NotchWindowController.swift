@@ -80,7 +80,7 @@ final class NotchWindowController: NSObject {
         self.appSettings = appSettings
         self.refreshAction = refreshAction
         self.panel = KeyablePanel(
-            contentRect: NSRect(origin: .zero, size: NSSize(width: ScreenUtils.compactPanelWidthDefault, height: 30)),
+            contentRect: NSRect(origin: .zero, size: NSSize(width: ScreenUtils.compactPanelWidthBase, height: 30)),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
