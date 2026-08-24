@@ -70,7 +70,6 @@ enum Theme {
 
     // MARK: - Status card
 
-    static let cardCornerRadius:  CGFloat = 12
     static let cardPaddingH:      CGFloat = 12
     static let cardPaddingV:      CGFloat = 6
     static let cardFillOpacity:   Double  = 0.06
@@ -93,21 +92,5 @@ extension UsageStatus {
         case .critical: return Theme.statusCritical
         case .unknown:  return Theme.statusUnknown
         }
-    }
-}
-
-// MARK: - View helpers
-
-extension View {
-    /// Standard tinted card background shared by SessionCard and WeeklyCard.
-    func statusCardStyle(color: Color) -> some View {
-        background(
-            RoundedRectangle(cornerRadius: Theme.cardCornerRadius, style: .continuous)
-                .fill(color.opacity(Theme.cardFillOpacity))
-                .overlay(
-                    RoundedRectangle(cornerRadius: Theme.cardCornerRadius, style: .continuous)
-                        .strokeBorder(color.opacity(Theme.cardStrokeOpacity), lineWidth: Theme.cardStrokeWidth)
-                )
-        )
     }
 }

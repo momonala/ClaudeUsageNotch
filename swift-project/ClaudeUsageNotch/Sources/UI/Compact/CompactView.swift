@@ -21,21 +21,15 @@ struct CompactView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             if showAgentGlow {
+                // Traces the black pill's own perimeter (no separate width) —
+                // the pill is sized to the hardware notch, so the ring lands
+                // flush with the physical cutout edges instead of curving in
+                // somewhere inside it.
                 AgentStatusGlow(status: appState.agentStatus, justCompleted: appState.agentJustCompleted)
             }
 
             // Visible content strip (bottom 22 pt, below the notch edge).
             HStack(spacing: 7) {
-                // Which provider this pill is showing (switch via the expanded panel).
-                ProviderIconView(size: 13, fallbackColor: Theme.textLabel)
-
-                // Outage badge — appears only when the active provider has an incident.
-                if let incident = appState.activeIncident {
-                    Image(systemName: incident.level.glyph)
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(incident.level.tint)
-                }
-
                 if appState.showsPercentBar {
                     VStack(spacing: 3) {
                         // Session row

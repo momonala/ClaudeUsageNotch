@@ -27,10 +27,7 @@ struct ExpandedPanelView: View {
 
                     switch appState.expandedMode {
                     case .usage:
-                        if let incident = appState.activeIncident {
-                            IncidentBanner(providerName: "Claude",
-                                           incident: incident)
-                        }
+                        statusRow
                         SessionCard(appState: appState)
                         if let weekly = appState.snapshot?.weeklyWindow {
                             WeeklyCard(window: weekly)
@@ -43,7 +40,6 @@ struct ExpandedPanelView: View {
                         if let credit = appState.snapshot?.creditWindow {
                             WeeklyCard(window: credit, title: "Usage credits")
                         }
-                        lastUpdatedFooter
                     case .analytics:
                         UsageChartView(appState: appState, appSettings: appSettings)
                     case .settings:
@@ -80,21 +76,28 @@ struct ExpandedPanelView: View {
         return f
     }()
 
+    /// Outage (if any) and last-synced status share one compact row instead
+    /// of each claiming a full-width banner — the outage text is short and
+    /// doesn't need the whole row.
     @ViewBuilder
-    private var lastUpdatedFooter: some View {
-        let label: String = {
-            if case .ok(let at) = appState.syncStatus {
-                let secs = Int(Date().timeIntervalSince(at))
-                if secs < 5 { return "Last updated just now" }
-                return "Last updated \(Self.relativeDateFormatter.localizedString(for: at, relativeTo: Date()))"
+    private var statusRow: some View {
+        HStack(spacing: 6) {
+            if let incident = appState.activeIncident {
+                StatusBubble(icon: incident.level.glyph, text: incident.summary, tint: incident.level.tint)
             }
-            if case .syncing = appState.syncStatus { return "Syncing…" }
-            return "Not yet synced"
-        }()
-        Text(label)
-            .font(.system(size: 9))
-            .foregroundColor(Theme.textSecondary.opacity(0.4))
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            Spacer(minLength: 0)
+            StatusBubble(icon: nil, text: lastUpdatedText, tint: Theme.accentCool)
+        }
+    }
+
+    private var lastUpdatedText: String {
+        if case .ok(let at) = appState.syncStatus {
+            let secs = Int(Date().timeIntervalSince(at))
+            if secs < 5 { return "Updated just now" }
+            return "Updated \(Self.relativeDateFormatter.localizedString(for: at, relativeTo: Date()))"
+        }
+        if case .syncing = appState.syncStatus { return "Syncing…" }
+        return "Not synced"
     }
 
     private var panelWidth: CGFloat {

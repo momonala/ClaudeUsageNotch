@@ -30,31 +30,30 @@ extension IncidentLevel {
     }
 }
 
-/// One-line outage banner shown in the expanded panel / popover.
-struct IncidentBanner: View {
-    let providerName: String
-    let incident: ServiceIncident
+/// Small pill used for one-line status callouts (outage, last-synced) that
+/// share a row instead of each claiming a full-width banner.
+struct StatusBubble: View {
+    let icon: String?
+    let text: String
+    let tint: Color
 
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: incident.level.glyph)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(incident.level.tint)
-            VStack(alignment: .leading, spacing: 1) {
-                Text("\(providerName) — \(incident.summary)")
-                    .font(Theme.headerFont)
-                    .foregroundColor(Theme.textPrimary)
-                    .lineLimit(2)
+        HStack(spacing: 4) {
+            if let icon {
+                Image(systemName: icon)
+                    .font(.system(size: 8, weight: .semibold))
             }
-            Spacer(minLength: 0)
+            Text(text)
+                .font(.system(size: 9, weight: .medium))
+                .lineLimit(1)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
+        .foregroundColor(tint)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
         .background(
-            RoundedRectangle(cornerRadius: Theme.cardCornerRadius, style: .continuous)
-                .fill(incident.level.tint.opacity(Theme.cardFillOpacity))
-                .overlay(RoundedRectangle(cornerRadius: Theme.cardCornerRadius, style: .continuous)
-                    .strokeBorder(incident.level.tint.opacity(Theme.cardStrokeOpacity), lineWidth: Theme.cardStrokeWidth))
+            Capsule()
+                .fill(tint.opacity(Theme.cardFillOpacity))
+                .overlay(Capsule().strokeBorder(tint.opacity(Theme.cardStrokeOpacity), lineWidth: Theme.cardStrokeWidth))
         )
     }
 }

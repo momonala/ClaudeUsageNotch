@@ -117,7 +117,7 @@ Sources/
     ├── Compact/
     │   ├── CompactView.swift        Dual bars; countdown at session limit
     │   ├── CompactProgressBar.swift Pace marker tick
-    │   ├── StatusDot.swift          IncidentBanner
+    │   ├── StatusDot.swift          StatusBubble (inline outage / sync pill)
     │   └── AgentStatusGlow.swift    Perimeter pulse for agent status (compact-idle only)
     ├── Expanded/
     │   ├── ExpandedPanelView.swift  Switches on ExpandedMode

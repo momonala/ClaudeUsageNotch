@@ -42,7 +42,7 @@ struct SessionCard: View {
                             .frame(height: Theme.barHeightExpanded)
                     }
                 }
-                Spacer()
+                .frame(maxWidth: .infinity, alignment: .leading)
                 if !appState.isBalance && !appState.isStatusOnly {
                     Text("\(Int((pct * 100).rounded()))%")
                         .font(Theme.cardValueFont)
@@ -59,7 +59,6 @@ struct SessionCard: View {
         }
         .padding(.horizontal, Theme.cardPaddingH)
         .padding(.vertical, Theme.cardPaddingV)
-        .statusCardStyle(color: color)
     }
 
     private var statusColor: Color { appState.sessionStatus.color }

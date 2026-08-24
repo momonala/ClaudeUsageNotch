@@ -26,13 +26,12 @@ struct WeeklyCard: View {
                 CompactProgressBar(progress: pct, color: color, expectedProgress: window.expectedProgress())
                     .frame(height: Theme.barHeightExpanded)
             }
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
             Text("\(Int((pct * 100).rounded()))%")
                 .font(Theme.weeklyValueFont)
                 .foregroundColor(color)
         }
         .padding(.horizontal, Theme.cardPaddingH)
         .padding(.vertical, Theme.cardPaddingV)
-        .statusCardStyle(color: color)
     }
 }
