@@ -10,7 +10,6 @@ struct ExpandedPanelView: View {
     @ObservedObject var appState: AppState
     let appSettings: AppSettings
     let controller: NotchWindowController
-    let refreshAction: () -> Void
     @State private var appeared = false
 
     var body: some View {
@@ -18,12 +17,13 @@ struct ExpandedPanelView: View {
 
         ZStack(alignment: .bottom) {
             ZStack(alignment: .topLeading) {
-                NotchPillShape(topRadius: 10, bottomRadius: 20)
+                NotchPillShape(topRadius: Theme.panelTopRadius,
+                               bottomRadius: Theme.panelBottomRadius)
                     .fill(Color.black)
                     .shadow(color: .black.opacity(0.55), radius: 28, y: 10)
 
                 VStack(alignment: .leading, spacing: 8) {
-                    HeaderRow(appState: appState, controller: controller, refreshAction: refreshAction)
+                    HeaderRow(appState: appState, controller: controller)
 
                     switch appState.expandedMode {
                     case .usage:
@@ -49,7 +49,7 @@ struct ExpandedPanelView: View {
                     Spacer(minLength: 0)
                 }
                 .padding(.top, 12)
-                .padding([.horizontal, .bottom], 12)
+                .padding([.horizontal, .bottom], Theme.panelContentMargin)
             }
             .frame(width: panelWidth, height: panelHeight)
             .scaleEffect(appeared ? 1 : 0.90, anchor: .top)

@@ -122,7 +122,7 @@ Sources/
     ├── Expanded/
     │   ├── ExpandedPanelView.swift  Switches on ExpandedMode
     │   ├── ExpandedPanelGeometry.swift  Panel width/height per mode; shared with NotchWindowController
-    │   ├── HeaderRow.swift          Provider name, sync time, mode buttons, quit
+    │   ├── HeaderRow.swift          Pin badge, mode buttons, hide, quit
     │   ├── SessionCard.swift
     │   ├── WeeklyCard.swift
     │   ├── ResetSubtitleRow.swift   Countdown · reset time/date · expected usage

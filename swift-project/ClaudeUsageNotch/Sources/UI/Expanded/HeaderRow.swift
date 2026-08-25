@@ -3,44 +3,21 @@ import SwiftUI
 struct HeaderRow: View {
     @ObservedObject var appState: AppState
     let controller: NotchWindowController
-    let refreshAction: () -> Void
 
     @State private var quitHovered = false
     @State private var quitPressed = false
-    @State private var refreshRotation: Double = 0
-    @State private var refreshBright = false
 
     var body: some View {
         // Mode buttons sit LEFT of the spacer so they stay in the left "ear"
         // (clear of the hardware notch). Eye and power anchor the right "ear".
         // The spacer spans the notch dead-zone in between.
         HStack(spacing: 6) {
-            HStack(spacing: 4) {
-                ProviderIconView(size: 14, fallbackColor: Theme.textPrimary)
-                if appState.notchState == .expandedPinned {
-                    Image(systemName: "pin.fill")
-                        .font(.system(size: 8, weight: .semibold))
-                        .foregroundColor(Theme.textSecondary.opacity(0.6))
-                        .transition(.opacity.combined(with: .scale(scale: 0.7)))
-                }
+            if appState.notchState == .expandedPinned {
+                Image(systemName: "pin.fill")
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundColor(Theme.textSecondary.opacity(0.6))
+                    .transition(.opacity.combined(with: .scale(scale: 0.7)))
             }
-            .animation(.easeInOut(duration: 0.15), value: appState.notchState)
-
-            Button {
-                withAnimation(.easeOut(duration: 0.5)) { refreshRotation += 360 }
-                withAnimation(.easeOut(duration: 0.15)) { refreshBright = true }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                    withAnimation(.easeIn(duration: 0.25)) { refreshBright = false }
-                }
-                refreshAction()
-            } label: {
-                Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 11))
-                    .foregroundColor(refreshBright ? Theme.accentWarm : Theme.textSecondary.opacity(0.6))
-                    .rotationEffect(.degrees(refreshRotation))
-            }
-            .buttonStyle(.borderless)
-            .padding(.trailing, 2)
 
             modeButton(.usage,     icon: "gauge.medium")
             modeButton(.analytics, icon: "chart.bar.fill")
@@ -80,6 +57,9 @@ struct HeaderRow: View {
                     .onEnded { _ in quitPressed = false }
             )
         }
+        // On the row, not on the pin itself: a transition needs an animation
+        // from a view that outlives the insertion to have anything to run.
+        .animation(.easeInOut(duration: 0.15), value: appState.notchState)
     }
 
     private func modeButton(_ mode: ExpandedMode, icon: String) -> some View {

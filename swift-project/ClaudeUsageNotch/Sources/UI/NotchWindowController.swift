@@ -14,7 +14,6 @@ final class NotchWindowController: NSObject {
     private let panel: NSPanel
     private let appState: AppState
     private let appSettings: AppSettings
-    private let refreshAction: () -> Void
     private var hostingController: NSHostingController<RootNotchView>?
     private var cancellables = Set<AnyCancellable>()
     private var hoverTimer: Timer?
@@ -65,10 +64,9 @@ final class NotchWindowController: NSObject {
         )
     }
 
-    init(appState: AppState, appSettings: AppSettings, refreshAction: @escaping () -> Void) {
+    init(appState: AppState, appSettings: AppSettings) {
         self.appState = appState
         self.appSettings = appSettings
-        self.refreshAction = refreshAction
         self.panel = KeyablePanel(
             contentRect: NSRect(origin: .zero, size: NSSize(width: ScreenUtils.compactPanelWidthBase, height: 30)),
             styleMask: [.borderless, .nonactivatingPanel],
@@ -130,7 +128,7 @@ final class NotchWindowController: NSObject {
     }
 
     func present() {
-        let root = RootNotchView(appState: appState, appSettings: appSettings, controller: self, refreshAction: refreshAction)
+        let root = RootNotchView(appState: appState, appSettings: appSettings, controller: self)
         let hosting = NSHostingController(rootView: root)
         hosting.view.wantsLayer = true
         self.hostingController = hosting
@@ -303,7 +301,6 @@ struct RootNotchView: View {
     @ObservedObject var appState: AppState
     let appSettings: AppSettings
     let controller: NotchWindowController
-    let refreshAction: () -> Void
 
     var body: some View {
         Group {
@@ -320,9 +317,6 @@ struct RootNotchView: View {
                 }
                 .onTapGesture { controller.userClicked() }
                 .contextMenu {
-                    Button { refreshAction() } label: {
-                        Label("Refresh", systemImage: "arrow.clockwise")
-                    }
                     Button {
                         appState.expandedMode = .settings
                         appState.notchState = .expandedPinned
@@ -340,7 +334,7 @@ struct RootNotchView: View {
                     }
                 }
             case .expandedHover, .expandedPinned:
-                ExpandedPanelView(appState: appState, appSettings: appSettings, controller: controller, refreshAction: refreshAction)
+                ExpandedPanelView(appState: appState, appSettings: appSettings, controller: controller)
                     .transition(.asymmetric(
                         insertion: .identity,
                         removal: .opacity.combined(with: .scale(scale: 0.92, anchor: .top))

@@ -60,11 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             .sink { [weak self] enabled in self?.setLaunchAtLogin(enabled) }
             .store(in: &cancellables)
 
-        notchController = NotchWindowController(
-            appState: appState,
-            appSettings: appSettings,
-            refreshAction: { [weak self] in self?.coordinator?.refreshNow() }
-        )
+        notchController = NotchWindowController(appState: appState, appSettings: appSettings)
         notchController?.present()
 
         appState.$showOnboarding.removeDuplicates().receive(on: DispatchQueue.main)
