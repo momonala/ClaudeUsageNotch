@@ -92,8 +92,14 @@ struct CompactView: View {
                 }
             }
             .padding(.horizontal, 10)
+            // Anchored to the bottom with a real inset rather than centred in
+            // the strip: centring left the last row hard against the pill's
+            // curved bottom edge. The strip constants already account for this
+            // inset, so the rows aren't squeezed to make room for it.
+            .padding(.bottom, Theme.compactContentBottomInset)
             .frame(height: Theme.compactStripHeight
-                + (appState.snapshot?.creditWindow != nil ? Theme.compactStripHeightCredit : 0))
+                + (appState.snapshot?.creditWindow != nil ? Theme.compactStripHeightCredit : 0),
+                   alignment: .bottom)
         }
         .opacity(appeared ? 1 : 0)
         .onAppear {

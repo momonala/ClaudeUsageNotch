@@ -47,17 +47,44 @@ enum Theme {
     // Settings
     static let sectionLabelFont:    Font    = Font.system(size: 10, weight: .semibold, design: .rounded)
     static let sectionLabelKerning: CGFloat = 0.8
+
     static let iconBgSize:          CGFloat = 34
     static let iconCornerRadius:    CGFloat = 8
+
+    // MARK: - Notch panel shape
+
+    /// Top corners hug the hardware notch's inner curve; the bottom is free
+    /// to sweep wider.
+    static let panelTopRadius:     CGFloat = 10
+    static let panelBottomRadius:  CGFloat = 20
+    /// Even margin between the panel's edge and the content inside it. Apple's
+    /// Live Activities HIG asks for "even, matching margins between rounded
+    /// shapes and the edges … including corners" — so this is one value for
+    /// all four sides, not a bigger bottom inset to dodge the corner sweep.
+    static let panelContentMargin: CGFloat = 12
+    /// Corner radius for a shape inset by `panelContentMargin`, kept concentric
+    /// with the panel: "match its corner radius to the outer corner radius …
+    /// by subtracting the margin". Equal margin + subtracted radius keeps the
+    /// inner and outer curves parallel through the bend, so content near the
+    /// bottom stops reading as pinched by the corner.
 
     // MARK: - Layout
 
     /// Height of the visible strip below the hardware notch in compact mode.
     /// Must match the content height CompactView actually lays out (2 bar
-    /// rows), or the top row renders partially inside the hidden notch area.
-    static let compactStripHeight: CGFloat = 28
+    /// rows) *plus* `compactContentBottomInset`, or the top row renders
+    /// partially inside the hidden notch area.
+    static let compactStripHeight: CGFloat = 30
     /// Extra strip height for the optional third (credit) bar row.
-    static let compactStripHeightCredit: CGFloat = 12
+    static let compactStripHeightCredit: CGFloat = 14
+    /// Gap between the last bar row and the pill's bottom edge.
+    ///
+    /// Without it the three-row strip is 39pt of content in a 40pt frame:
+    /// half a point of clearance, at a height where the pill's 14pt corner
+    /// has already cut 10.3pt inward. The percentage labels sit 10pt from the
+    /// right edge, so the bottom one ran straight through the corner arc.
+    /// At 5pt the curve has only cut 3.3pt, leaving the label ~6.7pt clear.
+    static let compactContentBottomInset: CGFloat = 5
 
     // MARK: - Progress bar
 
