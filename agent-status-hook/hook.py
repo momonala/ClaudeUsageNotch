@@ -27,19 +27,62 @@ LOCK_FILE = os.path.join(STATUS_DIR, "agent-status.lock")
 STATUS_BY_EVENT = {
     "UserPromptSubmit": "working",
     "PreToolUse": "working",
-    "Stop": "idle",
 }
 
+# Emitted by Claude at the end of a turn (per global CLAUDE.md instruction)
+# when it's blocked on something only the user can do outside the chat, e.g.
+# reconnecting a VPN — not a tool-permission prompt, so Notification never
+# fires for it and Stop would otherwise read as plain idle.
+NEEDS_ACTION_MARKER = "[NEEDS-ACTION]"
 
-def _status_for_notification(payload):
+
+def _status_for_notification(payload, current_status):
     """Claude Code's Notification hook fires for two unrelated situations: a
     tool genuinely needs the user's permission, or Claude has simply been
     idle for a while waiting on the user (a routine nudge, not a request).
-    Only the former should read as `needsInput` — the idle nudge should look
-    like nothing's wrong, since nothing is.
+    The former always reads as `needsInput`. The latter is just a heartbeat —
+    it must not clobber a `needsInput` a prior `Stop` already set (e.g. from
+    the `[NEEDS-ACTION]` marker), since the nudge fires repeatedly while
+    Claude is still waiting on that same unresolved ask.
     """
     message = str(payload.get("message", "")).lower()
-    return "needsInput" if "permission" in message else "idle"
+    if "permission" in message:
+        return "needsInput"
+    return "needsInput" if current_status == "needsInput" else "idle"
+
+
+def _last_assistant_text(transcript_path):
+    if not transcript_path:
+        return ""
+    try:
+        with open(transcript_path) as fh:
+            lines = fh.readlines()
+    except OSError:
+        return ""
+    for line in reversed(lines):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if entry.get("type") != "assistant":
+            continue
+        content = entry.get("message", {}).get("content", [])
+        if isinstance(content, str):
+            return content
+        return "\n".join(
+            block.get("text", "")
+            for block in content
+            if isinstance(block, dict) and block.get("type") == "text"
+        )
+    return ""
+
+
+def _status_for_stop(payload):
+    text = _last_assistant_text(payload.get("transcript_path"))
+    return "needsInput" if NEEDS_ACTION_MARKER in text else "idle"
 
 
 def _load():
@@ -71,7 +114,7 @@ def main():
     payload = json.load(sys.stdin)
     event = payload.get("hook_event_name")
     session_id = payload.get("session_id")
-    known_events = set(STATUS_BY_EVENT) | {"Notification", "SessionEnd"}
+    known_events = set(STATUS_BY_EVENT) | {"Notification", "Stop", "SessionEnd"}
     if not session_id or event not in known_events:
         return
 
@@ -85,9 +128,12 @@ def main():
             if event == "SessionEnd":
                 data.pop(session_id, None)
             else:
+                current_status = data.get(session_id, {}).get("status")
                 status = (
-                    _status_for_notification(payload)
+                    _status_for_notification(payload, current_status)
                     if event == "Notification"
+                    else _status_for_stop(payload)
+                    if event == "Stop"
                     else STATUS_BY_EVENT[event]
                 )
                 data[session_id] = {

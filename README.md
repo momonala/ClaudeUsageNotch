@@ -245,6 +245,14 @@ killed terminal — so it can't hold `working`/`needsInput` forever), and
 aggregates the rest with `needsInput` > `working` > `idle` priority so a session
 waiting on you is never hidden behind one that's merely working.
 
+The `Notification` event only fires amber for genuine tool-permission prompts.
+For a turn that ends on a plain informational ask with no interactive prompt
+(e.g. "VPN looks disconnected, can you reconnect it?"), the hook's `Stop`
+handler reads the transcript's last assistant message and also fires amber if
+it contains the literal marker `[NEEDS-ACTION]`. Global CLAUDE.md instructs
+Claude to append that marker when a turn ends on something only the user can
+do outside the chat.
+
 To enable it, add this to `~/.claude/settings.json` (adjust the path to where
 you cloned this repo):
 
