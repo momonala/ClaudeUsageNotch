@@ -87,6 +87,14 @@ final class NotchWindowController: NSObject {
         panel.acceptsMouseMovedEvents = true
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = true
+        // The notch UI is a permanently dark surface (it has to blend with the
+        // black camera housing), so pin the panel to the dark appearance rather
+        // than inheriting the system's. Without this, the stock controls in the
+        // settings pane — pop-up buttons, the text field, push buttons — render
+        // their Light Mode variant on pure black whenever the user is in Light
+        // Mode, and the semantic label colors resolve to near-black on
+        // near-black.
+        panel.appearance = NSAppearance(named: .darkAqua)
 
         appState.$notchState
             .receive(on: DispatchQueue.main)
