@@ -17,7 +17,11 @@ enum ExpandedPanelGeometry {
         switch mode {
         case .usage:     return 380
         case .analytics: return 1090
-        case .settings:  return 460
+        // The pane's unconstrained ideal width is 412pt, set by the threshold
+        // row: five 58pt checkboxes ("100 %" is the widest label) beside their
+        // indented label, inside the row and panel margins. Below that the
+        // percent labels wrap inside their slots. This leaves a little slack.
+        case .settings:  return 420
         }
     }
 
@@ -26,7 +30,14 @@ enum ExpandedPanelGeometry {
         switch mode {
         case .usage:     return 120
         case .analytics: return 590
-        case .settings:  return 323
+        // Header row plus the four grouped sections measure 446.5pt through
+        // `fittingSize` at the width above, hosted in a real window (AppKit
+        // controls under-report until they have one), and ~463.5 with the
+        // sync-server validation footer showing — one 10pt line plus the 4pt
+        // section spacing. Sized for that taller state; the remainder is
+        // bottom clearance for the 20pt corner sweep. There is no scroll view
+        // here, so too short clips the last row.
+        case .settings:  return 468
         }
     }
 

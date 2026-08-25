@@ -7,7 +7,11 @@ import Combine
 public final class AppSettings: ObservableObject {
     @Published public var pollIntervalSeconds: TimeInterval = 300 { didSet { persist() } }
     @Published public var notificationsEnabled: Bool = true { didSet { persist() } }
-    @Published public var thresholds: [Double] = [0.25, 0.5, 0.75, 0.9, 1.0] { didSet { persist() } }
+    /// Fractions of a usage window that can fire a notification. Single source
+    /// of truth: the settings pane offers exactly these, so a default can never
+    /// be a value the UI has no control for.
+    public static let availableThresholds: [Double] = [0.25, 0.5, 0.75, 0.9, 1.0]
+    @Published public var thresholds: [Double] = AppSettings.availableThresholds { didSet { persist() } }
     // Not persisted here: the source of truth is `SMAppService.mainApp.status`,
     // synced into this property at launch (see AppDelegate.syncLaunchAtLoginState).
     @Published public var launchAtLogin: Bool = false

@@ -5,7 +5,6 @@ enum Theme {
     // Base background tones
     static let background      = Color(red: 0.04, green: 0.04, blue: 0.05)
     static let surface         = Color.white.opacity(0.06)
-    static let surfaceElevated = Color.white.opacity(0.10)
     static let stroke          = Color.white.opacity(0.10)
     static let textPrimary     = Color.white.opacity(0.96)
     static let textSecondary   = Color.white.opacity(0.62)
@@ -44,12 +43,74 @@ enum Theme {
     static let cardValueFont    = Font.system(size: 14, weight: .bold,     design: .monospaced)
     static let weeklyValueFont  = Font.system(size: 13, weight: .bold,     design: .monospaced)
 
-    // Settings
+    // Analytics chart section labels (uppercase mini-caps)
     static let sectionLabelFont:    Font    = Font.system(size: 10, weight: .semibold, design: .rounded)
     static let sectionLabelKerning: CGFloat = 0.8
 
-    static let iconBgSize:          CGFloat = 34
-    static let iconCornerRadius:    CGFloat = 8
+    // MARK: - Settings pane
+
+    /// The settings pane uses the system label hierarchy rather than hardcoded
+    /// white opacities. Apple's HIG (Labels) defines four label colors "to help
+    /// you give text different levels of visual importance", and tertiary is
+    /// specifically "text that describes an unavailable item or behavior" — so
+    /// disabled rows get the platform's own dimming instead of an ad-hoc
+    /// `.opacity(0.4)`. These resolve against the panel's pinned dark
+    /// appearance (see `NotchWindowController`) and follow Increase Contrast.
+    static let labelPrimary   = Color(nsColor: .labelColor)
+    static let labelSecondary = Color(nsColor: .secondaryLabelColor)
+    static let labelTertiary  = Color(nsColor: .tertiaryLabelColor)
+
+    /// Sizes track the macOS built-in text styles (HIG > Typography > macOS
+    /// built-in text styles): Headline 13, Callout 12, Subheadline 11,
+    /// Footnote 10. Rounded is kept as the app's system-font variant.
+    static let settingsTitleFont   = Font.system(size: 13, weight: .semibold, design: .rounded)
+    static let settingsSectionFont = Font.system(size: 11, weight: .semibold, design: .rounded)
+    static let settingsRowFont     = Font.system(size: 12,                    design: .rounded)
+    static let settingsCaptionFont = Font.system(size: 10,                    design: .rounded)
+
+    /// One row height for every row, whatever control it carries. HIG >
+    /// Toggles > macOS: a mini switch's "height is similar to the height of
+    /// buttons and other controls, resulting in rows that have a consistent
+    /// height".
+    static let settingsRowMinHeight: CGFloat = 28
+    static let settingsRowPaddingH:  CGFloat = 10
+    static let settingsRowPaddingV:  CGFloat = 4
+    /// Leading indent for rows subordinate to the switch above them, so the
+    /// dependency reads structurally and not just by dimming.
+    static let settingsRowIndent:    CGFloat = 14
+    static let settingsGroupRadius:  CGFloat = 7
+    static let settingsGroupSpacing: CGFloat = 11
+    /// Width reserved for each threshold checkbox, sized to the longest label
+    /// ("100%") and applied to all of them — HIG > Toggles: "Measure the space
+    /// needed to accommodate the longest button label, and use that
+    /// measurement consistently."
+    static let settingsCheckboxWidth: CGFloat = 58
+    /// Trailing control widths, kept equal across rows so the controls form a
+    /// single aligned column (HIG > Layout: "Align components with one another").
+    static let settingsControlWidth: CGFloat = 104
+
+    // MARK: - Notch switch and checkbox (see NotchToggleStyles)
+
+    /// Track and knob sized to AppKit's mini switch, so a switch row is the
+    /// same height as a row carrying a small button or pop-up button.
+    static let switchTrackSize  = CGSize(width: 26, height: 15)
+    static let switchKnobInset:   CGFloat = 2
+    static let switchKnobShadow:  CGFloat = 1
+    static let checkboxSize:      CGFloat = 13
+    static let checkboxRadius:    CGFloat = 3.5
+    static let checkmarkSize:     CGFloat = 8
+    /// Off-state track and box fills, plus the hairline that gives them an edge
+    /// against the panel's black. On-state is `accentWarm`.
+    static let toggleOffFill    = Color.white.opacity(0.09)
+    static let toggleOffStroke  = Color.white.opacity(0.20)
+    /// Disabled fills. Tertiary-label dimming doesn't apply to a filled shape,
+    /// so the on/off distinction is preserved at lower contrast instead.
+    static let toggleDisabledOnFill  = Color.white.opacity(0.20)
+    static let toggleDisabledOffFill = Color.white.opacity(0.05)
+    static let toggleDisabledKnob    = Color.white.opacity(0.5)
+    /// Press feedback, which a custom control has to supply itself — HIG >
+    /// Buttons: "Always include a press state for a custom button."
+    static let togglePressedScale: CGFloat = 0.92
 
     // MARK: - Notch panel shape
 

@@ -127,9 +127,9 @@ Sources/
     │   ├── WeeklyCard.swift
     │   ├── ResetSubtitleRow.swift   Countdown · reset time/date · expected usage
     │   ├── UsageChartView.swift     Cost/token analytics: model/project/skill breakdowns, daily & hourly charts
-    │   └── InlineSettingsView.swift Settings rendered inline in the notch panel
+    │   └── InlineSettingsView.swift Grouped-form settings pane rendered inline in the notch panel
     ├── Onboarding/OnboardingView.swift
-    └── Theme/                       Theme · BrandIcon · GlassBackground/NotchPillShape · RetroMascot
+    └── Theme/                       Theme · NotchToggleStyles · GlassBackground/NotchPillShape · RetroMascot
 ```
 
 ---
