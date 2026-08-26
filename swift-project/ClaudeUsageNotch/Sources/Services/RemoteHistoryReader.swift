@@ -189,8 +189,11 @@ enum RemoteHistoryReader {
 
         var request = URLRequest(url: url)
         // Snappy enough that an unreachable Pi surfaces an error fast, but not so
-        // tight that a slow LAN/Tailscale aggregate times out spuriously.
-        request.timeoutInterval = 5
+        // tight that a slow LAN/Tailscale aggregate times out spuriously. The
+        // server aggregates tens of thousands of records per call and answers in
+        // ~4.5 s (nearer 7 s for the longest lookback), so 5 s sat right on the
+        // cliff and the chart failed intermittently.
+        request.timeoutInterval = 8
 
         let (data, response) = try await URLSession.shared.data(for: request)
         let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
