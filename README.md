@@ -222,19 +222,48 @@ Mode buttons live in `HeaderRow`. Settings are no longer a separate window — t
 
 ## How the notch window works
 
-`NotchWindowController` creates a borderless, non-activating `NSPanel` at window level `.popUpMenu` (101 — above the macOS menu bar compositor). The panel anchors at `screen.frame.maxY`. Its height is `safeAreaInsets.top` (~37 pt on MBP 14/16") plus the visible content height.
+`NotchWindowController` creates a borderless, non-activating `NSPanel` at window level `.popUpMenu` (101 — above the macOS menu bar compositor). The panel anchors at `screen.frame.maxY`. Its height is `safeAreaInsets.top` (the hardware notch height — 32 pt on a 14" M5, but read it per-screen, it varies by model) plus the visible content height.
 
-**Compact width.** The pill is exactly as wide as the physical cutout.
-`ScreenUtils.notchWidth` derives that from the gap between the menu bar's two
-auxiliary areas (`screen.frame.width - auxiliaryTopLeftArea.width -
-auxiliaryTopRightArea.width`), then subtracts `notchFilletInset` from each side:
-those areas abut the cutout's *bounding box*, so the raw gap includes the
-filleted corners and a pill drawn to it overhangs the black housing by a few
-points on each side. The 13" Air reports a 179 pt gap; the drawn pill is 171 pt.
-There is no `max()` floor against `compactPanelWidthDefault` — that floor
-silently overshot the cutout on any Mac whose notch is narrower than 176 pt.
+**Compact width.** The pill is exactly as wide as the physical cutout, in every
+state. `ScreenUtils.notchWidth` is the gap between the menu bar's two auxiliary
+areas (`screen.frame.width - auxiliaryTopLeftArea.width -
+auxiliaryTopRightArea.width`), taken raw — macOS documents those areas as
+abutting the camera housing, so the gap *is* the cutout.
 
-When the session hits 100%, the compact panel widens via `ScreenUtils.compactPanelWidth` so countdown text (e.g. `2h 1m`) stays in the visible strip beside the camera cutout.
+Two corrections that used to sit on top of that number are gone, both for the
+same reason: they were tuned against one machine and wrong on the next.
+
+- A `max()` floor against `compactPanelWidthDefault` (176 pt), which overshot
+  the cutout on any Mac whose notch is narrower than it.
+- A fixed 4 pt-per-side `notchFilletInset`, meant to pull the pill's edges in
+  off the cutout's filleted corners. It left the pill 8 pt narrow on a 14" MBP,
+  which reports a 185 pt gap. The fillets are a question of what shape the pill
+  draws, not how wide it is.
+
+Don't expect the two auxiliary areas to be symmetric: a 14" MBP reports 665 pt
+left and 662 pt right of a physically centred cutout. That ~3 pt of layout slop
+is the accuracy ceiling here, which is the other reason not to hand-tune
+point-level corrections on top of it. `compactPanelWidthDefault` survives only
+as the fallback for screens with no cutout at all.
+
+**Panel vs. pill.** The compact *panel* is wider than the pill: it carries
+`AgentStatusGlow.outset` points of transparent margin on its sides and bottom,
+and the pill sits centred inside it. That margin exists so the agent-status ring
+can be drawn *outside* the black rather than centred on its edge — a centred
+stroke spends its inner half covering the outermost points of the cutout, which
+is what made pill-plus-ring measure one cutout wide while the black alone read
+narrow. Each stroke is pushed `lineWidth / 2` outward, so its inner edge lands
+flush on the fill and its full weight adds to the silhouette. The margin is
+reserved whether or not the ring is showing, so the window doesn't resize every
+time an agent starts or stops working.
+
+**At the session limit** the pill swaps the `%` readout for a reset countdown —
+in the same label slot, so the silhouette doesn't move.
+`UsageWindow.timeToResetCompactString` keeps it to three characters (`45m`,
+`2h`, `1d`, floored: `2h` means at least two hours). It used to render
+`timeToResetShortString` (`2h 58m` — 33 pt of text at 9 pt bold against a 25 pt
+slot) and grow the panel 32 pt to fit, which stuck the pill ~15 pt out past the
+black housing on each side for as long as the limit lasted.
 
 **Hover detection** uses a 40 ms `Timer` polling `NSEvent.mouseLocation` — `NSTrackingArea` and global event monitors are unreliable on non-activating panels.
 
@@ -242,8 +271,8 @@ The hit region is asymmetric by state (`NotchWindowController.hoverHitRect`):
 
 | State | Region |
 | --- | --- |
-| compact, notched screen | the cutout itself: top `safeAreaInsets.top` of the panel frame, inset 20 pt per side |
-| compact, no cutout | full panel frame, inset 20 pt per side and 5 pt off the bottom |
+| compact, notched screen | the cutout itself: top `safeAreaInsets.top` of the panel frame, inset 20 pt per side *from the pill's edges* (i.e. 20 pt + the ring margin from the panel's) |
+| compact, no cutout | full panel frame, inset 20 pt per side and 5 pt off the bottom, both measured from the pill |
 | expanded | panel frame grown 4 pt on all sides |
 
 Compact is tight on purpose: **you expand by covering the notch, not by
@@ -305,6 +334,34 @@ affecting the rest of the app.
 
 This only sees **local** CLI sessions on this Mac — there's no visibility into
 remote/cloud-hosted sessions.
+
+**Drawing.** The stroke wraps the pill from *outside* — see "Panel vs. pill"
+above — so it adds to the silhouette rather than covering the outermost points
+of black. Three looks, one weight (`ringLineWidth`, except the amber's breath):
+
+| State | Look |
+| --- | --- |
+| working | faint cyan ring with a comet running along it: a fifth of the perimeter, solid through the middle, fading at head and tail |
+| needs input | amber ring breathing thicker and thinner (and fading to `amberTroughOpacity` at the bottom of the breath), its inner edge pinned to the fill |
+| just completed | flat green ring, no animation |
+
+Two things are less obvious than they look. The comet's fade is built from
+nested segments sharing a midpoint rather than from equal slices with
+per-slice opacity: slices have to overlap or a seam shows, the overlap
+composites to a third alpha, and those bands crawl along the ring as it
+travels. And its length is constant along the whole perimeter — the
+compress-through-the-turns, stretch-on-the-straights look comes free from
+foreshortening, since the same length of path spans far less visual width once
+it wraps a 15 pt corner. Modulating length by corner proximity was tried and
+reverted: with the head at constant speed, any change in length is absorbed by
+the tail, which then lurches forward and falls back twice a lap.
+
+Both animations start from `onAppear` on **their own branch**, not on the view.
+A `repeatForever` animation only applies to views present in the transaction
+that started it, so starting both from the view's `onAppear` left whichever
+branch appeared *later* frozen at its end state — a comet parked at the corner,
+an amber ring stuck at the top of a breath it never took. Status changes while
+the glow is on screen are routine, so that was the common path.
 
 **Mechanism.** `agent-status-hook/hook.py` (stdlib-only Python) is invoked by
 Claude Code hooks and read-modify-writes a small JSON file at

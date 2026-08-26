@@ -136,6 +136,9 @@ enum Theme {
     /// rows) *plus* `compactContentBottomInset`, or the top row renders
     /// partially inside the hidden notch area.
     static let compactStripHeight: CGFloat = 30
+    /// Bottom corner radius of the compact pill's black fill. `AgentStatusGlow`
+    /// derives its own radius from this so the ring curves parallel to it.
+    static let compactPillBottomRadius: CGFloat = 14
     /// Extra strip height for the optional third (credit) bar row.
     static let compactStripHeightCredit: CGFloat = 14
     /// Gap between the last bar row and the pill's bottom edge.

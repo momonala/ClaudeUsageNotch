@@ -56,22 +56,23 @@ enum ScreenUtils {
 
     // MARK: - Hardware notch width
 
-    /// Points trimmed from each side of the gap macOS reports between the
-    /// menu bar's two auxiliary areas.
-    ///
-    /// Those areas abut the cutout's *bounding box*, which includes the
-    /// filleted corners where its edges curve back inward. A pill drawn to the
-    /// full reported gap therefore overhangs the cutout by a few points on each
-    /// side, visible as two slivers of pill sticking out past the black
-    /// housing. Trimming brings its edges flush with the cutout's straight
-    /// sides. The fillet radius is a constant across the notched MacBooks, so
-    /// this is a fixed inset rather than something derived per-screen.
-    private static let notchFilletInset: CGFloat = 4
-
     /// Width of the physical notch cutout, derived from the areas macOS reports
     /// on either side of it (available since macOS 12 on any screen with a notch).
     /// Falls back to `compactPanelWidthDefault` on screens without a notch, or if
     /// those areas aren't reported for some reason.
+    ///
+    /// Taken raw, with nothing trimmed off it. A previous version subtracted a
+    /// fixed 4 pt per side to account for the cutout's filleted corners; that
+    /// constant was tuned by eye against one machine and left the pill visibly
+    /// narrower than the housing on another (a 14" MBP reports a 185 pt gap, so
+    /// the pill came out 177 pt). macOS documents these areas as abutting the
+    /// camera housing, so the gap *is* the cutout width — the fillets are a
+    /// question of what shape the pill draws, not how wide it is.
+    ///
+    /// Do not expect the two areas to be symmetric: the 14" MBP reports 665 pt
+    /// left and 662 pt right of a physically centred cutout. That 3 pt of
+    /// layout slop is the accuracy ceiling here, which is another reason not to
+    /// hand-tune point-level corrections on top of this number.
     static var notchWidth: CGFloat {
         guard let screen = notchScreen(), screen.safeAreaInsets.top > 0 else {
             return compactPanelWidthDefault
@@ -79,36 +80,23 @@ enum ScreenUtils {
         let leftWidth = screen.auxiliaryTopLeftArea?.width ?? 0
         let rightWidth = screen.auxiliaryTopRightArea?.width ?? 0
         guard leftWidth > 0 || rightWidth > 0 else { return compactPanelWidthDefault }
-        return screen.frame.width - leftWidth - rightWidth - (notchFilletInset * 2)
+        return screen.frame.width - leftWidth - rightWidth
     }
 
     // MARK: - Compact panel width
 
+    /// Width of the compact pill on a screen with no hardware cutout, where
+    /// there is no cutout to match and the pill is free-standing.
     static let compactPanelWidthDefault: CGFloat = 176
-    /// Extra width when the session row shows a countdown instead of "%".
-    private static let compactCountdownWidthBump: CGFloat = 32
-    private static let compactPercentSlotWidth: CGFloat = 25
 
-    /// Baseline compact pill width: exactly this machine's notch cutout.
+    /// The compact pill is exactly this machine's notch cutout — in every
+    /// state, with no margin and no floor.
     ///
-    /// Deliberately carries no margin, and is not floored at
-    /// `compactPanelWidthDefault` — a `max()` against that default silently
-    /// overshot the cutout on any Mac whose notch is narrower than it (the 13"
-    /// Air reports a 179 pt gap, so a 176 pt floor is within a few points of
-    /// mattering). `notchWidth` already falls back to the default on screens
-    /// with no notch at all, which is the only case the floor was protecting.
+    /// State-dependent width is deliberately gone. The pill used to grow by
+    /// 32 pt once the session hit 100%, to park the reset countdown ("2h 58m")
+    /// on visible pixels beside the housing; the cost was a pill that stuck out
+    /// ~15 pt each side of the cutout for as long as the limit lasted. The
+    /// countdown now fits the same label slot the "%" readout uses — see
+    /// `UsageWindow.timeToResetCompactString` — so the silhouette never moves.
     static var compactPanelWidthBase: CGFloat { notchWidth }
-
-    /// Widen the compact pill for session-limit countdowns (e.g. "2h 1m") so the
-    /// label sits further into the visible "ear" beside the hardware notch.
-    static func compactPanelWidth(atSessionLimit: Bool, countdownText: String?) -> CGFloat {
-        let base = compactPanelWidthBase
-        guard atSessionLimit else { return base }
-        let font = NSFont.monospacedSystemFont(ofSize: 9, weight: .bold)
-        let text = countdownText ?? "LIMIT"
-        let textWidth = ceil((text as NSString).size(withAttributes: [.font: font]).width)
-        let measuredExtra = max(0, textWidth + 12 - compactPercentSlotWidth)
-        let extra = max(measuredExtra, compactCountdownWidthBump)
-        return min(base + extra, base + 48)
-    }
 }

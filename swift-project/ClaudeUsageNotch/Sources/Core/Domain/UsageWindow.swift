@@ -119,6 +119,27 @@ public struct UsageWindow: Codable, Hashable {
         return "\(max(minutes, 1))m"
     }
 
+    /// Coarsest useful reset countdown — at most three characters ("45m",
+    /// "2h", "1d") — for the compact pill's fixed label slot.
+    ///
+    /// The pill is exactly as wide as the hardware cutout in every state, so a
+    /// countdown shown there has to fit the same slot the "%" readout uses.
+    /// `timeToResetShortString`'s "2h 58m" does not, and the pill used to grow
+    /// 32 pt to make room for it — which pushed it out past the black housing
+    /// on both sides for the whole time the session sat at its limit.
+    ///
+    /// Components are floored, matching `timeToResetShortString`: "2h" means at
+    /// least two hours to go, never less.
+    public func timeToResetCompactString(now: Date = Date()) -> String? {
+        guard let resetAt else { return nil }
+        let interval = resetAt.timeIntervalSince(now)
+        if interval <= 0 { return "now" }
+        let (days, hours, minutes) = timeComponents(from: interval)
+        if days > 0  { return "\(days)d" }
+        if hours > 0 { return "\(hours)h" }
+        return "\(max(minutes, 1))m"
+    }
+
     /// Human-readable countdown to reset, e.g. "Resets in 1h 12m".
     public func timeToResetString(now: Date = Date()) -> String? {
         guard let resetAt else { return nil }

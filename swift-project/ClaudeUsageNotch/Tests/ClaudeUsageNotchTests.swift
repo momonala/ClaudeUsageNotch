@@ -1,4 +1,5 @@
 import XCTest
+import AppKit
 @testable import ClaudeUsageNotch
 
 // MARK: - ClaudeUsageMapper Tests
@@ -461,5 +462,68 @@ final class ExpandedPanelGeometryTests: XCTestCase {
             ExpandedPanelGeometry.windowContentHeight(for: .settings, hasCredit: true),
             ExpandedPanelGeometry.windowContentHeight(for: .settings, hasCredit: false), accuracy: 0.001
         )
+    }
+}
+
+// MARK: - Compact reset countdown
+
+final class CompactCountdownTests: XCTestCase {
+
+    private let now = Date(timeIntervalSince1970: 1_770_000_000)
+
+    private func sessionWindow(resettingIn seconds: TimeInterval) -> UsageWindow {
+        UsageWindow(
+            type: .session,
+            percentUsed: 1.0,
+            resetAt: now.addingTimeInterval(seconds),
+            lastUpdated: now
+        )
+    }
+
+    func test_compactString_keepsOnlyTheLargestUnit() {
+        XCTAssertEqual(sessionWindow(resettingIn: 45 * 60).timeToResetCompactString(now: now), "45m")
+        XCTAssertEqual(sessionWindow(resettingIn: 3600).timeToResetCompactString(now: now), "1h")
+        XCTAssertEqual(sessionWindow(resettingIn: 2 * 3600 + 58 * 60).timeToResetCompactString(now: now), "2h")
+        XCTAssertEqual(sessionWindow(resettingIn: 25 * 3600).timeToResetCompactString(now: now), "1d")
+    }
+
+    func test_compactString_floorsRatherThanRounds() {
+        // "2h" has to mean *at least* two hours, never "nearly three".
+        XCTAssertEqual(sessionWindow(resettingIn: 2 * 3600 + 59 * 60 + 59).timeToResetCompactString(now: now), "2h")
+    }
+
+    func test_compactString_neverReportsZero() {
+        XCTAssertEqual(sessionWindow(resettingIn: 30).timeToResetCompactString(now: now), "1m")
+        XCTAssertEqual(sessionWindow(resettingIn: 0).timeToResetCompactString(now: now), "now")
+        XCTAssertEqual(sessionWindow(resettingIn: -60).timeToResetCompactString(now: now), "now")
+    }
+
+    func test_compactString_isNilWithoutResetAt() {
+        let window = UsageWindow(type: .session, percentUsed: 1.0, resetAt: nil, lastUpdated: now)
+        XCTAssertNil(window.timeToResetCompactString(now: now))
+    }
+
+    /// The whole point of the compact form: at the session limit the pill shows
+    /// this string in the same slot the "%" readout uses, so it has to fit that
+    /// slot. If it doesn't, the pill either clips or (as it did before) grows
+    /// wider than the hardware cutout.
+    func test_compactString_fitsThePercentLabelSlot() {
+        let slotWidth: CGFloat = 25
+        let font = NSFont.monospacedSystemFont(ofSize: 9, weight: .bold)
+        let intervals: [TimeInterval] = [0, 30, 59 * 60, 3600, 5 * 3600, 23 * 3600, 25 * 3600, 9 * 24 * 3600]
+        for interval in intervals {
+            let text = try! XCTUnwrap(sessionWindow(resettingIn: interval).timeToResetCompactString(now: now))
+            let width = (text as NSString).size(withAttributes: [.font: font]).width
+            XCTAssertLessThanOrEqual(width, slotWidth, "\"\(text)\" overflows the \(slotWidth) pt label slot")
+        }
+        // The fallback shown when the window has no reset time has to fit too.
+        let fallbackWidth = ("MAX" as NSString).size(withAttributes: [.font: font]).width
+        XCTAssertLessThanOrEqual(fallbackWidth, slotWidth)
+    }
+
+    /// The pill is the hardware cutout, in every state. Nothing about the
+    /// session's usage may feed into its width.
+    func test_compactPanelWidth_isTheNotchWidthRegardlessOfState() {
+        XCTAssertEqual(ScreenUtils.compactPanelWidthBase, ScreenUtils.notchWidth, accuracy: 0.001)
     }
 }

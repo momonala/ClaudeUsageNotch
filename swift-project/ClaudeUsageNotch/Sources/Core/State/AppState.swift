@@ -34,7 +34,10 @@ public final class AppState: ObservableObject {
     public var isBalance: Bool { snapshot?.isBalance ?? false }
     public var showsPercentBar: Bool { snapshot?.showsPercentBar ?? true }
     public var shortLabel: String { snapshot?.shortLabel ?? "—" }
-    public var sessionResetShortString: String? { snapshot?.sessionWindow.timeToResetShortString() }
+    /// Reset countdown for the compact pill's label slot ("45m", "2h"). Kept
+    /// to three characters so the pill stays exactly as wide as the cutout —
+    /// see `UsageWindow.timeToResetCompactString`.
+    public var sessionResetCompactString: String? { snapshot?.sessionWindow.timeToResetCompactString() }
 
     public var combinedStatus: UsageStatus { snapshot?.combinedStatus ?? .unknown }
 

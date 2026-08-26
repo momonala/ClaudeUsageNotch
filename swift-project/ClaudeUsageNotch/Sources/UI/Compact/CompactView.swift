@@ -15,21 +15,43 @@ struct CompactView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
+            pill
+            if showAgentGlow {
+                // Wraps the pill's perimeter from outside, in the margin the
+                // panel carries for it. The pill itself stays exactly as wide
+                // as the hardware cutout — the ring adds to that silhouette
+                // rather than taking a bite out of its edges.
+                AgentStatusGlow(status: appState.agentStatus, justCompleted: appState.agentJustCompleted)
+            }
+        }
+        .opacity(appeared ? 1 : 0)
+        .onAppear {
+            withAnimation(.spring(response: Theme.springResponse, dampingFraction: Theme.springDamping)) { appeared = true }
+        }
+        .help(appState.sessionResetString ?? "ClaudeUsageNotch")
+    }
+
+    /// The pill proper: black fill plus the visible content strip, inset from
+    /// the panel by the status ring's margin so the fill measures exactly one
+    /// hardware cutout.
+    private var pill: some View {
+        ZStack(alignment: .bottom) {
             // Full-height black fill — top portion invisible (inside notch).
-            NotchPillShape(topRadius: 0, bottomRadius: 14)
+            NotchPillShape(topRadius: 0, bottomRadius: Theme.compactPillBottomRadius)
                 .fill(Color.black)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            if showAgentGlow {
-                // Traces the black pill's own perimeter (no separate width) —
-                // the pill is sized to the hardware notch, so the ring lands
-                // flush with the physical cutout edges instead of curving in
-                // somewhere inside it.
-                AgentStatusGlow(status: appState.agentStatus, justCompleted: appState.agentJustCompleted)
-            }
-
             // Visible content strip (bottom 22 pt, below the notch edge).
-            HStack(spacing: 7) {
+            strip
+        }
+        .padding(EdgeInsets(top: 0,
+                            leading: AgentStatusGlow.outset,
+                            bottom: AgentStatusGlow.outset,
+                            trailing: AgentStatusGlow.outset))
+    }
+
+    private var strip: some View {
+        HStack(spacing: 7) {
                 if appState.showsPercentBar {
                     VStack(spacing: 3) {
                         // Session row
@@ -41,10 +63,14 @@ struct CompactView: View {
                             )
                                 .frame(height: Theme.barHeightNotch)
                             if appState.isAtSessionLimit {
-                                Text(appState.sessionResetShortString ?? "LIMIT")
+                                // Same slot width as the "%" readout below, so
+                                // hitting the limit changes what the label says
+                                // and not how wide the pill is — the pill has
+                                // to stay flush with the cutout in every state.
+                                Text(appState.sessionResetCompactString ?? "MAX")
                                     .font(Theme.notchFontBold)
                                     .foregroundColor(Theme.textPrimary)
-                                    .frame(minWidth: 40, alignment: .trailing)
+                                    .frame(minWidth: 25, alignment: .trailing)
                             } else {
                                 Text("\(Int((appState.sessionPercent * 100).rounded()))%")
                                     .font(Theme.notchFont)
@@ -97,15 +123,9 @@ struct CompactView: View {
             // curved bottom edge. The strip constants already account for this
             // inset, so the rows aren't squeezed to make room for it.
             .padding(.bottom, Theme.compactContentBottomInset)
-            .frame(height: Theme.compactStripHeight
-                + (appState.snapshot?.creditWindow != nil ? Theme.compactStripHeightCredit : 0),
-                   alignment: .bottom)
-        }
-        .opacity(appeared ? 1 : 0)
-        .onAppear {
-            withAnimation(.spring(response: Theme.springResponse, dampingFraction: Theme.springDamping)) { appeared = true }
-        }
-        .help(appState.sessionResetString ?? "ClaudeUsageNotch")
+        .frame(height: Theme.compactStripHeight
+            + (appState.snapshot?.creditWindow != nil ? Theme.compactStripHeightCredit : 0),
+               alignment: .bottom)
     }
 
     private var statusColor: Color { appState.sessionStatus.color }

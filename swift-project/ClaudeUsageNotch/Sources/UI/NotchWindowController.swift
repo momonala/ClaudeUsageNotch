@@ -51,19 +51,24 @@ final class NotchWindowController: NSObject {
         static let collapseDuration:     TimeInterval = 0.22
     }
 
-    // Panel heights include safeAreaInsets.top (the hardware notch height,
-    // ~37 pt on MBP 14/16").  The panel is anchored at screen.frame.maxY so
+    // Panel heights include safeAreaInsets.top (the hardware notch height —
+    // 32 pt on a 14" M5; it varies by model, so it's always read per-screen).  The panel is anchored at screen.frame.maxY so
     // the top portion sits inside the notch (invisible — black blends with
     // hardware) and only the lower "visible extension" is seen by the user.
     // This is identical to how the iOS Dynamic Island works.
+    /// Panel frame in compact mode: the pill (exactly the hardware cutout) plus
+    /// `AgentStatusGlow.outset` of transparent margin on its sides and bottom.
+    ///
+    /// The margin is always there, whether or not the status ring is currently
+    /// showing — it costs nothing (the panel is transparent and the pill is
+    /// centred inside it), and reserving it up front keeps the window from
+    /// resizing every time an agent starts or stops working.
     private var compactSize: NSSize {
         let creditExtra = appState.snapshot?.creditWindow != nil ? Layout.compactStripHeightCredit : 0
         return NSSize(
-            width: ScreenUtils.compactPanelWidth(
-                atSessionLimit: appState.isAtSessionLimit,
-                countdownText: appState.sessionResetShortString
-            ),
+            width: ScreenUtils.compactPanelWidthBase + AgentStatusGlow.outset * 2,
             height: ScreenUtils.notchHeight + Layout.compactStripHeight + creditExtra
+                + AgentStatusGlow.outset
         )
     }
     private var expandedSize: NSSize {
@@ -80,7 +85,10 @@ final class NotchWindowController: NSObject {
         self.appState = appState
         self.appSettings = appSettings
         self.panel = KeyablePanel(
-            contentRect: NSRect(origin: .zero, size: NSSize(width: ScreenUtils.compactPanelWidthBase, height: 30)),
+            contentRect: NSRect(
+                origin: .zero,
+                size: NSSize(width: ScreenUtils.compactPanelWidthBase + AgentStatusGlow.outset * 2, height: 30)
+            ),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -214,14 +222,19 @@ final class NotchWindowController: NSObject {
     /// Screens with no cutout have nothing to aim at, so they keep the strip as
     /// the target, trimmed at the bottom.
     private func compactHoverHitRect(in frame: NSRect) -> NSRect {
-        let x = frame.minX + Layout.compactHoverInsetX
-        let width = max(0, frame.width - Layout.compactHoverInsetX * 2)
+        // Insets run from the pill's edges, not the panel's: the panel is wider
+        // by the status ring's margin on each side, and counting that as hover
+        // target would quietly loosen the tight aim this state depends on.
+        let insetX = Layout.compactHoverInsetX + AgentStatusGlow.outset
+        let x = frame.minX + insetX
+        let width = max(0, frame.width - insetX * 2)
         let notchHeight = min(ScreenUtils.notchHeight, frame.height)
         guard notchHeight > 0 else {
+            let insetBottom = Layout.compactHoverInsetBottom + AgentStatusGlow.outset
             return NSRect(x: x,
-                          y: frame.minY + Layout.compactHoverInsetBottom,
+                          y: frame.minY + insetBottom,
                           width: width,
-                          height: frame.height - Layout.compactHoverInsetBottom)
+                          height: frame.height - insetBottom)
         }
         return NSRect(x: x, y: frame.maxY - notchHeight, width: width, height: notchHeight)
     }
