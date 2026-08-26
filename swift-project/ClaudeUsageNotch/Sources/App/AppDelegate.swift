@@ -17,6 +17,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var onboardingWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // `xcodebuild test` injects the unit-test bundle into this app, so a
+        // normal launch would spin up a second notch panel and start Keychain
+        // reads, network polling and timers inside the test process — which
+        // traps before a single test runs. The tests exercise pure types via
+        // `@testable import`; they need the module loaded, not the app running.
+        if NSClassFromString("XCTestCase") != nil { return }
+
         NSLog("[ClaudeUsageNotch] launched — v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?")")
 
         coordinator = UsageCoordinator(

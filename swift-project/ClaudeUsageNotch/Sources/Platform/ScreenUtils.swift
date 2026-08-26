@@ -56,6 +56,18 @@ enum ScreenUtils {
 
     // MARK: - Hardware notch width
 
+    /// Points trimmed from each side of the gap macOS reports between the
+    /// menu bar's two auxiliary areas.
+    ///
+    /// Those areas abut the cutout's *bounding box*, which includes the
+    /// filleted corners where its edges curve back inward. A pill drawn to the
+    /// full reported gap therefore overhangs the cutout by a few points on each
+    /// side, visible as two slivers of pill sticking out past the black
+    /// housing. Trimming brings its edges flush with the cutout's straight
+    /// sides. The fillet radius is a constant across the notched MacBooks, so
+    /// this is a fixed inset rather than something derived per-screen.
+    private static let notchFilletInset: CGFloat = 4
+
     /// Width of the physical notch cutout, derived from the areas macOS reports
     /// on either side of it (available since macOS 12 on any screen with a notch).
     /// Falls back to `compactPanelWidthDefault` on screens without a notch, or if
@@ -67,7 +79,7 @@ enum ScreenUtils {
         let leftWidth = screen.auxiliaryTopLeftArea?.width ?? 0
         let rightWidth = screen.auxiliaryTopRightArea?.width ?? 0
         guard leftWidth > 0 || rightWidth > 0 else { return compactPanelWidthDefault }
-        return screen.frame.width - leftWidth - rightWidth
+        return screen.frame.width - leftWidth - rightWidth - (notchFilletInset * 2)
     }
 
     // MARK: - Compact panel width
@@ -77,16 +89,15 @@ enum ScreenUtils {
     private static let compactCountdownWidthBump: CGFloat = 32
     private static let compactPercentSlotWidth: CGFloat = 25
 
-    /// Baseline compact pill width: exactly this machine's notch cutout, floored
-    /// at the tuned default so screens without a notch still get a usable pill.
+    /// Baseline compact pill width: exactly this machine's notch cutout.
     ///
-    /// Deliberately carries no margin. The agent-status ring traces the pill's
-    /// perimeter, so any extra width pushes the pill — and the ring with it —
-    /// onto the filleted chamfer flanking the notch, where the ring reads as
-    /// curving inward instead of running flush with the cutout.
-    static var compactPanelWidthBase: CGFloat {
-        max(compactPanelWidthDefault, notchWidth)
-    }
+    /// Deliberately carries no margin, and is not floored at
+    /// `compactPanelWidthDefault` — a `max()` against that default silently
+    /// overshot the cutout on any Mac whose notch is narrower than it (the 13"
+    /// Air reports a 179 pt gap, so a 176 pt floor is within a few points of
+    /// mattering). `notchWidth` already falls back to the default on screens
+    /// with no notch at all, which is the only case the floor was protecting.
+    static var compactPanelWidthBase: CGFloat { notchWidth }
 
     /// Widen the compact pill for session-limit countdowns (e.g. "2h 1m") so the
     /// label sits further into the visible "ear" beside the hardware notch.

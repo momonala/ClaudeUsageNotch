@@ -1,15 +1,19 @@
 name: ClaudeUsageNotch
 options:
   bundleIdPrefix: com.claudeusagenotch
+  # Matches the -target passed by scripts/build.sh (arm64-apple-macosx26.0),
+  # which is what actually ships. At 12.0 the test target failed to compile at
+  # all — UsageChartView's Charts axis builders need 13.0 — so `xcodebuild
+  # test` could never run against the same code the app is built from.
   deploymentTarget:
-    macOS: "12.0"
+    macOS: "26.0"
   createIntermediateGroups: true
   generateEmptyDirectories: true
 
 settings:
   base:
     SWIFT_VERSION: "5.9"
-    MACOSX_DEPLOYMENT_TARGET: "12.0"
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
     PRODUCT_BUNDLE_IDENTIFIER: com.claudeusagenotch.ClaudeUsageNotch
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
@@ -64,3 +68,9 @@ targets:
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
+        # Xcode's generated Info.plist defaults NSPrincipalClass to
+        # NSApplication for a macOS bundle, so XCTestDriver instantiates a
+        # *second* NSApplication inside the host app and AppKit traps
+        # ("More than one NSApplication instance was created") before any test
+        # runs. Blanking it leaves the host's own singleton alone.
+        INFOPLIST_KEY_NSPrincipalClass: ""

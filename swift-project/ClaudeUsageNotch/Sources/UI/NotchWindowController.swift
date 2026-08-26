@@ -31,7 +31,19 @@ final class NotchWindowController: NSObject {
         static let compactStripHeightCredit: CGFloat      = Theme.compactStripHeightCredit
         /// Minimum height delta above compact that indicates the panel is already expanded.
         static let expandedHeightThreshold: CGFloat = 80
-        static let hoverHitInset: CGFloat    = -4
+        /// Grow applied to the *expanded* panel's frame when testing for hover.
+        /// Forgiving on purpose: the pointer is already inside the card, and a
+        /// hairline miss along its edge would collapse the panel mid-interaction.
+        static let expandedHoverGrow: CGFloat = 4
+        /// Trimmed from each side of the *compact* hover target. The pill is
+        /// exactly as wide as the notch cutout, and the menu bar items
+        /// immediately flanking it (clock, status icons) are a pointer's width
+        /// away — reaching for one used to clip the pill's edge and expand.
+        static let compactHoverInsetX: CGFloat = 20
+        /// Trimmed from the bottom of the compact hover target on screens with
+        /// no hardware cutout, where the visible strip is all there is to aim
+        /// at. Unused on notched screens — see `compactHoverHitRect`.
+        static let compactHoverInsetBottom: CGFloat = 5
 
         static let expandPhase1Duration: TimeInterval = 0.16
         static let expandPhase2Delay:    TimeInterval = 0.12
@@ -175,9 +187,47 @@ final class NotchWindowController: NSObject {
         hoverTimer = timer
     }
 
+    /// Hover-to-expand target. Asymmetric by state: a deliberately tight
+    /// region while compact (so the pill isn't tripped by passing traffic), a
+    /// forgiving one while expanded (so the card doesn't collapse under the
+    /// pointer). Both are keyed off `panel.frame`, which already tracks the
+    /// current size.
+    private var hoverHitRect: NSRect {
+        let frame = panel.frame
+        switch appState.notchState {
+        case .compactIdle, .compactHover:
+            return compactHoverHitRect(in: frame)
+        default:
+            return frame.insetBy(dx: -Layout.expandedHoverGrow, dy: -Layout.expandedHoverGrow)
+        }
+    }
+
+    /// Collapsed hover target: the hardware cutout itself, and nothing below it.
+    ///
+    /// The panel's lower portion — the visible strip carrying the bars — hangs
+    /// below the menu bar over ordinary window content, so treating it as a
+    /// hover target expanded the panel whenever the pointer merely travelled up
+    /// to a window's title bar. Aiming at the cutout is unambiguous: nothing
+    /// else lives there, and the pointer has to leave the whole (much larger)
+    /// expanded frame to collapse again, so the two regions can't oscillate.
+    ///
+    /// Screens with no cutout have nothing to aim at, so they keep the strip as
+    /// the target, trimmed at the bottom.
+    private func compactHoverHitRect(in frame: NSRect) -> NSRect {
+        let x = frame.minX + Layout.compactHoverInsetX
+        let width = max(0, frame.width - Layout.compactHoverInsetX * 2)
+        let notchHeight = min(ScreenUtils.notchHeight, frame.height)
+        guard notchHeight > 0 else {
+            return NSRect(x: x,
+                          y: frame.minY + Layout.compactHoverInsetBottom,
+                          width: width,
+                          height: frame.height - Layout.compactHoverInsetBottom)
+        }
+        return NSRect(x: x, y: frame.maxY - notchHeight, width: width, height: notchHeight)
+    }
+
     private func pollHover() {
-        let hitRect = panel.frame.insetBy(dx: Layout.hoverHitInset, dy: Layout.hoverHitInset)
-        let hovering = hitRect.contains(NSEvent.mouseLocation)
+        let hovering = hoverHitRect.contains(NSEvent.mouseLocation)
         guard hovering != isCurrentlyHovering else { return }
         isCurrentlyHovering = hovering
         if hovering { userHoveredIn()  }

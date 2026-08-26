@@ -55,9 +55,48 @@ open ClaudeUsageNotch.xcodeproj
 
 ---
 
+## Tests
+
+**Swift** — an XcodeGen unit-test target, so it runs through `xcodebuild`
+(there is no SPM package):
+
+```bash
+cd swift-project/ClaudeUsageNotch
+xcodegen generate
+xcodebuild test -project ClaudeUsageNotch.xcodeproj -scheme ClaudeUsageNotch -destination 'platform=macOS'
+```
+
+Two things make this work that are easy to undo by accident:
+
+- `AppDelegate.applicationDidFinishLaunching` returns early when
+  `NSClassFromString("XCTestCase") != nil`. The app bundle is its own test host,
+  so a normal launch would start a second notch panel, Keychain reads and
+  network polling inside the test process.
+- The test target sets `INFOPLIST_KEY_NSPrincipalClass: ""`. Xcode's generated
+  Info.plist otherwise defaults it to `NSApplication`, XCTestDriver instantiates
+  a *second* one, and AppKit traps before any test runs.
+
+Because the host is the app bundle, `UserDefaults.standard` inside a test is the
+live app's own preferences. `NotificationService` takes its store by injection
+(`init(defaults:)`) so its tests run against a throwaway suite instead of
+clobbering real high-water marks.
+
+**Hook** — stdlib only, run under bare `python3`, matching how Claude Code
+invokes it:
+
+```bash
+python3 -m unittest discover -s agent-status-hook
+```
+
+**Server** — from `claude-usage-notch-server/`, `bash test-and-lint.sh`
+(pytest + black + ruff).
+
+---
+
 ## Requirements
 
-- macOS 12.0+ (arm64; Intel works with target swap above)
+- macOS 26.0+ (arm64; Intel works with target swap above) — `scripts/build.sh`
+  passes `-target arm64-apple-macosx26.0`, and `project.yml` matches it
 - MacBook with a hardware notch
 - Xcode CLI tools (`xcode-select --install`)
 - Full Xcode + `brew install xcodegen` for Mode B only
@@ -185,9 +224,40 @@ Mode buttons live in `HeaderRow`. Settings are no longer a separate window — t
 
 `NotchWindowController` creates a borderless, non-activating `NSPanel` at window level `.popUpMenu` (101 — above the macOS menu bar compositor). The panel anchors at `screen.frame.maxY`. Its height is `safeAreaInsets.top` (~37 pt on MBP 14/16") plus the visible content height.
 
-Hover detection uses a 40 ms `Timer` polling `NSEvent.mouseLocation` — `NSTrackingArea` and global event monitors are unreliable on non-activating panels.
+**Compact width.** The pill is exactly as wide as the physical cutout.
+`ScreenUtils.notchWidth` derives that from the gap between the menu bar's two
+auxiliary areas (`screen.frame.width - auxiliaryTopLeftArea.width -
+auxiliaryTopRightArea.width`), then subtracts `notchFilletInset` from each side:
+those areas abut the cutout's *bounding box*, so the raw gap includes the
+filleted corners and a pill drawn to it overhangs the black housing by a few
+points on each side. The 13" Air reports a 179 pt gap; the drawn pill is 171 pt.
+There is no `max()` floor against `compactPanelWidthDefault` — that floor
+silently overshot the cutout on any Mac whose notch is narrower than 176 pt.
 
 When the session hits 100%, the compact panel widens via `ScreenUtils.compactPanelWidth` so countdown text (e.g. `2h 1m`) stays in the visible strip beside the camera cutout.
+
+**Hover detection** uses a 40 ms `Timer` polling `NSEvent.mouseLocation` — `NSTrackingArea` and global event monitors are unreliable on non-activating panels.
+
+The hit region is asymmetric by state (`NotchWindowController.hoverHitRect`):
+
+| State | Region |
+| --- | --- |
+| compact, notched screen | the cutout itself: top `safeAreaInsets.top` of the panel frame, inset 20 pt per side |
+| compact, no cutout | full panel frame, inset 20 pt per side and 5 pt off the bottom |
+| expanded | panel frame grown 4 pt on all sides |
+
+Compact is tight on purpose: **you expand by covering the notch, not by
+touching the strip.** The strip carrying the bars hangs below the menu bar over
+ordinary window content, so treating it as a hover target expanded the panel
+whenever the pointer merely travelled up to a window's title bar. The cutout is
+unambiguous — nothing else lives there. Screens with no cutout have nothing to
+aim at, so they fall back to the strip.
+
+The two regions can't oscillate: collapsing requires leaving the whole expanded
+frame, which is far larger than the cutout band inside it.
+
+Expanded stays forgiving — the pointer is already inside the card and a hairline
+miss along its edge would collapse it mid-interaction.
 
 ---
 
@@ -245,13 +315,34 @@ killed terminal — so it can't hold `working`/`needsInput` forever), and
 aggregates the rest with `needsInput` > `working` > `idle` priority so a session
 waiting on you is never hidden behind one that's merely working.
 
-The `Notification` event only fires amber for genuine tool-permission prompts.
-For a turn that ends on a plain informational ask with no interactive prompt
-(e.g. "VPN looks disconnected, can you reconnect it?"), the hook's `Stop`
-handler reads the transcript's last assistant message and also fires amber if
-it contains the literal marker `[NEEDS-ACTION]`. Global CLAUDE.md instructs
-Claude to append that marker when a turn ends on something only the user can
-do outside the chat.
+**What fires amber.** Two independent paths, because Claude Code has no single
+"waiting on the user" event:
+
+1. `Notification` — classified by the payload's `notification_type`, not by
+   scraping the message text. `permission_prompt`, `worker_permission_prompt`
+   and `agent_needs_input` mean something is blocked on you. `idle_prompt` (the
+   60 s "Claude is waiting for your input" nudge) does not: it fires on a timer
+   regardless of whether anything is pending, so it only ever preserves an
+   existing amber, never creates one.
+2. `Stop` — a turn that just ends on a question ("Want me to also update the
+   README?") produces no `Notification` at all, yet the session is every bit as
+   blocked. The `Stop` handler reads the transcript's last assistant message and
+   fires amber when its **last non-empty line ends in `?`** (markdown emphasis
+   and trailing brackets/quotes are peeled off first), or when the message
+   carries the literal marker `[NEEDS-ACTION]`.
+
+Only the final line is tested. A question mark earlier in a long answer is
+usually rhetorical or quoted, and matching it would leave the notch amber after
+nearly every turn. The `[NEEDS-ACTION]` marker is honoured but optional — it
+depends on a global CLAUDE.md instruction that isn't installed on every machine,
+which is exactly why the trailing-question heuristic exists.
+
+Tests live in `agent-status-hook/test_hook.py` and run under bare `python3`
+(stdlib only, matching how Claude Code invokes the hook):
+
+```bash
+python3 -m unittest discover -s agent-status-hook
+```
 
 To enable it, add this to `~/.claude/settings.json` (adjust the path to where
 you cloned this repo):

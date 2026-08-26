@@ -19,8 +19,8 @@ final class ClaudeUsageMappingTests: XCTestCase {
         let snapshot = try ClaudeUsageMapper.snapshot(from: dto)
 
         XCTAssertEqual(snapshot.sessionWindow.percentUsed, 0.425, accuracy: 0.001)
-        XCTAssertEqual(snapshot.weeklyWindow?.percentUsed, 0.610, accuracy: 0.001)
-        XCTAssertEqual(snapshot.weeklySonnetWindow?.percentUsed, 0.280, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(snapshot.weeklyWindow).percentUsed, 0.610, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(snapshot.weeklySonnetWindow).percentUsed, 0.280, accuracy: 0.001)
         XCTAssertNotNil(snapshot.sessionWindow.resetAt)
     }
 
@@ -44,8 +44,8 @@ final class ClaudeUsageMappingTests: XCTestCase {
         let credit = try XCTUnwrap(snapshot.creditWindow)
         XCTAssertEqual(credit.type, .monthly)
         XCTAssertEqual(credit.percentUsed, 0.012, accuracy: 0.0001)
-        XCTAssertEqual(credit.usedAmount, 4.20, accuracy: 0.001)
-        XCTAssertEqual(credit.limitAmount, 350.00, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(credit.usedAmount), 4.20, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(credit.limitAmount), 350.00, accuracy: 0.001)
         XCTAssertNotNil(credit.resetAt)
     }
 
@@ -218,16 +218,34 @@ final class ClaudeOAuthCredentialTests: XCTestCase {
 
 // MARK: - NotificationService high-water mark tests
 
+// `NotificationService` is @MainActor-isolated, so its tests have to be too.
+@MainActor
 final class NotificationServiceEvaluateTests: XCTestCase {
 
     private let defaultsKey = "com.claudeusagenotch.NotificationService.highWaterMark"
-    private let lastPercentKey = "com.claudeusagenotch.NotificationService.lastPercent"
     private let thresholds: [Double] = [0.25, 0.5, 0.75, 0.9]
+
+    // A throwaway suite and a fresh service per test. Clearing keys in
+    // `UserDefaults.standard` isn't enough on two counts: the shared instance
+    // caches its marks in memory at init, so a cleared key leaves the previous
+    // test's mark in play; and the test host *is* the app bundle, so
+    // `.standard` is the live app's own preferences.
+    private var suiteName = ""
+    private var defaults: UserDefaults!
+    private var service: NotificationService!
 
     override func setUp() {
         super.setUp()
-        UserDefaults.standard.removeObject(forKey: defaultsKey)
-        UserDefaults.standard.removeObject(forKey: lastPercentKey)
+        suiteName = "com.claudeusagenotch.tests.\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: suiteName)
+        service = NotificationService(defaults: defaults)
+    }
+
+    override func tearDown() {
+        defaults.removePersistentDomain(forName: suiteName)
+        defaults = nil
+        service = nil
+        super.tearDown()
     }
 
     private func snapshot(percent: Double) -> ServiceUsageSnapshot {
@@ -239,12 +257,11 @@ final class NotificationServiceEvaluateTests: XCTestCase {
     }
 
     private func mark() -> [String: Double] {
-        UserDefaults.standard.dictionary(forKey: defaultsKey) as? [String: Double] ?? [:]
+        defaults.dictionary(forKey: defaultsKey) as? [String: Double] ?? [:]
     }
 
     // 5a. Skipping thresholds: jumping from 0% to 76% records the 75% mark.
     func test_skippedThresholds_recordsHighestOnly() {
-        let service = NotificationService.shared
         service.evaluate(snapshot: snapshot(percent: 0.76), thresholds: thresholds)
         XCTAssertEqual(mark()["claude:session"], 0.75,
                        "mark should be 0.75 — the highest crossed threshold")
@@ -252,7 +269,6 @@ final class NotificationServiceEvaluateTests: XCTestCase {
 
     // 5b. Repeated polls at the same usage level fire nothing extra.
     func test_repeatedEvaluate_doesNotReFire() {
-        let service = NotificationService.shared
         service.evaluate(snapshot: snapshot(percent: 0.76), thresholds: thresholds)
         let markAfterFirst = mark()
         service.evaluate(snapshot: snapshot(percent: 0.76), thresholds: thresholds)
@@ -262,7 +278,6 @@ final class NotificationServiceEvaluateTests: XCTestCase {
 
     // 5c. Crossing a higher threshold on a later poll fires once more.
     func test_newHigher_threshold_fires() {
-        let service = NotificationService.shared
         service.evaluate(snapshot: snapshot(percent: 0.76), thresholds: thresholds)
         XCTAssertEqual(mark()["claude:session"], 0.75)
         service.evaluate(snapshot: snapshot(percent: 0.92), thresholds: thresholds)
@@ -272,7 +287,6 @@ final class NotificationServiceEvaluateTests: XCTestCase {
 
     // 5d. Window reset: usage drops below the lowest threshold → mark clears.
     func test_windowReset_clearsMark() {
-        let service = NotificationService.shared
         service.evaluate(snapshot: snapshot(percent: 0.76), thresholds: thresholds)
         XCTAssertEqual(mark()["claude:session"], 0.75)
         service.evaluate(snapshot: snapshot(percent: 0.05), thresholds: thresholds)
@@ -285,7 +299,6 @@ final class NotificationServiceEvaluateTests: XCTestCase {
 
     // 5e. Reset detection works even when all threshold buttons are cleared.
     func test_windowReset_firesWithEmptyThresholds() {
-        let service = NotificationService.shared
         service.evaluate(snapshot: snapshot(percent: 0.82), thresholds: [])
         service.evaluate(snapshot: snapshot(percent: 0.0), thresholds: [])
         XCTAssertEqual(mark()["claude:session"], 0,

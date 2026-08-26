@@ -16,7 +16,15 @@ import AppKit
 @MainActor
 public final class NotificationService {
     public static let shared = NotificationService()
-    private init() {
+
+    /// Injected so tests can run against a throwaway suite. The app bundle is
+    /// its own test host, so `.standard` in a test process is the *live* app's
+    /// preferences — tests sharing it would clobber the user's real high-water
+    /// marks and then read each other's leftovers.
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         loadMark()
         loadLastPercent()
     }
@@ -109,19 +117,19 @@ public final class NotificationService {
     // MARK: - Persistence
 
     private func saveMark() {
-        UserDefaults.standard.set(mark, forKey: defaultsKey)
+        defaults.set(mark, forKey: defaultsKey)
     }
 
     private func loadMark() {
-        mark = UserDefaults.standard.dictionary(forKey: defaultsKey) as? [String: Double] ?? [:]
+        mark = defaults.dictionary(forKey: defaultsKey) as? [String: Double] ?? [:]
     }
 
     private func saveLastPercent() {
-        UserDefaults.standard.set(lastPercent, forKey: lastPercentKey)
+        defaults.set(lastPercent, forKey: lastPercentKey)
     }
 
     private func loadLastPercent() {
-        lastPercent = UserDefaults.standard.dictionary(forKey: lastPercentKey) as? [String: Double] ?? [:]
+        lastPercent = defaults.dictionary(forKey: lastPercentKey) as? [String: Double] ?? [:]
     }
 
     // MARK: - Delivery
