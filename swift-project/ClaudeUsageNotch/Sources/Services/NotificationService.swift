@@ -3,7 +3,8 @@ import AppKit
 
 /// Poll-driven usage notifications.
 ///
-/// On each snapshot: for every quota window (session, weekly, optional Sonnet),
+/// On each snapshot: for every quota window (session, weekly, optional Sonnet,
+/// optional usage credits),
 /// compare usage to the previous poll.
 ///
 /// - **Going up:** fire when usage crosses a configured threshold we have not
@@ -100,16 +101,18 @@ public final class NotificationService {
         var windows = [snapshot.sessionWindow]
         if let weekly = snapshot.weeklyWindow { windows.append(weekly) }
         if let sonnet = snapshot.weeklySonnetWindow { windows.append(sonnet) }
+        if let credit = snapshot.creditWindow { windows.append(credit) }
         return windows.filter { Self.notifiableTypes.contains($0.type) }
     }
 
-    private static let notifiableTypes: Set<UsageWindowType> = [.session, .weekly, .weeklyModel]
+    private static let notifiableTypes: Set<UsageWindowType> = [.session, .weekly, .weeklyModel, .monthly]
 
     private static func windowLabel(_ type: UsageWindowType) -> String {
         switch type {
         case .session:     return "session"
         case .weekly:      return "weekly"
         case .weeklyModel: return "sonnet"
+        case .monthly:     return "usage credits"
         default:           return type.rawValue
         }
     }
@@ -136,7 +139,12 @@ public final class NotificationService {
 
     private func usageBody(window: UsageWindow, label: String) -> String {
         if window.isAtLimit {
-            return window.timeToResetString().map { "Blocked. \($0)." } ?? "Session limit reached."
+            // The session window running out doesn't stop work — Claude Code
+            // falls through to the usage-credit pool — so don't say "blocked".
+            let lead = window.type == .session
+                ? "Switching to usage credits."
+                : "\(label.capitalized) limit reached."
+            return window.timeToResetString().map { "\(lead) \($0)." } ?? lead
         }
         let pct = Int(window.percentUsed * 100)
         if let reset = window.timeToResetString() {
