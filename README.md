@@ -8,7 +8,66 @@ The notch panel works like iOS Dynamic Island: the top portion sits inside the p
 
 ## Build
 
-For local iteration, `./build.sh` from the repo root kills any running instance, builds a signed binary (Mode A, with the maintainer's `SIGN_IDENTITY` baked in), and relaunches the app. For a from-scratch build or a different signing identity, use the modes below directly.
+For local iteration, `./build.sh` from the repo root kills any running instance, builds
+a signed binary (Mode A), and relaunches the app. It resolves the signing identity in
+this order:
+
+1. `SIGN_IDENTITY` from the environment, if set — always wins.
+2. The first entry of `CANDIDATE_IDENTITIES` present in the keychain: the maintainer's
+   Apple Development cert, then `ClaudeUsageNotch Local Signing` (see below).
+3. Ad-hoc, with a warning.
+
+Ad-hoc is a last resort, not a neutral default. Its signature is derived from the binary
+itself, so every rebuild is a different app to macOS and the Keychain re-prompts for the
+Claude Code credentials each time. Any stable identity fixes that — it does not have to
+be an Apple one.
+
+**Giving a new machine a stable identity** (no Xcode, no Apple ID, no yearly expiry).
+Either use Keychain Access → Certificate Assistant → Create a Certificate… (Self Signed
+Root, Code Signing, override the defaults to extend the 365-day validity), or from the
+shell:
+
+```bash
+cat > cert.cnf <<'EOF'
+[ req ]
+distinguished_name = dn
+x509_extensions    = v3_codesign
+prompt             = no
+[ dn ]
+CN = ClaudeUsageNotch Local Signing
+[ v3_codesign ]
+basicConstraints   = critical,CA:false
+keyUsage           = critical,digitalSignature
+extendedKeyUsage   = critical,codeSigning
+EOF
+
+openssl req -x509 -newkey rsa:2048 -sha256 -days 3650 -nodes \
+  -keyout key.pem -out cert.pem -config cert.cnf
+
+# -macalg/-keypbe/-certpbe: Security.framework cannot verify the MAC OpenSSL 3
+# writes by default, and the import fails with "MAC verification failed".
+openssl pkcs12 -export -out bundle.p12 -inkey key.pem -in cert.pem \
+  -name "ClaudeUsageNotch Local Signing" \
+  -macalg sha1 -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -passout pass:transient
+
+security import bundle.p12 -k ~/Library/Keychains/login.keychain-db \
+  -P transient -T /usr/bin/codesign -T /usr/bin/security
+
+# Without this the identity imports but stays CSSMERR_TP_NOT_TRUSTED, and
+# `find-identity -v` reports 0 valid identities.
+security add-trusted-cert -r trustRoot -p codeSign \
+  -k ~/Library/Keychains/login.keychain-db cert.pem
+
+rm -f key.pem bundle.p12          # the private key lives in the keychain now
+security find-identity -v -p codesigning
+```
+
+Confirm a build is stable with `codesign -d -r-`: the designated requirement should read
+`identifier "…" and certificate leaf = H"…"`, and be byte-identical across two rebuilds.
+The first launch after switching identities prompts once for Keychain access — choose
+**Always Allow**, and it stops there.
+
+For a from-scratch build or a different signing identity, use the modes below directly.
 
 **Mode A — no Xcode required (default)**
 
@@ -20,7 +79,8 @@ open build/ClaudeUsageNotch.app
 
 Compiles with `swiftc` directly. Produces an ad-hoc signed binary for local use only. Do not distribute Mode A builds.
 
-To sign with a real Developer certificate (recommended — fixes Keychain ACL prompts on wake):
+To sign with a specific certificate (any stable identity will do — an Apple Development
+cert, or the self-signed one above):
 
 ```bash
 # list available certs
@@ -325,7 +385,8 @@ is a cross-app access that prompts whenever the CLI rewrites the item on token r
 mirrors a successful read into an app-owned Keychain item and reads from that mirror
 while the token is unexpired, only falling back to the CLI item (and a possible prompt)
 once the mirrored token rotates. The mirror stays silent across rebuilds **only with a
-stable code signature** — build with `SIGN_IDENTITY` set, not an ad-hoc Mode A build.
+stable code signature** — `./build.sh` picks one up automatically when the keychain has
+one (see [Build](#build)); an ad-hoc build re-prompts after every rebuild.
 `UsageService` also retries auth failures on a short fixed interval instead of its
 exponential backoff, so the access prompt re-surfaces in seconds rather than minutes.
 
