@@ -67,6 +67,14 @@ public final class UsageCoordinator {
             .store(in: &cancellables)
         IncidentMonitor.shared.start()
 
+        FrontmostAppService.shared.isWorkHostFrontmost
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] isHost in
+                self?.appState.isWorkHostFrontmost = isHost
+            }
+            .store(in: &cancellables)
+        FrontmostAppService.shared.start()
+
         AgentStatusService.shared.readingPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] reading in
@@ -107,6 +115,7 @@ public final class UsageCoordinator {
 
     public func stop() {
         usageService.stopAll()
+        FrontmostAppService.shared.stop()
         IncidentMonitor.shared.stop()
         AgentStatusService.shared.stop()
         cancellables.removeAll()

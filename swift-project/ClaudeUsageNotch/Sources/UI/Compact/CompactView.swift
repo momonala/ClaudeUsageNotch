@@ -42,7 +42,13 @@ struct CompactView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             // Visible content strip (bottom 22 pt, below the notch edge).
-            strip
+            // Only while you're in the app you run Claude Code from — see
+            // `AppState.showsCompactContent`. Elsewhere the pill collapses to
+            // the cutout itself and the black is invisible behind the housing,
+            // leaving nothing on screen but the status ring.
+            if appState.showsCompactContent {
+                strip
+            }
         }
         .padding(EdgeInsets(top: 0,
                             leading: AgentStatusGlow.outset,

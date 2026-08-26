@@ -527,3 +527,31 @@ final class CompactCountdownTests: XCTestCase {
         XCTAssertEqual(ScreenUtils.compactPanelWidthBase, ScreenUtils.notchWidth, accuracy: 0.001)
     }
 }
+
+// MARK: - Which app the pill shows its readout in
+
+final class FrontmostAppTests: XCTestCase {
+
+    func test_terminalsAndEditorsCountAsWorkHosts() {
+        for id in ["com.googlecode.iterm2", "com.apple.Terminal", "com.mitchellh.ghostty",
+                   "io.alacritty", "dev.warp.Warp", "com.microsoft.VSCode"] {
+            XCTAssertTrue(FrontmostAppService.isWorkHost(id), "\(id) should show the readout")
+        }
+    }
+
+    /// Prefix matching is the point: build variants ship under their own
+    /// identifiers, and Cursor and its relatives get a per-build one.
+    func test_buildVariantsMatchByPrefix() {
+        XCTAssertTrue(FrontmostAppService.isWorkHost("com.googlecode.iterm2.beta"))
+        XCTAssertTrue(FrontmostAppService.isWorkHost("com.microsoft.VSCodeInsiders"))
+        XCTAssertTrue(FrontmostAppService.isWorkHost("com.todesktop.230313mzl4w4u92"))
+        XCTAssertTrue(FrontmostAppService.isWorkHost("com.anthropic.claudefordesktop"))
+    }
+
+    func test_everythingElseGetsTheRingOnly() {
+        for id in ["com.apple.finder", "com.apple.Safari", "com.spotify.client",
+                   "com.tinyspeck.slackmacgap", "com.figma.Desktop", ""] {
+            XCTAssertFalse(FrontmostAppService.isWorkHost(id), "\(id) should not show the readout")
+        }
+    }
+}

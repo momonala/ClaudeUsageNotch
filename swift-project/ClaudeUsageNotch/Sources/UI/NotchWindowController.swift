@@ -65,10 +65,12 @@ final class NotchWindowController: NSObject {
     /// resizing every time an agent starts or stops working.
     private var compactSize: NSSize {
         let creditExtra = appState.snapshot?.creditWindow != nil ? Layout.compactStripHeightCredit : 0
+        // No readout, no strip: the pill shrinks to the cutout itself, so
+        // nothing hangs below the notch when you're not in your terminal.
+        let strip = appState.showsCompactContent ? Layout.compactStripHeight + creditExtra : 0
         return NSSize(
             width: ScreenUtils.compactPanelWidthBase + AgentStatusGlow.outset * 2,
-            height: ScreenUtils.notchHeight + Layout.compactStripHeight + creditExtra
-                + AgentStatusGlow.outset
+            height: ScreenUtils.notchHeight + strip + AgentStatusGlow.outset
         )
     }
     private var expandedSize: NSSize {
@@ -133,6 +135,11 @@ final class NotchWindowController: NSObject {
             .store(in: &cancellables)
 
         appState.$snapshot
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.updateCompactLayoutIfNeeded() }
+            .store(in: &cancellables)
+
+        appState.$isWorkHostFrontmost
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.updateCompactLayoutIfNeeded() }
             .store(in: &cancellables)
@@ -280,7 +287,12 @@ final class NotchWindowController: NSObject {
         switch appState.notchState {
         case .compactIdle, .compactHover:
             let target = compactSize
-            guard abs(panel.frame.width - target.width) > 0.5 else { return }
+            // Both dimensions: compact width is fixed at the cutout now, so a
+            // width-only test would never fire — and every compact resize left
+            // is a height change (the credit row appearing, the readout being
+            // gated on which app is frontmost).
+            guard abs(panel.frame.width - target.width) > 0.5
+                || abs(panel.frame.height - target.height) > 0.5 else { return }
             let origin = ScreenUtils.topCenteredOrigin(forPanelSize: target)
             NSAnimationContext.runAnimationGroup { ctx in
                 ctx.duration = 0.25

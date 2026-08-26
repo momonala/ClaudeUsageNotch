@@ -265,6 +265,26 @@ in the same label slot, so the silhouette doesn't move.
 slot) and grow the panel 32 pt to fit, which stuck the pill ~15 pt out past the
 black housing on each side for as long as the limit lasted.
 
+**What the pill shows depends on which app you're in.** `FrontmostAppService`
+watches `NSWorkspace.frontmostApplication` and publishes whether it's an app a
+Claude Code session runs in — a terminal, an editor with one embedded, or the
+Claude desktop app, matched by bundle-ID prefix so build variants (VS Code
+Insiders, Cursor's per-build ToDesktop identifiers) come along for free.
+
+| Frontmost | Compact panel |
+| --- | --- |
+| a Claude Code host | the full strip: bars, percentages, reset countdown |
+| anything else | the cutout alone — black invisible behind the housing, nothing but the status ring |
+
+Hover expands the full panel from either state; this only governs what the
+*collapsed* pill draws. Two details matter. The service ignores activations of
+this app itself, since the settings pane takes key focus and that isn't the
+user leaving their terminal. And it observes the property by KVO with
+`.initial` rather than listening for `didActivateApplicationNotification`: that
+notification only fires on a change, so a first reading taken during launch —
+while `open` is briefly activating things — would stick until the user next
+switched apps, leaving the pill collapsed with the terminal plainly in front.
+
 **Hover detection** uses a 40 ms `Timer` polling `NSEvent.mouseLocation` — `NSTrackingArea` and global event monitors are unreliable on non-activating panels.
 
 The hit region is asymmetric by state (`NotchWindowController.hoverHitRect`):

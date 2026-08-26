@@ -24,6 +24,12 @@ public final class AppState: ObservableObject {
     @Published public var agentStatus: AgentStatus = .idle
     @Published public var agentJustCompleted: Bool = false
 
+    /// Whether the frontmost app is one Claude Code runs in — see
+    /// `FrontmostAppService`. Defaults to true so the pill shows its bars if
+    /// the service never reports (a broken observer shouldn't silently empty
+    /// the notch).
+    @Published public var isWorkHostFrontmost: Bool = true
+
     // MARK: - Convenience
 
     public var sessionPercent: Double { snapshot?.sessionWindow.effectivePercentUsed() ?? 0 }
@@ -38,6 +44,13 @@ public final class AppState: ObservableObject {
     /// to three characters so the pill stays exactly as wide as the cutout —
     /// see `UsageWindow.timeToResetCompactString`.
     public var sessionResetCompactString: String? { snapshot?.sessionWindow.timeToResetCompactString() }
+
+    /// Whether the compact pill draws its bars and percentages at all. Away
+    /// from the app you run Claude Code in, the pill keeps its shape and its
+    /// status ring but drops the readout: the numbers are only worth the screen
+    /// space where you'd act on them, and everywhere else the notch is better
+    /// off looking like hardware. Hover still expands the full panel.
+    public var showsCompactContent: Bool { isWorkHostFrontmost }
 
     public var combinedStatus: UsageStatus { snapshot?.combinedStatus ?? .unknown }
 
