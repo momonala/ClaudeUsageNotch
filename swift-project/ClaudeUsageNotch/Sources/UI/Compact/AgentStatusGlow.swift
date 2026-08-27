@@ -93,9 +93,9 @@ struct AgentStatusGlow: View {
     /// every breath.
     private static let amberBreathWidth: CGFloat = 2.7
     /// Opacity at the bottom of the breath. The ring thins *and* fades on the
-    /// way down, so the trough reads as the ring receding rather than as a
-    /// solid band that merely got narrower.
-    private static let amberTroughOpacity: Double = 0.5
+    /// way down, all the way to invisible, so each breath reads as the ring
+    /// appearing and receding rather than as a band that merely got narrower.
+    private static let amberTroughOpacity: Double = 0
 
     /// The resting ring is faint — it marks the track; the comet is what the
     /// eye is meant to follow.

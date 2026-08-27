@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Settings pane of the expanded notch panel.
 ///
-/// Laid out as a macOS grouped form: sentence-case section headers over boxed
+/// Laid out as a plain form: sentence-case section headers over unboxed
 /// groups of same-height rows, each row a leading label describing the setting
 /// and a trailing control. Buttons, pop-up buttons and the text field are stock
 /// AppKit-backed controls at their `.small` size, so press feedback, keyboard
@@ -61,14 +61,10 @@ struct InlineSettingsView: View {
                     .accessibilityLabel("Usage alerts")
             }
 
-            SettingsRowDivider()
-
             Group {
                 SettingsRow("Alert at", indented: true) {
                     thresholdCheckboxes
                 }
-
-                SettingsRowDivider(indented: true)
 
                 SettingsRow("Test notification", indented: true) {
                     Button("Send") { NotificationService.shared.sendTest() }
@@ -110,8 +106,6 @@ struct InlineSettingsView: View {
                     .accessibilityLabel("Launch at login")
             }
 
-            SettingsRowDivider()
-
             SettingsRow("Agent status glow",
                         caption: "Pulse the notch when a session is working or needs input") {
                 Toggle("", isOn: $appSettings.showAgentStatusPulse)
@@ -119,8 +113,6 @@ struct InlineSettingsView: View {
                     .labelsHidden()
                     .accessibilityLabel("Agent status glow")
             }
-
-            SettingsRowDivider()
 
             SettingsRow("Check usage every") {
                 intervalPicker(selection: $appSettings.pollIntervalSeconds,
@@ -146,8 +138,6 @@ struct InlineSettingsView: View {
                     }
                     .accessibilityLabel("Sync server address")
             }
-
-            SettingsRowDivider()
 
             SettingsRow("Upload every") {
                 intervalPicker(selection: $appSettings.syncIntervalSeconds,
@@ -285,10 +275,11 @@ private struct AccountRow {
 
 // MARK: - Grouped form primitives
 
-/// A sentence-case header over a boxed group of rows, with optional
-/// explanatory text below. HIG > Layout: "you might use negative space,
-/// background shapes, colors, materials, or separator lines to show when
-/// elements are related and to separate information into distinct areas."
+/// A sentence-case header over a group of rows, with optional explanatory text
+/// below. Grouping is carried by negative space alone — no box, fill or
+/// separators. HIG > Layout: "you might use negative space, background shapes,
+/// colors, materials, or separator lines to show when elements are related and
+/// to separate information into distinct areas."
 private struct SettingsSection<Content: View>: View {
     let title: String
     /// Validation message shown under the group. Nil when the group is valid.
@@ -311,21 +302,12 @@ private struct SettingsSection<Content: View>: View {
 
             VStack(alignment: .leading, spacing: 0) { content() }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: Theme.settingsGroupRadius, style: .continuous)
-                        .fill(Color.white.opacity(Theme.cardFillOpacity))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: Theme.settingsGroupRadius, style: .continuous)
-                        .strokeBorder(Theme.stroke, lineWidth: Theme.cardStrokeWidth)
-                )
 
             if let footer {
                 Text(footer)
                     .font(Theme.settingsCaptionFont)
                     .foregroundColor(Theme.statusWarning)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.leading, 2)
             }
         }
     }
@@ -384,21 +366,9 @@ private struct SettingsRow<Control: View>: View {
 
             control()
         }
-        .padding(.leading, Theme.settingsRowPaddingH + (indented ? Theme.settingsRowIndent : 0))
-        .padding(.trailing, Theme.settingsRowPaddingH)
+        .padding(.leading, indented ? Theme.settingsRowIndent : 0)
         .padding(.vertical, Theme.settingsRowPaddingV)
         .frame(minHeight: Theme.settingsRowMinHeight)
     }
 }
 
-/// Hairline between rows in a group, inset to the label's leading edge the way
-/// macOS grouped forms inset theirs.
-private struct SettingsRowDivider: View {
-    var indented: Bool = false
-
-    var body: some View {
-        Divider()
-            .overlay(Theme.stroke)
-            .padding(.leading, Theme.settingsRowPaddingH + (indented ? Theme.settingsRowIndent : 0))
-    }
-}

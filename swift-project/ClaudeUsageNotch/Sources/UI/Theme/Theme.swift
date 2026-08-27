@@ -73,12 +73,10 @@ enum Theme {
     /// buttons and other controls, resulting in rows that have a consistent
     /// height".
     static let settingsRowMinHeight: CGFloat = 28
-    static let settingsRowPaddingH:  CGFloat = 10
     static let settingsRowPaddingV:  CGFloat = 4
     /// Leading indent for rows subordinate to the switch above them, so the
     /// dependency reads structurally and not just by dimming.
     static let settingsRowIndent:    CGFloat = 14
-    static let settingsGroupRadius:  CGFloat = 7
     static let settingsGroupSpacing: CGFloat = 11
     /// Width reserved for each threshold checkbox, sized to the longest label
     /// ("100%") and applied to all of them — HIG > Toggles: "Measure the space
