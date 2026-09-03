@@ -18,10 +18,23 @@ public final class AppSettings: ObservableObject {
 
     /// Base URL of the sync server, e.g. `http://raspberrypi.local:5014`. Empty disables sync.
     @Published public var apiBaseURL: String = "http://localhost:5014" { didSet { persist() } }
+
     @Published public var syncIntervalSeconds: TimeInterval = 600 { didSet { persist() } }
 
     /// Perimeter glow reflecting local Claude Code session status. See `agent-status-hook/`.
     @Published public var showAgentStatusPulse: Bool = true { didSet { persist() } }
+
+    /// The sync server's base URL, or a path under it. Nil when sync is off
+    /// (empty address) or the address doesn't parse — the one place callers
+    /// need to check before reaching for the server.
+    public func apiURL(path: String? = nil) -> URL? {
+        let base = apiBaseURL.trimmingCharacters(in: .whitespaces)
+        guard !base.isEmpty, let url = URL(string: base) else { return nil }
+        return path.map { url.appendingPathComponent($0) } ?? url
+    }
+
+    /// Whether an address is configured at all.
+    public var syncEnabled: Bool { apiURL() != nil }
 
     private var isLoading = false
 

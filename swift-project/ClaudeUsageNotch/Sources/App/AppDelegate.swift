@@ -143,10 +143,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         notchController?.teardown()
     }
 
-    @objc func quit() {
-        NSApplication.shared.terminate(nil)
-    }
-
     // MARK: - Launch at login
 
     private func syncLaunchAtLoginState() {

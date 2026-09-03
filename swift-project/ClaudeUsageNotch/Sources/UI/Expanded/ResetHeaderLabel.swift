@@ -7,7 +7,7 @@ struct ResetHeaderLabel: View {
 
     var body: some View {
         if window.resetAt != nil {
-            let countdown = window.timeToResetShortString()
+            let countdown = window.timeToReset(.short)
             let dateLabel = window.resetAtLabel()
             HStack(spacing: 3) {
                 Text("·")

@@ -1,19 +1,16 @@
 import Foundation
 import AppKit
 
-/// Poll-driven usage notifications.
+/// Poll-driven usage notifications. On each snapshot, every quota window's
+/// usage is compared to the previous poll:
 ///
-/// On each snapshot: for every quota window (session, weekly, optional Sonnet,
-/// optional usage credits),
-/// compare usage to the previous poll.
-///
-/// - **Going up:** fire when usage crosses a configured threshold we have not
-///   notified for yet this cycle (high-water mark per window).
+/// - **Going up:** fire when usage crosses a configured threshold not yet
+///   notified for this cycle (a high-water mark per window).
 /// - **Going down:** usage decreased → window reset → fire a reset banner and
-///   clear the threshold mark so the next climb can alert again.
+///   clear the mark so the next climb can alert again.
 ///
-/// Does not use `resets_at` for deduplication — Claude shifts that timestamp
-/// on every API call.
+/// Deduplication deliberately ignores `resets_at` — Claude shifts that
+/// timestamp on every API call.
 @MainActor
 public final class NotificationService {
     public static let shared = NotificationService()
@@ -45,7 +42,7 @@ public final class NotificationService {
         var markDirty = false
         var lastPercentDirty = false
 
-        for window in notifiableWindows(in: snapshot) {
+        for window in snapshot.allWindows {
             let label = Self.windowLabel(window.type)
             let key = "claude:\(label)"
             let usage = window.percentUsed
@@ -95,25 +92,12 @@ public final class NotificationService {
         fire(title: "ClaudeUsageNotch", body: "Notifications are working.")
     }
 
-    // MARK: - Windows
-
-    private func notifiableWindows(in snapshot: ServiceUsageSnapshot) -> [UsageWindow] {
-        var windows = [snapshot.sessionWindow]
-        if let weekly = snapshot.weeklyWindow { windows.append(weekly) }
-        if let sonnet = snapshot.weeklySonnetWindow { windows.append(sonnet) }
-        if let credit = snapshot.creditWindow { windows.append(credit) }
-        return windows.filter { Self.notifiableTypes.contains($0.type) }
-    }
-
-    private static let notifiableTypes: Set<UsageWindowType> = [.session, .weekly, .weeklyModel, .monthly]
-
     private static func windowLabel(_ type: UsageWindowType) -> String {
         switch type {
         case .session:     return "session"
         case .weekly:      return "weekly"
         case .weeklyModel: return "sonnet"
         case .monthly:     return "usage credits"
-        default:           return type.rawValue
         }
     }
 

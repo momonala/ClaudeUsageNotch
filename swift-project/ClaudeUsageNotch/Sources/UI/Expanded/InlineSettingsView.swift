@@ -2,22 +2,19 @@ import SwiftUI
 
 /// Settings pane of the expanded notch panel.
 ///
-/// Laid out as a plain form: sentence-case section headers over unboxed
-/// groups of same-height rows, each row a leading label describing the setting
-/// and a trailing control. Buttons, pop-up buttons and the text field are stock
-/// AppKit-backed controls at their `.small` size, so press feedback, keyboard
-/// access and VoiceOver come from the platform. Switches and checkboxes use
-/// `NotchToggleStyles`, which exists only because AppKit desaturates its own
-/// controls on a panel that never takes key focus. See the HIG notes on
-/// individual rows below.
+/// A plain form: sentence-case section headers over unboxed groups of
+/// same-height rows, each a leading label and a trailing control. Buttons,
+/// pop-up buttons and the text field are stock AppKit-backed controls at
+/// `.small`, so press feedback, keyboard access and VoiceOver come from the
+/// platform. Switches and checkboxes use `NotchToggleStyles`, which exists only
+/// because AppKit desaturates its own controls on a panel that never takes key
+/// focus.
 struct InlineSettingsView: View {
     @ObservedObject var appSettings: AppSettings
     @ObservedObject var appState: AppState
 
     /// Set only once the field has been left with a bad value, so the pane
-    /// doesn't scold anyone mid-keystroke. HIG > Text fields: "when entering an
-    /// email address, it's best to validate when people switch to another
-    /// field".
+    /// doesn't scold anyone mid-keystroke.
     @State private var urlIsInvalid = false
     @FocusState private var urlFieldFocused: Bool
 
@@ -49,9 +46,8 @@ struct InlineSettingsView: View {
     // MARK: - Notifications
 
     /// The switch governs the two rows under it, which are indented and
-    /// disabled together. HIG > Toggles > Checkboxes: alignment and indentation
-    /// are how you "show dependencies, such as when the state of a checkbox
-    /// governs the state of subordinate checkboxes".
+    /// disabled together so the dependency reads structurally, not just by
+    /// dimming.
     private var notificationsSection: some View {
         SettingsSection("Notifications") {
             SettingsRow("Usage alerts") {
@@ -75,9 +71,8 @@ struct InlineSettingsView: View {
         }
     }
 
-    /// Multi-select, so checkboxes — HIG > Toggles > Radio buttons: "If you
-    /// need to let people choose multiple options in a set, use checkboxes
-    /// instead." Each gets the same fixed width so the column of boxes aligns.
+    /// Multi-select, so checkboxes rather than radio buttons. Each gets the
+    /// same fixed width so the column of boxes aligns.
     private var thresholdCheckboxes: some View {
         HStack(spacing: 0) {
             ForEach(AppSettings.availableThresholds, id: \.self) { threshold in
@@ -147,9 +142,7 @@ struct InlineSettingsView: View {
         }
     }
 
-    /// Validation message below the group rather than crammed beside the field —
-    /// HIG > Pop-up buttons: "You can also display explanatory text below the
-    /// list to help people understand how the options work."
+    /// Validation message below the group rather than crammed beside the field.
     private var syncFooter: String? {
         urlIsInvalid ? "Enter a full address including http:// or https://." : nil
     }
@@ -157,11 +150,8 @@ struct InlineSettingsView: View {
     // MARK: - Interval pop-up buttons
 
     /// A flat list of mutually exclusive values in a tight pane is the pop-up
-    /// button's job, not the segmented control's — HIG > Pop-up buttons: "Use a
-    /// pop-up button to present a flat list of mutually exclusive options or
-    /// states… Consider using a pop-up button when space is limited". It also
-    /// lifts the cap of three choices the old segmented control imposed, which
-    /// HIG > Segmented controls would have made awkward past ~5 segments.
+    /// button's job, not the segmented control's — the latter gets awkward past
+    /// about five segments.
     private func intervalPicker(selection: Binding<TimeInterval>,
                                 accessibilityLabel: String) -> some View {
         Picker("", selection: selection) {
@@ -214,9 +204,7 @@ struct InlineSettingsView: View {
 
     // MARK: - Account state
 
-    private var syncDisabled: Bool {
-        appSettings.apiBaseURL.trimmingCharacters(in: .whitespaces).isEmpty
-    }
+    private var syncDisabled: Bool { !appSettings.syncEnabled }
 
     /// An empty address is valid — it's how sync is switched off.
     private func validateURL() {
@@ -241,11 +229,8 @@ struct InlineSettingsView: View {
 
 /// How one auth state presents in the Account row. One switch rather than four
 /// parallel ones, so a new `AuthStatus` case can't pick up a label without a
-/// matching symbol and tint.
-///
-/// The symbol accompanies the tint because HIG > Toggles warns against relying
-/// "solely on different colors to communicate state" — the same reasoning
-/// applies to a status indicator.
+/// matching symbol and tint. The symbol accompanies the tint so the state never
+/// rests on colour alone.
 private struct AccountRow {
     let label: String
     let icon: String
@@ -277,9 +262,7 @@ private struct AccountRow {
 
 /// A sentence-case header over a group of rows, with optional explanatory text
 /// below. Grouping is carried by negative space alone — no box, fill or
-/// separators. HIG > Layout: "you might use negative space, background shapes,
-/// colors, materials, or separator lines to show when elements are related and
-/// to separate information into distinct areas."
+/// separators.
 private struct SettingsSection<Content: View>: View {
     let title: String
     /// Validation message shown under the group. Nil when the group is valid.
@@ -315,8 +298,8 @@ private struct SettingsSection<Content: View>: View {
 
 /// One row: leading label (plus optional caption), trailing control, uniform
 /// minimum height. Reads `isEnabled` so a disabled row's own text drops to the
-/// tertiary label color the HIG reserves for unavailable items, instead of the
-/// caller hand-applying an opacity to every subview.
+/// tertiary label color, instead of the caller hand-applying an opacity to
+/// every subview.
 private struct SettingsRow<Control: View>: View {
     @Environment(\.isEnabled) private var isEnabled
 

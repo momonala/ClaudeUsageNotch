@@ -1,11 +1,8 @@
 import SwiftUI
 
-/// Expanded notch panel.
-///
-/// Panel frame is `notchH + content` tall, anchored at screen top.
-/// The top `notchH` points are pure black and overlap the hardware notch.
-/// A transparent gap separates the notch from the glass card. All of these
-/// sizes come from `ExpandedPanelGeometry`, shared with the window controller.
+/// Expanded notch panel: a black strip overlapping the hardware notch, a
+/// transparent gap, then the card. Every size comes from
+/// `ExpandedPanelGeometry`, shared with the window controller.
 struct ExpandedPanelView: View {
     @ObservedObject var appState: AppState
     let appSettings: AppSettings
@@ -28,17 +25,16 @@ struct ExpandedPanelView: View {
                     switch appState.expandedMode {
                     case .usage:
                         statusRow
-                        SessionCard(appState: appState)
+                        UsageCard(window: appState.snapshot?.sessionWindow,
+                                  title: "This session", emphasized: true)
                         if let weekly = appState.snapshot?.weeklyWindow {
-                            WeeklyCard(window: weekly)
+                            UsageCard(window: weekly, title: "This week")
                         }
                         if let weeklySonnet = appState.snapshot?.weeklySonnetWindow {
-                            WeeklyCard(window: weeklySonnet,
-                                       title: "Weekly Sonnet",
-                                       subtitle: "Pro plan")
+                            UsageCard(window: weeklySonnet, title: "Weekly Sonnet", subtitle: "Pro plan")
                         }
                         if let credit = appState.snapshot?.creditWindow {
-                            WeeklyCard(window: credit, title: "Usage credits")
+                            UsageCard(window: credit, title: "Usage credits")
                         }
                     case .analytics:
                         UsageChartView(appState: appState, appSettings: appSettings)
@@ -104,9 +100,7 @@ struct ExpandedPanelView: View {
     }
 
     /// Card height only — the notch overlap and the gap below it are the
-    /// window's business, not the card's. `.settings` used to add `notchH`
-    /// here, which sized the card to the whole window and drew it up under
-    /// the physical notch.
+    /// window's business, not the card's.
     private var panelHeight: CGFloat {
         let mode = appState.expandedMode
         let creditExtra = (mode == .usage && appState.snapshot?.creditWindow != nil)

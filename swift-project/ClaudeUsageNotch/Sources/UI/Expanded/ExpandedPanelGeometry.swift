@@ -3,9 +3,7 @@ import CoreGraphics
 /// Single source of truth for the expanded panel's size, per mode.
 ///
 /// Two things need these numbers and must agree: `NotchWindowController` sizes
-/// the actual `NSPanel`, and `ExpandedPanelView` sizes the glass card drawn
-/// inside it. They used to hardcode the same literals separately, so changing
-/// one without the other silently desynced the card from its window.
+/// the `NSPanel`, and `ExpandedPanelView` sizes the card drawn inside it.
 ///
 /// The window is taller than the card by `notchGap`: the panel is anchored at
 /// the screen top so its first `ScreenUtils.notchHeight` points sit inside the
@@ -17,10 +15,9 @@ enum ExpandedPanelGeometry {
         switch mode {
         case .usage:     return 380
         case .analytics: return 1090
-        // The pane's unconstrained ideal width is 412pt, set by the threshold
-        // row: five 58pt checkboxes ("100 %" is the widest label) beside their
-        // indented label, inside the row and panel margins. Below that the
-        // percent labels wrap inside their slots. This leaves a little slack.
+        // The settings pane's ideal width is 412pt, set by the threshold row:
+        // five 58pt checkboxes beside their indented label, inside the row and
+        // panel margins. Narrower and the percent labels wrap in their slots.
         case .settings:  return 420
         }
     }
@@ -30,13 +27,10 @@ enum ExpandedPanelGeometry {
         switch mode {
         case .usage:     return 120
         case .analytics: return 590
-        // Header row plus the four grouped sections measure 446.5pt through
-        // `fittingSize` at the width above, hosted in a real window (AppKit
-        // controls under-report until they have one), and ~463.5 with the
-        // sync-server validation footer showing — one 10pt line plus the 4pt
-        // section spacing. Sized for that taller state; the remainder is
-        // bottom clearance for the 20pt corner sweep. There is no scroll view
-        // here, so too short clips the last row.
+        // The settings pane measures ~463.5pt through `fittingSize` at the
+        // width above, in its tallest state (sync-server validation footer
+        // showing). Sized for that; the remainder is bottom clearance for the
+        // 20pt corner sweep. There's no scroll view, so too short clips a row.
         case .settings:  return 468
         }
     }

@@ -89,6 +89,15 @@ def _status_for_stop(payload):
     return "idle"
 
 
+def _status_for_event(event, payload, current_status):
+    """The status this event puts the session in."""
+    if event == "Notification":
+        return _status_for_notification(payload, current_status)
+    if event == "Stop":
+        return _status_for_stop(payload)
+    return STATUS_BY_EVENT[event]
+
+
 def _load():
     try:
         with open(STATUS_FILE) as fh:
@@ -133,13 +142,7 @@ def main():
                 data.pop(session_id, None)
             else:
                 current_status = data.get(session_id, {}).get("status")
-                status = (
-                    _status_for_notification(payload, current_status)
-                    if event == "Notification"
-                    else _status_for_stop(payload)
-                    if event == "Stop"
-                    else STATUS_BY_EVENT[event]
-                )
+                status = _status_for_event(event, payload, current_status)
                 data[session_id] = {
                     "status": status,
                     "event": event,

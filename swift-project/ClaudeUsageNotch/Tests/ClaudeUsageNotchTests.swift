@@ -2,11 +2,10 @@ import XCTest
 import AppKit
 @testable import ClaudeUsageNotch
 
-// MARK: - ClaudeUsageMapper Tests
+// MARK: - ClaudeUsageMapper
 
 final class ClaudeUsageMappingTests: XCTestCase {
 
-    // 1. Happy path: all three windows present.
     func test_snapshot_parsesAllWindows() throws {
         let json = """
         {
@@ -25,7 +24,6 @@ final class ClaudeUsageMappingTests: XCTestCase {
         XCTAssertNotNil(snapshot.sessionWindow.resetAt)
     }
 
-    // 1b. Team-plan `spend` block maps to a `.monthly` credit window.
     func test_snapshot_parsesCreditWindowFromSpend() throws {
         let json = """
         {
@@ -50,7 +48,6 @@ final class ClaudeUsageMappingTests: XCTestCase {
         XCTAssertNotNil(credit.resetAt)
     }
 
-    // 1c. `spend.enabled == false` (or the block absent) → no credit window.
     func test_snapshot_omitsCreditWindowWhenSpendDisabled() throws {
         let json = """
         {
@@ -70,7 +67,6 @@ final class ClaudeUsageMappingTests: XCTestCase {
         XCTAssertNil(snapshot.creditWindow)
     }
 
-    // 2. Missing five_hour → decoding error.
     func test_snapshot_throwsWhenFiveHourMissing() throws {
         let json = """
         {
@@ -86,7 +82,6 @@ final class ClaudeUsageMappingTests: XCTestCase {
         }
     }
 
-    // 3. Null utilization on five_hour → decoding error.
     func test_snapshot_throwsWhenUtilizationNull() throws {
         let json = """
         { "five_hour": { "resets_at": "2026-05-18T10:00:00Z" } }
@@ -100,7 +95,6 @@ final class ClaudeUsageMappingTests: XCTestCase {
         }
     }
 
-    // 4. Missing optional windows → weeklyWindow and weeklySonnetWindow are nil.
     func test_snapshot_optionalWindowsAreNil() throws {
         let json = """
         { "five_hour": { "utilization": 10.0, "resets_at": null } }
@@ -115,67 +109,42 @@ final class ClaudeUsageMappingTests: XCTestCase {
     }
 }
 
-// MARK: - Snapshot factory tests
-
-final class SnapshotFactoryTests: XCTestCase {
-
-    func test_connectedSnapshot_isStatusOnly() {
-        let snapshot = ServiceUsageSnapshot.connected()
-        XCTAssertTrue(snapshot.isStatusOnly)
-        XCTAssertFalse(snapshot.showsPercentBar)
-        XCTAssertEqual(snapshot.shortLabel, "Active")
-    }
-
-    func test_connectedSnapshot_hasNoSecondaryWindows() {
-        let snapshot = ServiceUsageSnapshot.connected()
-        XCTAssertNil(snapshot.weeklyWindow)
-        XCTAssertNil(snapshot.weeklySonnetWindow)
-    }
-}
-
-// MARK: - ClaudeOAuthCredential Parsing Tests
+// MARK: - ClaudeOAuthCredential parsing
 
 final class ClaudeOAuthCredentialTests: XCTestCase {
 
-    // 14. Standard claudeAiOauthToken field.
     func test_parse_claudeAiOauthToken_field() {
         let json = #"{"claudeAiOauthToken":"tok-abc123","expiresAt":9999999999999}"#.data(using: .utf8)!
         let cred = ClaudeOAuthCredential.parse(from: json)
         XCTAssertEqual(cred?.accessToken, "tok-abc123")
     }
 
-    // 15. Falls back to accessToken field.
     func test_parse_accessToken_field() {
         let json = #"{"accessToken":"sk-ant-oauth01XYZ"}"#.data(using: .utf8)!
         let cred = ClaudeOAuthCredential.parse(from: json)
         XCTAssertEqual(cred?.accessToken, "sk-ant-oauth01XYZ")
     }
 
-    // 16. Falls back to token field.
     func test_parse_token_field() {
         let json = #"{"token":"raw-token-value"}"#.data(using: .utf8)!
         let cred = ClaudeOAuthCredential.parse(from: json)
         XCTAssertEqual(cred?.accessToken, "raw-token-value")
     }
 
-    // 17. Empty string token → nil.
     func test_parse_emptyToken_returnsNil() {
         let json = #"{"claudeAiOauthToken":""}"#.data(using: .utf8)!
         XCTAssertNil(ClaudeOAuthCredential.parse(from: json))
     }
 
-    // 18. No token field → nil.
     func test_parse_missingToken_returnsNil() {
         let json = #"{"expiresAt":9999999999999}"#.data(using: .utf8)!
         XCTAssertNil(ClaudeOAuthCredential.parse(from: json))
     }
 
-    // 19. Invalid JSON → nil.
     func test_parse_malformedJSON_returnsNil() {
         XCTAssertNil(ClaudeOAuthCredential.parse(from: Data("not json".utf8)))
     }
 
-    // 20. Expiry as millisecond Unix timestamp (> 1e12).
     func test_parse_expiryMilliseconds() {
         // 9_999_999_999_000 ms = 9_999_999_999 s  (far future)
         let json = #"{"claudeAiOauthToken":"t","expiresAt":9999999999000}"#.data(using: .utf8)!
@@ -184,7 +153,6 @@ final class ClaudeOAuthCredentialTests: XCTestCase {
         XCTAssertFalse(cred?.isLikelyExpired ?? true)
     }
 
-    // 21. Expiry as second Unix timestamp.
     func test_parse_expirySeconds() {
         let future = Date().timeIntervalSince1970 + 3600
         let json = "{\"claudeAiOauthToken\":\"t\",\"expiresAt\":\(future)}".data(using: .utf8)!
@@ -192,7 +160,6 @@ final class ClaudeOAuthCredentialTests: XCTestCase {
         XCTAssertFalse(cred?.isLikelyExpired ?? true, "Token expires in 1 hour, should not be expired")
     }
 
-    // 22. Expired token → isLikelyExpired is true.
     func test_parse_expiredToken_isLikelyExpired() {
         let past = Date().timeIntervalSince1970 - 3600
         let json = "{\"claudeAiOauthToken\":\"t\",\"expiresAt\":\(past)}".data(using: .utf8)!
@@ -200,7 +167,6 @@ final class ClaudeOAuthCredentialTests: XCTestCase {
         XCTAssertTrue(cred?.isLikelyExpired ?? false)
     }
 
-    // 23. ISO-8601 expiry string.
     func test_parse_expiryISO8601String() {
         let json = #"{"claudeAiOauthToken":"t","expiresAt":"2099-01-01T00:00:00Z"}"#.data(using: .utf8)!
         let cred = ClaudeOAuthCredential.parse(from: json)
@@ -208,7 +174,6 @@ final class ClaudeOAuthCredentialTests: XCTestCase {
         XCTAssertFalse(cred?.isLikelyExpired ?? true)
     }
 
-    // 24. No expiresAt → expiresAt is nil, isLikelyExpired is false (assume valid).
     func test_parse_noExpiry_notExpired() {
         let json = #"{"claudeAiOauthToken":"t"}"#.data(using: .utf8)!
         let cred = ClaudeOAuthCredential.parse(from: json)
@@ -217,7 +182,7 @@ final class ClaudeOAuthCredentialTests: XCTestCase {
     }
 }
 
-// MARK: - NotificationService high-water mark tests
+// MARK: - NotificationService high-water marks
 
 // `NotificationService` is @MainActor-isolated, so its tests have to be too.
 @MainActor
@@ -261,14 +226,12 @@ final class NotificationServiceEvaluateTests: XCTestCase {
         defaults.dictionary(forKey: defaultsKey) as? [String: Double] ?? [:]
     }
 
-    // 5a. Skipping thresholds: jumping from 0% to 76% records the 75% mark.
     func test_skippedThresholds_recordsHighestOnly() {
         service.evaluate(snapshot: snapshot(percent: 0.76), thresholds: thresholds)
         XCTAssertEqual(mark()["claude:session"], 0.75,
                        "mark should be 0.75 — the highest crossed threshold")
     }
 
-    // 5b. Repeated polls at the same usage level fire nothing extra.
     func test_repeatedEvaluate_doesNotReFire() {
         service.evaluate(snapshot: snapshot(percent: 0.76), thresholds: thresholds)
         let markAfterFirst = mark()
@@ -277,7 +240,6 @@ final class NotificationServiceEvaluateTests: XCTestCase {
                        "mark must not change on a second evaluate at the same usage")
     }
 
-    // 5c. Crossing a higher threshold on a later poll fires once more.
     func test_newHigher_threshold_fires() {
         service.evaluate(snapshot: snapshot(percent: 0.76), thresholds: thresholds)
         XCTAssertEqual(mark()["claude:session"], 0.75)
@@ -286,7 +248,6 @@ final class NotificationServiceEvaluateTests: XCTestCase {
                        "mark should advance to 0.9 when usage crosses 90%")
     }
 
-    // 5d. Window reset: usage drops below the lowest threshold → mark clears.
     func test_windowReset_clearsMark() {
         service.evaluate(snapshot: snapshot(percent: 0.76), thresholds: thresholds)
         XCTAssertEqual(mark()["claude:session"], 0.75)
@@ -298,7 +259,6 @@ final class NotificationServiceEvaluateTests: XCTestCase {
                        "mark should advance again after window reset")
     }
 
-    // 5e. Reset detection works even when all threshold buttons are cleared.
     func test_windowReset_firesWithEmptyThresholds() {
         service.evaluate(snapshot: snapshot(percent: 0.82), thresholds: [])
         service.evaluate(snapshot: snapshot(percent: 0.0), thresholds: [])
@@ -306,8 +266,6 @@ final class NotificationServiceEvaluateTests: XCTestCase {
                        "reset should clear threshold mark even with no thresholds configured")
     }
 
-    // 5f. Reset detection: a drop to near-zero is a reset; a rolling-window dip
-    // while usage is still high is not.
     func test_windowReset_detectsReset() {
         XCTAssertTrue(NotificationService.didWindowReset(previous: 1.0, current: 0.0))
         XCTAssertTrue(NotificationService.didWindowReset(previous: 0.76, current: 0.05))
@@ -317,24 +275,26 @@ final class NotificationServiceEvaluateTests: XCTestCase {
         XCTAssertFalse(NotificationService.didWindowReset(previous: 0.42, current: 0.40))
     }
 
-    // 6. KeychainStore round-trip: write → read → delete.
-    func test_keychainStore_roundTrip() {
+}
+
+// MARK: - KeychainStore
+
+final class KeychainStoreTests: XCTestCase {
+
+    func test_roundTrip_writeReadDelete() {
         let store = KeychainStore(service: "com.claudeusagenotch.tests.\(UUID().uuidString)")
         let payload = "test-payload-\(UUID().uuidString)".data(using: .utf8)!
         store.set(account: "roundtrip", data: payload)
-        let read = store.get(account: "roundtrip")
-        XCTAssertEqual(read, payload)
-        let deleted = store.delete(account: "roundtrip")
-        XCTAssertTrue(deleted)
+        XCTAssertEqual(store.get(account: "roundtrip"), payload)
+        XCTAssertTrue(store.delete(account: "roundtrip"))
         XCTAssertNil(store.get(account: "roundtrip"))
     }
 }
 
-// MARK: - AgentStatus Tests
+// MARK: - AgentStatus
 
 final class AgentStatusTests: XCTestCase {
 
-    // 1. Aggregation priority: needsInput beats working beats idle.
     func test_aggregate_needsInputWinsOverWorking() {
         XCTAssertEqual(AgentStatus.aggregate([.working, .needsInput, .idle]), .needsInput)
     }
@@ -343,15 +303,11 @@ final class AgentStatusTests: XCTestCase {
         XCTAssertEqual(AgentStatus.aggregate([.idle, .working]), .working)
     }
 
-    func test_aggregate_allIdle_isIdle() {
+    func test_aggregate_nothingActive_isIdle() {
         XCTAssertEqual(AgentStatus.aggregate([.idle, .idle]), .idle)
-    }
-
-    func test_aggregate_empty_isIdle() {
         XCTAssertEqual(AgentStatus.aggregate([]), .idle)
     }
 
-    // 2. Status-file decoding round-trips through the same shape the hook writes.
     func test_sessionEntry_decodesHookShape() throws {
         let json = """
         {"status": "working", "event": "PreToolUse", "ts": 1737657600.2, "cwd": "/tmp/project"}
@@ -362,8 +318,6 @@ final class AgentStatusTests: XCTestCase {
         XCTAssertEqual(entry.cwd, "/tmp/project")
     }
 
-    // 3. A crashed session (no Stop/SessionEnd, stale timestamp) is dropped
-    // rather than holding a needs-input/working state forever.
     func test_reading_dropsStaleNonIdleEntry() {
         let now: TimeInterval = 1_000_000
         let stale = AgentSessionEntry(status: .needsInput, event: "Notification", ts: now - 500, cwd: "")
@@ -371,7 +325,6 @@ final class AgentStatusTests: XCTestCase {
         XCTAssertEqual(reading.status, .idle)
     }
 
-    // 4. A fresh entry within the staleness window still counts.
     func test_reading_keepsFreshEntry() {
         let now: TimeInterval = 1_000_000
         let fresh = AgentSessionEntry(status: .working, event: "PreToolUse", ts: now - 10, cwd: "")
@@ -379,7 +332,6 @@ final class AgentStatusTests: XCTestCase {
         XCTAssertEqual(reading.status, .working)
     }
 
-    // 5. A second, needs-input session overrides a first, merely-working session.
     func test_reading_multiSession_needsInputOverridesWorking() {
         let now: TimeInterval = 1_000_000
         let working = AgentSessionEntry(status: .working, event: "PreToolUse", ts: now, cwd: "/a")
@@ -388,7 +340,6 @@ final class AgentStatusTests: XCTestCase {
         XCTAssertEqual(reading.status, .needsInput)
     }
 
-    // 6. justCompleted flashes briefly after a Stop, then expires.
     func test_reading_justCompleted_withinWindow() {
         let now: TimeInterval = 1_000_000
         let stopped = AgentSessionEntry(status: .idle, event: "Stop", ts: now - 2, cwd: "")
@@ -404,8 +355,6 @@ final class AgentStatusTests: XCTestCase {
         XCTAssertFalse(reading.justCompleted)
     }
 
-    // 7. The completion flash holds for the full default window (30s), so a
-    // finished session stays visible long enough to notice.
     func test_reading_justCompleted_defaultWindowHoldsFor30s() {
         let now: TimeInterval = 1_000_000
         let stopped = AgentSessionEntry(status: .idle, event: "Stop", ts: now - 25, cwd: "")
@@ -415,8 +364,6 @@ final class AgentStatusTests: XCTestCase {
         XCTAssertFalse(AgentStatusReading.from([older], now: now).justCompleted)
     }
 
-    // 8. A live session outranks another session's completion flash — the green
-    // pulse must never mask one that is working or wants input.
     func test_reading_justCompleted_supersededByWorkingSession() {
         let now: TimeInterval = 1_000_000
         let stopped = AgentSessionEntry(status: .idle, event: "Stop", ts: now - 2, cwd: "/done")
@@ -436,13 +383,12 @@ final class AgentStatusTests: XCTestCase {
     }
 }
 
-// MARK: - ExpandedPanelGeometry Tests
+// MARK: - ExpandedPanelGeometry
 
 final class ExpandedPanelGeometryTests: XCTestCase {
 
-    /// The card must always be strictly shorter than the window content it sits
-    /// in, or it renders up under the hardware notch — the bug that made the
-    /// settings panel look misformatted.
+    /// The card must be strictly shorter than the window content it sits in, or
+    /// it renders up under the hardware notch.
     func test_cardAlwaysFitsInsideWindowContentWithGap() {
         for mode in [ExpandedMode.usage, .analytics, .settings] {
             let card = ExpandedPanelGeometry.cardHeight(for: mode)
@@ -481,38 +427,37 @@ final class CompactCountdownTests: XCTestCase {
     }
 
     func test_compactString_keepsOnlyTheLargestUnit() {
-        XCTAssertEqual(sessionWindow(resettingIn: 45 * 60).timeToResetCompactString(now: now), "45m")
-        XCTAssertEqual(sessionWindow(resettingIn: 3600).timeToResetCompactString(now: now), "1h")
-        XCTAssertEqual(sessionWindow(resettingIn: 2 * 3600 + 58 * 60).timeToResetCompactString(now: now), "2h")
-        XCTAssertEqual(sessionWindow(resettingIn: 25 * 3600).timeToResetCompactString(now: now), "1d")
+        XCTAssertEqual(sessionWindow(resettingIn: 45 * 60).timeToReset(.compact, now: now), "45m")
+        XCTAssertEqual(sessionWindow(resettingIn: 3600).timeToReset(.compact, now: now), "1h")
+        XCTAssertEqual(sessionWindow(resettingIn: 2 * 3600 + 58 * 60).timeToReset(.compact, now: now), "2h")
+        XCTAssertEqual(sessionWindow(resettingIn: 25 * 3600).timeToReset(.compact, now: now), "1d")
     }
 
     func test_compactString_floorsRatherThanRounds() {
         // "2h" has to mean *at least* two hours, never "nearly three".
-        XCTAssertEqual(sessionWindow(resettingIn: 2 * 3600 + 59 * 60 + 59).timeToResetCompactString(now: now), "2h")
+        XCTAssertEqual(sessionWindow(resettingIn: 2 * 3600 + 59 * 60 + 59).timeToReset(.compact, now: now), "2h")
     }
 
     func test_compactString_neverReportsZero() {
-        XCTAssertEqual(sessionWindow(resettingIn: 30).timeToResetCompactString(now: now), "1m")
-        XCTAssertEqual(sessionWindow(resettingIn: 0).timeToResetCompactString(now: now), "now")
-        XCTAssertEqual(sessionWindow(resettingIn: -60).timeToResetCompactString(now: now), "now")
+        XCTAssertEqual(sessionWindow(resettingIn: 30).timeToReset(.compact, now: now), "1m")
+        XCTAssertEqual(sessionWindow(resettingIn: 0).timeToReset(.compact, now: now), "now")
+        XCTAssertEqual(sessionWindow(resettingIn: -60).timeToReset(.compact, now: now), "now")
     }
 
     func test_compactString_isNilWithoutResetAt() {
         let window = UsageWindow(type: .session, percentUsed: 1.0, resetAt: nil, lastUpdated: now)
-        XCTAssertNil(window.timeToResetCompactString(now: now))
+        XCTAssertNil(window.timeToReset(.compact, now: now))
     }
 
     /// The whole point of the compact form: at the session limit the pill shows
-    /// this string in the same slot the "%" readout uses, so it has to fit that
-    /// slot. If it doesn't, the pill either clips or (as it did before) grows
-    /// wider than the hardware cutout.
+    /// this string in the same slot the "%" readout uses, so it has to fit —
+    /// otherwise the pill clips or grows wider than the hardware cutout.
     func test_compactString_fitsThePercentLabelSlot() {
         let slotWidth: CGFloat = 25
         let font = NSFont.monospacedSystemFont(ofSize: 9, weight: .bold)
         let intervals: [TimeInterval] = [0, 30, 59 * 60, 3600, 5 * 3600, 23 * 3600, 25 * 3600, 9 * 24 * 3600]
         for interval in intervals {
-            let text = try! XCTUnwrap(sessionWindow(resettingIn: interval).timeToResetCompactString(now: now))
+            let text = try! XCTUnwrap(sessionWindow(resettingIn: interval).timeToReset(.compact, now: now))
             let width = (text as NSString).size(withAttributes: [.font: font]).width
             XCTAssertLessThanOrEqual(width, slotWidth, "\"\(text)\" overflows the \(slotWidth) pt label slot")
         }

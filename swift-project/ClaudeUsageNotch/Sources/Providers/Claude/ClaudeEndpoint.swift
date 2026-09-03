@@ -45,15 +45,6 @@ enum ClaudeEndpoint {
         return h
     }
 
-    /// Headers for OAuth Bearer token auth (Claude CLI credential).
-    /// Smaller blast radius than the session cookie — use this when available.
-    static func bearerHeaders(token: String) -> [String: String] {
-        var h = claudeAIBrowserHeaders
-        h["Authorization"] = "Bearer \(token)"
-        h["Accept"]        = "application/json"
-        return h
-    }
-
     // MARK: - Private
 
     private static let claudeAIBrowserHeaders: [String: String] = [

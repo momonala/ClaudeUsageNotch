@@ -83,7 +83,7 @@ enum ClaudeUsageMapper {
         let session = UsageWindow(
             type: .session,
             percentUsed: utilization / 100.0,
-            resetAt: parseISO(fiveHour.resetsAt),
+            resetAt: parseISO8601(fiveHour.resetsAt),
             lastUpdated: capturedAt
         )
 
@@ -91,7 +91,7 @@ enum ClaudeUsageMapper {
             UsageWindow(
                 type: .weekly,
                 percentUsed: ($0.utilization ?? 0) / 100.0,
-                resetAt: parseISO($0.resetsAt),
+                resetAt: parseISO8601($0.resetsAt),
                 lastUpdated: capturedAt
             )
         }
@@ -100,7 +100,7 @@ enum ClaudeUsageMapper {
             UsageWindow(
                 type: .weeklyModel,
                 percentUsed: ($0.utilization ?? 0) / 100.0,
-                resetAt: parseISO($0.resetsAt),
+                resetAt: parseISO8601($0.resetsAt),
                 lastUpdated: capturedAt
             )
         }
@@ -136,19 +136,4 @@ enum ClaudeUsageMapper {
         return cal.date(byAdding: .month, value: 1, to: startOfMonth)
     }
 
-    private static let isoWithFrac: ISO8601DateFormatter = {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return f
-    }()
-    private static let isoNoFrac: ISO8601DateFormatter = {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime]
-        return f
-    }()
-
-    private static func parseISO(_ raw: String?) -> Date? {
-        guard let raw else { return nil }
-        return isoWithFrac.date(from: raw) ?? isoNoFrac.date(from: raw)
-    }
 }

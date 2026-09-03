@@ -1,11 +1,20 @@
 import SwiftUI
 import AppKit
 
+private enum Banner {
+    static let size = CGSize(width: 300, height: 72)
+    static let cornerRadius: CGFloat = 14
+    static let screenMargin: CGFloat = 14
+    static let dwell: TimeInterval = 4
+    static let slideInDuration: TimeInterval = 0.38
+    static let slideOutDuration: TimeInterval = 0.28
+}
+
 /// Custom in-app notification banner.
 ///
-/// Slides in from the right side of the notch screen, stays 4 seconds, slides out.
-/// Requires zero permissions — works for unsigned/locally-built apps out of the box.
-/// Notifications queue so they never overlap.
+/// Slides in from the right side of the notch screen, dwells, slides out.
+/// Requires zero permissions, so it works for unsigned local builds out of the
+/// box. Banners queue so they never overlap.
 final class NotificationBannerController {
     static let shared = NotificationBannerController()
     private init() {}
@@ -26,14 +35,13 @@ final class NotificationBannerController {
         let item = queue.removeFirst()
 
         guard let screen = ScreenUtils.notchScreen() else { isShowing = false; return }
-        let w: CGFloat = 300
-        let h: CGFloat = 72
-        let margin: CGFloat = 14
+        let (w, h) = (Banner.size.width, Banner.size.height)
+        let margin = Banner.screenMargin
 
-        let restX   = screen.frame.maxX - w - margin
-        let menuH   = screen.frame.maxY - screen.visibleFrame.maxY
-        let restY   = screen.frame.maxY - menuH - h - margin
-        let offX    = screen.frame.maxX + margin
+        let restX = screen.frame.maxX - w - margin
+        let menuH = screen.frame.maxY - screen.visibleFrame.maxY
+        let restY = screen.frame.maxY - menuH - h - margin
+        let offX  = screen.frame.maxX + margin
 
         let panel = NSPanel(
             contentRect: NSRect(x: offX, y: restY, width: w, height: h),
@@ -53,14 +61,14 @@ final class NotificationBannerController {
         panel.orderFrontRegardless()
 
         NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.38
+            ctx.duration = Banner.slideInDuration
             ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
             panel.animator().setFrame(NSRect(x: restX, y: restY, width: w, height: h), display: true)
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + Banner.dwell) {
             NSAnimationContext.runAnimationGroup { ctx in
-                ctx.duration = 0.28
+                ctx.duration = Banner.slideOutDuration
                 ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
                 panel.animator().setFrame(NSRect(x: offX, y: restY, width: w, height: h), display: true)
             } completionHandler: {
@@ -92,6 +100,14 @@ private struct BannerView: View {
     let message: String
     @State private var appeared = false
 
+    private var background: some View {
+        let shape = RoundedRectangle(cornerRadius: Banner.cornerRadius, style: .continuous)
+        return shape
+            .fill(Color.clear)
+            .background(VisualEffectBackground().clipShape(shape))
+            .overlay(shape.strokeBorder(Color.white.opacity(0.13), lineWidth: 1))
+    }
+
     var body: some View {
         HStack(spacing: 12) {
             ZStack {
@@ -116,19 +132,8 @@ private struct BannerView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .frame(width: 300, height: 72)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.clear)
-                .background(
-                    VisualEffectBackground()
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.13), lineWidth: 1)
-                )
-        )
+        .frame(width: Banner.size.width, height: Banner.size.height)
+        .background(background)
         .shadow(color: .black.opacity(0.3), radius: 12, y: 4)
         .scaleEffect(appeared ? 1 : 0.94)
         .opacity(appeared ? 1 : 0)

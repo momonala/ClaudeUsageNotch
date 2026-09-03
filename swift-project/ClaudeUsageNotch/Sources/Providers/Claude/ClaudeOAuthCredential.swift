@@ -92,12 +92,7 @@ struct ClaudeOAuthCredential {
                 ? Date(timeIntervalSince1970: value / 1000)
                 : Date(timeIntervalSince1970: value)
         }
-        if let str = json["expiresAt"] as? String {
-            let f = ISO8601DateFormatter()
-            f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            return f.date(from: str) ?? ISO8601DateFormatter().date(from: str)
-        }
-        return nil
+        return parseISO8601(json["expiresAt"] as? String)
     }
 
     // MARK: - Sources

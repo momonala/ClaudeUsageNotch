@@ -1,14 +1,11 @@
 import Foundation
 
-/// Which window inside a provider this usage belongs to.
+/// Which of Claude's quota windows a usage reading belongs to.
 public enum UsageWindowType: String, Codable, Hashable {
-    case session     // Claude's 5-hour rolling window
-    case weekly      // Claude's 7-day window
-    case weeklyModel // Claude Pro's 7-day Sonnet sub-window
-    case monthly     // Calendar-month billing window (OpenAI spend vs limit)
-    case daily       // Rolling daily quota (Gemini Code Assist per-model buckets)
-    case connected   // Provider authenticated but exposes no quota endpoint (Gemini, Perplexity)
-    case balance     // Provider reports a remaining credit balance, not a % (DeepSeek)
+    case session     // 5-hour rolling window
+    case weekly      // 7-day window
+    case weeklyModel // 7-day Sonnet sub-window (Pro plans)
+    case monthly     // Monthly usage-credit pool (Team plans)
 }
 
 /// Health classification derived from percent used + reset proximity.
@@ -19,11 +16,10 @@ public enum UsageStatus: String, Codable, Hashable {
     case unknown   // no data yet
 }
 
-/// A single rolling usage window inside a provider snapshot.
+/// One rolling usage window inside a snapshot.
 ///
-/// `percentUsed` is normalized to 0...1. `usedAmount` and `limitAmount` are
-/// kept as optional `Double`s in case the provider only reports a percentage
-/// (which is the case for Claude today — see ClaudeUsageBar reference).
+/// `percentUsed` is normalized to 0...1. `usedAmount`/`limitAmount` are only
+/// reported for the dollar-denominated `.monthly` credit pool.
 public struct UsageWindow: Codable, Hashable {
     public let type: UsageWindowType
     public let percentUsed: Double          // 0.0 ... 1.0+
@@ -31,9 +27,6 @@ public struct UsageWindow: Codable, Hashable {
     public let limitAmount: Double?
     public let resetAt: Date?
     public let lastUpdated: Date
-    /// Pre-formatted short text for windows without a percentage (e.g. a
-    /// `.balance` window's "$110.00"). Nil for percentage windows.
-    public let label: String?
 
     public init(
         type: UsageWindowType,
@@ -41,8 +34,7 @@ public struct UsageWindow: Codable, Hashable {
         usedAmount: Double? = nil,
         limitAmount: Double? = nil,
         resetAt: Date? = nil,
-        lastUpdated: Date = Date(),
-        label: String? = nil
+        lastUpdated: Date = Date()
     ) {
         self.type = type
         self.percentUsed = percentUsed
@@ -50,7 +42,6 @@ public struct UsageWindow: Codable, Hashable {
         self.limitAmount = limitAmount
         self.resetAt = resetAt
         self.lastUpdated = lastUpdated
-        self.label = label
     }
 
     /// Percent-used cutoffs for the color/health classification (distinct from
@@ -88,80 +79,63 @@ public struct UsageWindow: Codable, Hashable {
         hasResetPassed(now: now) ? .healthy : status
     }
 
-    /// Known rolling-window length for this type. Nil when pace can't be inferred.
-    public var windowDuration: TimeInterval? {
+    /// Rolling-window length for this type.
+    public var windowDuration: TimeInterval {
         switch type {
         case .session:              return 5 * 3600
         case .weekly, .weeklyModel: return 7 * 24 * 3600
-        case .daily:                return 24 * 3600
         case .monthly:              return 30 * 24 * 3600
-        case .connected, .balance:  return nil
         }
     }
 
     /// How far through the rolling window we are by elapsed time (0…1).
     /// E.g. 20% of a week elapsed → 0.2. Nil when reset time or duration is unknown.
     public func expectedProgress(now: Date = Date()) -> Double? {
-        guard let resetAt, let duration = windowDuration, duration > 0 else { return nil }
-        let remaining = resetAt.timeIntervalSince(now)
-        let elapsed = duration - remaining
-        return min(1, max(0, elapsed / duration))
+        guard let resetAt else { return nil }
+        let elapsed = windowDuration - resetAt.timeIntervalSince(now)
+        return min(1, max(0, elapsed / windowDuration))
     }
 
-    /// Compact reset countdown for tight spaces, e.g. "1h 12m". Nil if no resetAt.
-    public func timeToResetShortString(now: Date = Date()) -> String? {
+    /// Reset countdown at two useful widths, plus the sentence form.
+    ///
+    /// `.compact` is at most three characters ("45m", "2h", "1d") because the
+    /// pill is exactly as wide as the hardware cutout and a countdown shown
+    /// there has to fit the same slot the "%" readout uses. Components are
+    /// floored in both widths: "2h" means at least two hours to go, never less.
+    public enum CountdownWidth {
+        /// Two units where they help: "1h 12m", "3d 4h".
+        case short
+        /// Largest unit only: "45m", "2h", "1d".
+        case compact
+    }
+
+    public func timeToReset(_ width: CountdownWidth, now: Date = Date()) -> String? {
         guard let resetAt else { return nil }
         let interval = resetAt.timeIntervalSince(now)
-        if interval <= 0 { return "soon" }
-        let (days, hours, minutes) = timeComponents(from: interval)
-        if days > 0 { return hours > 0 ? "\(days)d \(hours)h" : "\(days)d" }
-        if hours > 0 { return minutes > 0 ? "\(hours)h \(minutes)m" : "\(hours)h" }
+        guard interval > 0 else { return width == .compact ? "now" : "soon" }
+
+        let totalMinutes = Int(interval / 60)
+        let totalHours   = totalMinutes / 60
+        let (days, hours, minutes) = (totalHours / 24, totalHours % 24, totalMinutes % 60)
+
+        if days > 0  { return width == .compact || hours == 0 ? "\(days)d" : "\(days)d \(hours)h" }
+        if hours > 0 { return width == .compact || minutes == 0 ? "\(hours)h" : "\(hours)h \(minutes)m" }
         return "\(max(minutes, 1))m"
     }
 
-    /// Coarsest useful reset countdown — at most three characters ("45m",
-    /// "2h", "1d") — for the compact pill's fixed label slot.
-    ///
-    /// The pill is exactly as wide as the hardware cutout in every state, so a
-    /// countdown shown there has to fit the same slot the "%" readout uses.
-    /// `timeToResetShortString`'s "2h 58m" does not, and the pill used to grow
-    /// 32 pt to make room for it — which pushed it out past the black housing
-    /// on both sides for the whole time the session sat at its limit.
-    ///
-    /// Components are floored, matching `timeToResetShortString`: "2h" means at
-    /// least two hours to go, never less.
-    public func timeToResetCompactString(now: Date = Date()) -> String? {
-        guard let resetAt else { return nil }
-        let interval = resetAt.timeIntervalSince(now)
-        if interval <= 0 { return "now" }
-        let (days, hours, minutes) = timeComponents(from: interval)
-        if days > 0  { return "\(days)d" }
-        if hours > 0 { return "\(hours)h" }
-        return "\(max(minutes, 1))m"
-    }
-
-    /// Human-readable countdown to reset, e.g. "Resets in 1h 12m".
+    /// Sentence form for roomier spots, e.g. "Resets in 1h 12m".
     public func timeToResetString(now: Date = Date()) -> String? {
         guard let resetAt else { return nil }
-        let interval = resetAt.timeIntervalSince(now)
-        if interval <= 0 { return "Resetting…" }
-        let (days, hours, minutes) = timeComponents(from: interval)
-        if days > 0 { return hours > 0 ? "Resets in \(days)d \(hours)h" : "Resets in \(days)d" }
-        if hours > 0 { return "Resets in \(hours)h \(minutes)m" }
-        return "Resets in \(max(minutes, 1))m"
+        guard resetAt > now else { return "Resetting…" }
+        return timeToReset(.short, now: now).map { "Resets in \($0)" }
     }
 
-    /// When the window resets — time for short windows (session/daily), date for longer ones.
+    /// When the window resets — time of day for the 5h session, date for longer windows.
     public func resetAtLabel() -> String? {
         guard let resetAt else { return nil }
-        switch type {
-        case .session, .daily:
-            return Self.resetTimeFormatter.string(from: resetAt)
-        case .weekly, .weeklyModel, .monthly:
-            return Self.resetDateFormatter.string(from: resetAt)
-        case .connected, .balance:
-            return nil
-        }
+        return type == .session
+            ? Self.resetTimeFormatter.string(from: resetAt)
+            : Self.resetDateFormatter.string(from: resetAt)
     }
 
     private static let resetTimeFormatter: DateFormatter = {
@@ -176,10 +150,4 @@ public struct UsageWindow: Codable, Hashable {
         f.dateFormat = "EEE d MMM, h:mm a"
         return f
     }()
-
-    private func timeComponents(from interval: TimeInterval) -> (days: Int, hours: Int, minutes: Int) {
-        let totalMinutes = Int(interval / 60)
-        let totalHours   = totalMinutes / 60
-        return (days: totalHours / 24, hours: totalHours % 24, minutes: totalMinutes % 60)
-    }
 }

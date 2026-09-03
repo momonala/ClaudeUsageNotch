@@ -2,12 +2,10 @@ import SwiftUI
 
 /// Compact island pill.
 ///
-/// The panel that hosts this view is taller than what's visible: the top
-/// `safeAreaInsets.top` points sit inside the physical notch hardware
-/// (invisible — black fill blends with the camera housing).  Content is
-/// pushed to the bottom of the view with a Spacer so it appears in the
-/// visible 22 pt strip just below the notch.  The result looks like the
-/// notch grew a thin glowing status strip — identical to the Dynamic Island.
+/// The panel hosting this view is taller than what's visible: the top
+/// `safeAreaInsets.top` points sit inside the physical notch hardware, where
+/// the black fill blends with the camera housing. Content is pushed to the
+/// bottom so it lands in the visible strip just below the notch.
 struct CompactView: View {
     @ObservedObject var appState: AppState
     @ObservedObject var appSettings: AppSettings
@@ -17,10 +15,6 @@ struct CompactView: View {
         ZStack(alignment: .bottom) {
             pill
             if showAgentGlow {
-                // Wraps the pill's perimeter from outside, in the margin the
-                // panel carries for it. The pill itself stays exactly as wide
-                // as the hardware cutout — the ring adds to that silhouette
-                // rather than taking a bite out of its edges.
                 AgentStatusGlow(status: appState.agentStatus, justCompleted: appState.agentJustCompleted)
             }
         }
@@ -36,16 +30,12 @@ struct CompactView: View {
     /// hardware cutout.
     private var pill: some View {
         ZStack(alignment: .bottom) {
-            // Full-height black fill — top portion invisible (inside notch).
             NotchPillShape(topRadius: 0, bottomRadius: Theme.compactPillBottomRadius)
                 .fill(Color.black)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            // Visible content strip (bottom 22 pt, below the notch edge).
-            // Only while you're in the app you run Claude Code from — see
-            // `AppState.showsCompactContent`. Elsewhere the pill collapses to
-            // the cutout itself and the black is invisible behind the housing,
-            // leaving nothing on screen but the status ring.
+            // Away from the app you run Claude Code in, the pill collapses to
+            // the cutout itself — see `AppState.showsCompactContent`.
             if appState.showsCompactContent {
                 strip
             }
@@ -57,89 +47,48 @@ struct CompactView: View {
     }
 
     private var strip: some View {
-        HStack(spacing: 7) {
-                if appState.showsPercentBar {
-                    VStack(spacing: 3) {
-                        // Session row
-                        HStack(spacing: 6) {
-                            CompactProgressBar(
-                                progress: appState.sessionPercent,
-                                color: statusColor,
-                                expectedProgress: appState.snapshot?.sessionWindow.expectedProgress()
-                            )
-                                .frame(height: Theme.barHeightNotch)
-                            if appState.isAtSessionLimit {
-                                // Same slot width as the "%" readout below, so
-                                // hitting the limit changes what the label says
-                                // and not how wide the pill is — the pill has
-                                // to stay flush with the cutout in every state.
-                                Text(appState.sessionResetCompactString ?? "MAX")
-                                    .font(Theme.notchFontBold)
-                                    .foregroundColor(Theme.textPrimary)
-                                    .frame(minWidth: 25, alignment: .trailing)
-                            } else {
-                                Text("\(Int((appState.sessionPercent * 100).rounded()))%")
-                                    .font(Theme.notchFont)
-                                    .foregroundColor(Theme.textLabel)
-                                    .frame(minWidth: 25, alignment: .trailing)
-                            }
-                        }
-                        // Weekly row
-                        if let weekly = appState.snapshot?.weeklyWindow {
-                            HStack(spacing: 6) {
-                                CompactProgressBar(
-                                    progress: weekly.effectivePercentUsed(),
-                                    color: weeklyColor,
-                                    expectedProgress: weekly.expectedProgress()
-                                )
-                                    .frame(height: Theme.barHeightNotch)
-                                Text("\(Int((weekly.effectivePercentUsed() * 100).rounded()))%")
-                                    .font(Theme.notchFont)
-                                    .foregroundColor(Theme.textLabel)
-                                    .frame(minWidth: 25, alignment: .trailing)
-                            }
-                        }
-                        // Credit row (Team plans only)
-                        if let credit = appState.snapshot?.creditWindow {
-                            HStack(spacing: 6) {
-                                CompactProgressBar(
-                                    progress: credit.effectivePercentUsed(),
-                                    color: creditColor,
-                                    expectedProgress: credit.expectedProgress()
-                                )
-                                    .frame(height: Theme.barHeightNotch)
-                                Text("\(Int((credit.effectivePercentUsed() * 100).rounded()))%")
-                                    .font(Theme.notchFont)
-                                    .foregroundColor(Theme.textLabel)
-                                    .frame(minWidth: 25, alignment: .trailing)
-                            }
-                        }
-                    }
-                } else {
-                    // Balance ("$110.00") or connected-only ("Active") — no fake bar.
-                    Text(appState.shortLabel)
-                        .font(Theme.notchFont)
-                        .foregroundColor(Theme.textLabel)
-                        .frame(minWidth: 40, alignment: .trailing)
-                }
+        VStack(spacing: 3) {
+            barRow(window: appState.snapshot?.sessionWindow, label: sessionLabel)
+            if let weekly = appState.snapshot?.weeklyWindow {
+                barRow(window: weekly)
             }
-            .padding(.horizontal, 10)
-            // Anchored to the bottom with a real inset rather than centred in
-            // the strip: centring left the last row hard against the pill's
-            // curved bottom edge. The strip constants already account for this
-            // inset, so the rows aren't squeezed to make room for it.
-            .padding(.bottom, Theme.compactContentBottomInset)
+            if let credit = appState.snapshot?.creditWindow {
+                barRow(window: credit)
+            }
+        }
+        .padding(.horizontal, 10)
+        // Anchored to the bottom with a real inset rather than centred: centring
+        // left the last row hard against the pill's curved bottom edge. The
+        // strip constants already account for this inset.
+        .padding(.bottom, Theme.compactContentBottomInset)
         .frame(height: Theme.compactStripHeight
             + (appState.snapshot?.creditWindow != nil ? Theme.compactStripHeightCredit : 0),
                alignment: .bottom)
     }
 
-    private var statusColor: Color { appState.sessionStatus.color }
-    private var weeklyColor: Color {
-        (appState.snapshot?.weeklyWindow?.effectiveStatus() ?? .healthy).color
+    /// One bar plus its readout. `label` overrides the default percentage —
+    /// used for the session row, which shows a reset countdown at the limit.
+    /// Both occupy the same slot width, so what the label says can change
+    /// without the pill's width moving off the cutout.
+    private func barRow(window: UsageWindow?, label: String? = nil) -> some View {
+        let pct = window?.effectivePercentUsed() ?? 0
+        return HStack(spacing: 6) {
+            CompactProgressBar(
+                progress: pct,
+                color: (window?.effectiveStatus() ?? .unknown).color,
+                expectedProgress: window?.expectedProgress()
+            )
+                .frame(height: Theme.barHeightNotch)
+            Text(label ?? "\(Int((pct * 100).rounded()))%")
+                .font(label == nil ? Theme.notchFont : Theme.notchFontBold)
+                .foregroundColor(label == nil ? Theme.textLabel : Theme.textPrimary)
+                .frame(minWidth: 25, alignment: .trailing)
+        }
     }
-    private var creditColor: Color {
-        (appState.snapshot?.creditWindow?.effectiveStatus() ?? .healthy).color
+
+    private var sessionLabel: String? {
+        guard appState.isAtSessionLimit else { return nil }
+        return appState.sessionResetCompactString ?? "MAX"
     }
 
     /// Only in the untouched idle state — `.compactHover` is a brief transient

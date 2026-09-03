@@ -108,20 +108,17 @@ struct OnboardingView: View {
 
     @ViewBuilder
     private var credentialStep: some View {
-        if usesDetectedOAuth() { oauthDetectedStep }
-        else { claudeCookieStep }
+        if usesDetectedOAuth() { oauthDetectedStep } else { claudeCookieStep }
     }
 
-    @ViewBuilder
     private var oauthDetectedStep: some View {
-        let info = (tool: "Claude CLI", path: "~/.claude/credentials.json", scope: "Scoped OAuth token — not your full session cookie")
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 Image(systemName: "checkmark.shield.fill")
                     .font(.system(size: 20))
                     .foregroundColor(Theme.statusHealthy)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(info.tool) detected")
+                    Text("Claude CLI detected")
                         .font(.title3.weight(.semibold))
                         .foregroundColor(Theme.textPrimary)
                     Text("ClaudeUsageNotch will use your existing CLI credentials.")
@@ -138,8 +135,8 @@ struct OnboardingView: View {
             )
 
             VStack(alignment: .leading, spacing: 6) {
-                featureRow("shield.fill", info.scope, Theme.statusHealthy)
-                featureRow("key.fill", "Token lives in \(info.path)", Theme.textSecondary)
+                featureRow("shield.fill", "Scoped OAuth token — not your full session cookie", Theme.statusHealthy)
+                featureRow("key.fill", "Token lives in ~/.claude/credentials.json", Theme.textSecondary)
                 featureRow("arrow.clockwise", "Auto-refreshed — no action needed", Theme.textSecondary)
             }
         }
@@ -245,7 +242,7 @@ struct OnboardingView: View {
     private var nextDisabled: Bool {
         switch step {
         case .credential:
-            return needsTextInput() && credentialInput.trimmingCharacters(in: .whitespaces).isEmpty
+            return !usesDetectedOAuth() && credentialInput.trimmingCharacters(in: .whitespaces).isEmpty
         case .validate:
             return validating
         default:
@@ -274,12 +271,10 @@ struct OnboardingView: View {
         validateError = nil
         validating = true
 
-        if needsTextInput() {
-            if let saveError = saveCredential() {
-                validateError = saveError
-                validating = false
-                return
-            }
+        if !usesDetectedOAuth(), let saveError = saveCredential() {
+            validateError = saveError
+            validating = false
+            return
         }
 
         step = .validate
@@ -309,8 +304,7 @@ struct OnboardingView: View {
     }
 
     private func saveCredential() -> String? {
-        let trimmed = credentialInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        return AuthService.shared.saveClaudeCredential(ClaudeCredential(cookie: trimmed))
+        AuthService.shared.saveClaudeCookie(credentialInput)
     }
 
     // MARK: - Helpers
@@ -319,13 +313,8 @@ struct OnboardingView: View {
         AuthService.shared.cliOAuthAvailable()
     }
 
-    private func needsTextInput() -> Bool {
-        !usesDetectedOAuth()
-    }
-
     // MARK: - Helper sub-views
 
-    @ViewBuilder
     private func featureRow(_ icon: String, _ text: String, _ color: Color) -> some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
@@ -344,18 +333,16 @@ struct OnboardingView: View {
                 .font(Theme.captionFont)
                 .foregroundColor(Theme.textSecondary)
                 .frame(maxWidth: .infinity, alignment: .center)
-            HStack(spacing: 0) {
-                VStack(spacing: 0) {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color.black)
-                        .frame(width: 130, height: 22)
-                        .overlay(
-                            Text("camera")
-                                .font(.system(size: 7))
-                                .foregroundColor(Color.white.opacity(0.15))
-                        )
-                    OnboardingPillPreview()
-                }
+            VStack(spacing: 0) {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.black)
+                    .frame(width: 130, height: 22)
+                    .overlay(
+                        Text("camera")
+                            .font(.system(size: 7))
+                            .foregroundColor(Color.white.opacity(0.15))
+                    )
+                OnboardingPillPreview()
             }
             .frame(maxWidth: .infinity, alignment: .center)
             Text("Hover to expand. Click to pin.")
@@ -373,11 +360,10 @@ struct OnboardingView: View {
     }
 }
 
-// MARK: - Secure text editor (handles both cookie and API key)
+// MARK: - Cookie editor
 
 private struct SecureCookieEditor: NSViewRepresentable {
     @Binding var text: String
-    var placeholder: String = ""
     private static let maxLength = 65_536
 
     func makeNSView(context: Context) -> NSScrollView {

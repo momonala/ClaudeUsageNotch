@@ -173,9 +173,10 @@ Sources/
 │
 ├── Core/
 │   ├── Domain/
-│   │   ├── ServiceUsageSnapshot.swift
+│   │   ├── ServiceUsageSnapshot.swift  One poll's session / weekly / sonnet / credit windows
 │   │   ├── UsageRecord.swift      Token-level record parsed from JSONL history
-│   │   ├── UsageWindow.swift      Session / weekly windows, pace, reset helpers
+│   │   ├── UsageWindow.swift      One quota window: pace, status, reset helpers
+│   │   ├── Timestamps.swift       The two ISO8601 shapes every wire format here uses
 │   │   ├── Status.swift           UsageStatus, ProviderError, AuthStatus, SyncStatus
 │   │   ├── AnalyticsData.swift    Cost/token/model/project/skill breakdowns for the analytics chart
 │   │   ├── QuotaSnapshotPayload.swift  Payload POSTed to the sync server's quota_snapshots table
@@ -189,7 +190,7 @@ Sources/
 ├── Providers/
 │   └── Claude/
 │       ├── ClaudeProvider.swift   OAuth + cookie auth; session + weekly fetch
-│       ├── ClaudeCredential.swift
+│       ├── ClaudeCredential.swift  The keychain-stored session cookie
 │       ├── ClaudeOAuthCredential.swift
 │       ├── ClaudeEndpoint.swift
 │       └── ClaudeUsageDTO.swift
@@ -214,21 +215,22 @@ Sources/
     ├── NotchWindowController.swift  Borderless NSPanel; hover timer; width animation
     ├── NotificationBanner.swift
     ├── Compact/
-    │   ├── CompactView.swift        Dual bars; countdown at session limit
+    │   ├── CompactView.swift        Session/weekly/credit bars; countdown at session limit
     │   ├── CompactProgressBar.swift Pace marker tick
-    │   ├── StatusDot.swift          StatusBubble (inline outage / sync pill)
+    │   ├── StatusBubble.swift       Inline outage / sync pill
     │   └── AgentStatusGlow.swift    Perimeter pulse for agent status (compact-idle only)
     ├── Expanded/
     │   ├── ExpandedPanelView.swift  Switches on ExpandedMode
     │   ├── ExpandedPanelGeometry.swift  Panel width/height per mode; shared with NotchWindowController
     │   ├── HeaderRow.swift          Pin badge, mode buttons, hide, quit
-    │   ├── SessionCard.swift
-    │   ├── WeeklyCard.swift
-    │   ├── ResetSubtitleRow.swift   Countdown · reset time/date · expected usage
-    │   ├── UsageChartView.swift     Cost/token analytics: model/project/skill breakdowns, daily & hourly charts
+    │   ├── UsageCard.swift          One quota window: title, reset info, bar, percentage
+    │   ├── ResetHeaderLabel.swift   Countdown · reset time/date · expected usage
+    │   ├── UsageChartView.swift     Analytics view: pickers, charts, axes, data loading
+    │   ├── QuotaSeries.swift        Token buckets → "% quota over time" (polled or reconstructed)
+    │   ├── AnalyticsBreakdowns.swift Cost pills and the right column's ranked breakdowns
     │   └── InlineSettingsView.swift Grouped-form settings pane rendered inline in the notch panel
     ├── Onboarding/OnboardingView.swift
-    └── Theme/                       Theme · NotchToggleStyles · GlassBackground/NotchPillShape · RetroMascot
+    └── Theme/                       Theme · NotchToggleStyles · NotchPillShape · RetroMascot
 ```
 
 ---
@@ -245,7 +247,7 @@ UsageService (poll loop + backoff)
     │                                         ├──► NotificationService.evaluate(...)
     │                                         └──► QuotaSyncService.push ──POST──► sync server (when apiBaseURL set)
     │
-    └─ errorPublisher ────► UsageCoordinator ──► AppState.providerErrors / syncStatus
+    └─ errorPublisher ────► UsageCoordinator ──► AppState.authStatus / syncStatus
                                                        │
     IncidentMonitor ────────────────────────────────► AppState.incidents
                                                        │
@@ -319,11 +321,10 @@ time an agent starts or stops working.
 
 **At the session limit** the pill swaps the `%` readout for a reset countdown —
 in the same label slot, so the silhouette doesn't move.
-`UsageWindow.timeToResetCompactString` keeps it to three characters (`45m`,
-`2h`, `1d`, floored: `2h` means at least two hours). It used to render
-`timeToResetShortString` (`2h 58m` — 33 pt of text at 9 pt bold against a 25 pt
-slot) and grow the panel 32 pt to fit, which stuck the pill ~15 pt out past the
-black housing on each side for as long as the limit lasted.
+`UsageWindow.timeToReset(.compact)` keeps it to three characters (`45m`, `2h`,
+`1d`, floored: `2h` means at least two hours) so it fits the 25 pt slot. The
+roomier `.short` width (`2h 58m` — 33 pt of text at 9 pt bold) would not, and
+widening the panel to fit it sticks the pill out past the black housing.
 
 **What the pill shows depends on which app you're in.** `FrontmostAppService`
 watches `NSWorkspace.frontmostApplication` and publishes whether it's an app a

@@ -14,7 +14,6 @@ public final class AppState: ObservableObject {
 
     @Published public var snapshot: ServiceUsageSnapshot?
     @Published public var incident: ServiceIncident?
-    @Published public var providerError: ProviderError?
 
     @Published public var notchState: NotchState = .compactIdle
     @Published public var isNotchUIHidden: Bool = false { didSet { persist() } }
@@ -33,26 +32,17 @@ public final class AppState: ObservableObject {
     // MARK: - Convenience
 
     public var sessionPercent: Double { snapshot?.sessionWindow.effectivePercentUsed() ?? 0 }
-    public var sessionStatus: UsageStatus { snapshot?.sessionWindow.effectiveStatus() ?? .unknown }
     public var sessionResetString: String? { snapshot?.sessionWindow.timeToResetString() }
     public var isAtSessionLimit: Bool { sessionPercent >= 1.0 }
-    public var isStatusOnly: Bool { snapshot?.isStatusOnly ?? false }
-    public var isBalance: Bool { snapshot?.isBalance ?? false }
-    public var showsPercentBar: Bool { snapshot?.showsPercentBar ?? true }
-    public var shortLabel: String { snapshot?.shortLabel ?? "—" }
-    /// Reset countdown for the compact pill's label slot ("45m", "2h"). Kept
-    /// to three characters so the pill stays exactly as wide as the cutout —
-    /// see `UsageWindow.timeToResetCompactString`.
-    public var sessionResetCompactString: String? { snapshot?.sessionWindow.timeToResetCompactString() }
+    /// Reset countdown for the compact pill's label slot — see
+    /// `UsageWindow.CountdownWidth`.
+    public var sessionResetCompactString: String? { snapshot?.sessionWindow.timeToReset(.compact) }
 
     /// Whether the compact pill draws its bars and percentages at all. Away
-    /// from the app you run Claude Code in, the pill keeps its shape and its
-    /// status ring but drops the readout: the numbers are only worth the screen
-    /// space where you'd act on them, and everywhere else the notch is better
-    /// off looking like hardware. Hover still expands the full panel.
+    /// from the app you run Claude Code in it keeps its shape and status ring
+    /// but drops the readout, so the notch reads as stock hardware. Hover
+    /// still expands the full panel from either state.
     public var showsCompactContent: Bool { isWorkHostFrontmost }
-
-    public var combinedStatus: UsageStatus { snapshot?.combinedStatus ?? .unknown }
 
     public var activeIncident: ServiceIncident? {
         guard let i = incident, i.level.isActive else { return nil }

@@ -42,8 +42,8 @@ struct RemoteAnalytics: Decodable {
     }
 
     /// A real polled quota reading — ground truth for the % Quota chart, as
-    /// opposed to `BucketDTO`'s token counts (which the chart estimates a
-    /// percentage from when no real readings are available yet).
+    /// opposed to `BucketDTO`'s token counts, which `quotaSeries` only
+    /// estimates a percentage from when no real readings exist yet.
     struct QuotaPointDTO: Decodable {
         let timestamp:   Date
         let percentUsed: Double
@@ -108,7 +108,7 @@ struct RemoteAnalytics: Decodable {
     }
 
     func toAnalyticsData() -> AnalyticsData {
-        return AnalyticsData(
+        AnalyticsData(
             sessionCost:     sessionCost,
             todayCost:       todayCost,
             weeklyCost:      weeklyCost,
@@ -188,11 +188,9 @@ enum RemoteHistoryReader {
         guard let url = components?.url else { throw URLError(.badURL) }
 
         var request = URLRequest(url: url)
-        // Snappy enough that an unreachable Pi surfaces an error fast, but not so
-        // tight that a slow LAN/Tailscale aggregate times out spuriously. The
-        // server aggregates tens of thousands of records per call and answers in
-        // ~4.5 s (nearer 7 s for the longest lookback), so 5 s sat right on the
-        // cliff and the chart failed intermittently.
+        // The server aggregates tens of thousands of records per call and
+        // answers in ~4.5 s, nearer 7 s for the longest lookback — so anything
+        // tighter fails the chart intermittently on a slow LAN.
         request.timeoutInterval = 8
 
         let (data, response) = try await URLSession.shared.data(for: request)

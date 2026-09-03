@@ -30,18 +30,13 @@ enum Theme {
     // Compact notch strip
     static let notchFont     = Font.system(size: 9, weight: .semibold, design: .monospaced)
     static let notchFontBold = Font.system(size: 9, weight: .bold,     design: .monospaced)
-    static let notchFontTiny = Font.system(size: 8, weight: .semibold, design: .monospaced)
 
-    // Expanded panel header
-    static let headerFont = Font.system(size: 11, weight: .semibold, design: .rounded)
-    static let headerFontRegular = Font.system(size: 11, design: .rounded)
-
-    // Status cards (expanded panel)
-    static let cardTitleFont    = Font.system(size: 12, weight: .semibold, design: .rounded)
-    static let cardSubtitleFont = Font.system(size: 10,                    design: .rounded)
-    static let cardResetDateFont = Font.system(size: 9,                    design: .rounded)
-    static let cardValueFont    = Font.system(size: 14, weight: .bold,     design: .monospaced)
-    static let weeklyValueFont  = Font.system(size: 13, weight: .bold,     design: .monospaced)
+    // Usage cards (expanded panel)
+    static let cardTitleFont     = Font.system(size: 12, weight: .semibold, design: .rounded)
+    static let cardSubtitleFont  = Font.system(size: 10,                    design: .rounded)
+    static let cardResetDateFont = Font.system(size: 9,                     design: .rounded)
+    static let cardValueFont     = Font.system(size: 14, weight: .bold,     design: .monospaced)
+    static let weeklyValueFont   = Font.system(size: 13, weight: .bold,     design: .monospaced)
 
     // Analytics chart section labels (uppercase mini-caps)
     static let sectionLabelFont:    Font    = Font.system(size: 10, weight: .semibold, design: .rounded)
@@ -49,29 +44,23 @@ enum Theme {
 
     // MARK: - Settings pane
 
-    /// The settings pane uses the system label hierarchy rather than hardcoded
-    /// white opacities. Apple's HIG (Labels) defines four label colors "to help
-    /// you give text different levels of visual importance", and tertiary is
-    /// specifically "text that describes an unavailable item or behavior" — so
-    /// disabled rows get the platform's own dimming instead of an ad-hoc
-    /// `.opacity(0.4)`. These resolve against the panel's pinned dark
-    /// appearance (see `NotchWindowController`) and follow Increase Contrast.
+    /// The system label hierarchy rather than hardcoded white opacities, so
+    /// disabled rows get the platform's own dimming (HIG > Labels: tertiary is
+    /// "text that describes an unavailable item or behavior"). These resolve
+    /// against the panel's pinned dark appearance — see `NotchWindowController`.
     static let labelPrimary   = Color(nsColor: .labelColor)
     static let labelSecondary = Color(nsColor: .secondaryLabelColor)
     static let labelTertiary  = Color(nsColor: .tertiaryLabelColor)
 
-    /// Sizes track the macOS built-in text styles (HIG > Typography > macOS
-    /// built-in text styles): Headline 13, Callout 12, Subheadline 11,
-    /// Footnote 10. Rounded is kept as the app's system-font variant.
+    /// Sizes track the macOS built-in text styles (HIG > Typography): Headline
+    /// 13, Callout 12, Subheadline 11, Footnote 10, in the app's rounded variant.
     static let settingsTitleFont   = Font.system(size: 13, weight: .semibold, design: .rounded)
     static let settingsSectionFont = Font.system(size: 11, weight: .semibold, design: .rounded)
     static let settingsRowFont     = Font.system(size: 12,                    design: .rounded)
     static let settingsCaptionFont = Font.system(size: 10,                    design: .rounded)
 
-    /// One row height for every row, whatever control it carries. HIG >
-    /// Toggles > macOS: a mini switch's "height is similar to the height of
-    /// buttons and other controls, resulting in rows that have a consistent
-    /// height".
+    /// One height for every row, whatever control it carries — a mini switch
+    /// already matches the small button and pop-up button it sits beside.
     static let settingsRowMinHeight: CGFloat = 28
     static let settingsRowPaddingV:  CGFloat = 4
     /// Leading indent for rows subordinate to the switch above them, so the
@@ -79,12 +68,9 @@ enum Theme {
     static let settingsRowIndent:    CGFloat = 14
     static let settingsGroupSpacing: CGFloat = 11
     /// Width reserved for each threshold checkbox, sized to the longest label
-    /// ("100%") and applied to all of them — HIG > Toggles: "Measure the space
-    /// needed to accommodate the longest button label, and use that
-    /// measurement consistently."
+    /// ("100%") and applied to all of them so the column aligns.
     static let settingsCheckboxWidth: CGFloat = 58
-    /// Trailing control widths, kept equal across rows so the controls form a
-    /// single aligned column (HIG > Layout: "Align components with one another").
+    /// Kept equal across rows so the trailing controls form one aligned column.
     static let settingsControlWidth: CGFloat = 104
 
     // MARK: - Notch switch and checkbox (see NotchToggleStyles)
@@ -106,8 +92,7 @@ enum Theme {
     static let toggleDisabledOnFill  = Color.white.opacity(0.20)
     static let toggleDisabledOffFill = Color.white.opacity(0.05)
     static let toggleDisabledKnob    = Color.white.opacity(0.5)
-    /// Press feedback, which a custom control has to supply itself — HIG >
-    /// Buttons: "Always include a press state for a custom button."
+    /// Press feedback, which a custom control has to supply itself.
     static let togglePressedScale: CGFloat = 0.92
 
     // MARK: - Notch panel shape
@@ -116,36 +101,25 @@ enum Theme {
     /// to sweep wider.
     static let panelTopRadius:     CGFloat = 10
     static let panelBottomRadius:  CGFloat = 20
-    /// Even margin between the panel's edge and the content inside it. Apple's
-    /// Live Activities HIG asks for "even, matching margins between rounded
-    /// shapes and the edges … including corners" — so this is one value for
-    /// all four sides, not a bigger bottom inset to dodge the corner sweep.
+    /// One margin for all four sides, not a bigger bottom inset to dodge the
+    /// corner sweep (HIG > Live Activities asks for even margins "including
+    /// corners").
     static let panelContentMargin: CGFloat = 12
-    /// Corner radius for a shape inset by `panelContentMargin`, kept concentric
-    /// with the panel: "match its corner radius to the outer corner radius …
-    /// by subtracting the margin". Equal margin + subtracted radius keeps the
-    /// inner and outer curves parallel through the bend, so content near the
-    /// bottom stops reading as pinched by the corner.
-
     // MARK: - Layout
 
     /// Height of the visible strip below the hardware notch in compact mode.
-    /// Must match the content height CompactView actually lays out (2 bar
-    /// rows) *plus* `compactContentBottomInset`, or the top row renders
-    /// partially inside the hidden notch area.
+    /// Must match the content height `CompactView` lays out (2 bar rows) *plus*
+    /// `compactContentBottomInset`, or the top row renders partially inside the
+    /// hidden notch area.
     static let compactStripHeight: CGFloat = 30
     /// Bottom corner radius of the compact pill's black fill. `AgentStatusGlow`
     /// derives its own radius from this so the ring curves parallel to it.
     static let compactPillBottomRadius: CGFloat = 14
     /// Extra strip height for the optional third (credit) bar row.
     static let compactStripHeightCredit: CGFloat = 14
-    /// Gap between the last bar row and the pill's bottom edge.
-    ///
-    /// Without it the three-row strip is 39pt of content in a 40pt frame:
-    /// half a point of clearance, at a height where the pill's 14pt corner
-    /// has already cut 10.3pt inward. The percentage labels sit 10pt from the
-    /// right edge, so the bottom one ran straight through the corner arc.
-    /// At 5pt the curve has only cut 3.3pt, leaving the label ~6.7pt clear.
+    /// Gap between the last bar row and the pill's bottom edge. The percentage
+    /// labels sit 10pt from the right edge, where the 14pt bottom corner has
+    /// already cut inward — without the gap the bottom label runs through the arc.
     static let compactContentBottomInset: CGFloat = 5
 
     // MARK: - Progress bar

@@ -2,7 +2,7 @@ import Foundation
 
 /// Pushes the real, provider-reported quota percentages to the sync server on
 /// every poll — the ground truth the chart's "% Quota" view prefers over its
-/// token-based estimate (see `UsageChartView.toTimeBuckets`).
+/// token-based estimate (see `quotaSeries`).
 ///
 /// Stateless and fire-and-forget: each snapshot is a complete, self-contained
 /// reading, so a dropped POST just loses that one sample — the next poll produces
@@ -15,21 +15,8 @@ enum QuotaSyncService {
     private static let hostName = ProcessInfo.processInfo.hostName
 
     static func push(_ snapshot: ServiceUsageSnapshot, settings: AppSettings) {
-        // Status-only (e.g. Gemini) and balance (e.g. DeepSeek) providers have no
-        // meaningful percentage to record.
-        guard snapshot.showsPercentBar, let url = quotaURL(settings) else { return }
-
-        var payloads = [payload(for: snapshot.sessionWindow, capturedAt: snapshot.capturedAt)]
-        if let weekly = snapshot.weeklyWindow {
-            payloads.append(payload(for: weekly, capturedAt: snapshot.capturedAt))
-        }
-        if let weeklySonnet = snapshot.weeklySonnetWindow {
-            payloads.append(payload(for: weeklySonnet, capturedAt: snapshot.capturedAt))
-        }
-        if let credit = snapshot.creditWindow {
-            payloads.append(payload(for: credit, capturedAt: snapshot.capturedAt))
-        }
-
+        guard let url = settings.apiURL(path: "api/quota_snapshots") else { return }
+        let payloads = snapshot.allWindows.map { payload(for: $0, capturedAt: snapshot.capturedAt) }
         Task { await post(payloads, to: url) }
     }
 
@@ -58,11 +45,5 @@ enum QuotaSyncService {
         } catch {
             NSLog("[ClaudeUsageNotch] quota sync POST failed: \(error.localizedDescription)")
         }
-    }
-
-    private static func quotaURL(_ settings: AppSettings) -> URL? {
-        let base = settings.apiBaseURL.trimmingCharacters(in: .whitespaces)
-        guard !base.isEmpty, let url = URL(string: base) else { return nil }
-        return url.appendingPathComponent("api/quota_snapshots")
     }
 }

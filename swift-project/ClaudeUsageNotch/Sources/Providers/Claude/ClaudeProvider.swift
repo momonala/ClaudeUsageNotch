@@ -1,14 +1,13 @@
 import Foundation
 
-/// Claude provider. Tries OAuth before falling back to the browser session cookie.
+/// Reads Claude's usage endpoints, resolving auth fresh on every fetch:
 ///
-/// Auth resolution order on every fetch:
-///   1. `~/.claude/credentials.json` → Bearer token (scoped, short-lived, preferred)
-///   2. Keychain session cookie (full account access, fallback)
+///   1. `~/.claude/credentials.json` → Bearer token against
+///      `api.anthropic.com/api/oauth/usage` (scoped, short-lived, preferred)
+///   2. Keychain session cookie → `claude.ai/api/organizations/{org}/usage`
+///      (full account access, fallback)
 ///
-/// Both paths hit the same internal `/api/organizations/{org}/usage` endpoint.
-/// If OAuth resolves the org ID and the Bearer request succeeds, the cookie is
-/// never read from the keychain at all.
+/// When OAuth succeeds the cookie is never read from the keychain at all.
 final class ClaudeProvider {
     private let session: URLSession
     private let authService: AuthService
@@ -18,32 +17,21 @@ final class ClaudeProvider {
         self.authService = authService
     }
 
-    // MARK: - UsageProvider
-
     func fetchUsage() async throws -> ServiceUsageSnapshot {
         let ctx = try await resolveAuthContext()
 
-        // OAuth token (Claude Code) → api.anthropic.com/api/oauth/usage.
-        // Session cookie (claude.ai) → claude.ai/api/organizations/{org}/usage.
-        // Both return the same five_hour / seven_day / seven_day_sonnet shape.
-        let data: Data
-        switch ctx.auth {
-        case .bearer:
-            data = try await get(url: ClaudeEndpoint.oauthUsage, auth: ctx.auth, oauthUsage: true)
-        case .cookie:
-            data = try await get(url: ClaudeEndpoint.usage(orgId: ctx.orgId), auth: ctx.auth)
+        // Both endpoints return the same five_hour / seven_day / seven_day_sonnet shape.
+        let url = switch ctx.auth {
+        case .bearer: ClaudeEndpoint.oauthUsage
+        case .cookie: ClaudeEndpoint.usage(orgId: ctx.orgId)
         }
+        let data = try await get(url: url, auth: ctx.auth)
 
         do {
             let dto = try JSONDecoder().decode(ClaudeUsageDTO.self, from: data)
             return try ClaudeUsageMapper.snapshot(from: dto)
         } catch let e as ProviderError { throw e }
         catch { throw ProviderError.decoding(error.localizedDescription) }
-    }
-
-    /// Current auth tier — used by diagnostics + onboarding hint.
-    var activeAuthTier: ClaudeAuthTier {
-        ClaudeOAuthCredential.isAvailable() ? .oauth : .cookie
     }
 
     // MARK: - Auth resolution
@@ -105,7 +93,7 @@ final class ClaudeProvider {
 
     // MARK: - HTTP
 
-    private func get(url: URL, auth: Auth, oauthUsage: Bool = false) async throws -> Data {
+    private func get(url: URL, auth: Auth) async throws -> Data {
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
         request.httpMethod = "GET"
 
@@ -113,9 +101,7 @@ final class ClaudeProvider {
         case .cookie(let c):
             for (k, v) in ClaudeEndpoint.headers(cookie: c) { request.setValue(v, forHTTPHeaderField: k) }
         case .bearer(let t):
-            let headers = oauthUsage ? ClaudeEndpoint.oauthUsageHeaders(token: t)
-                                     : ClaudeEndpoint.bearerHeaders(token: t)
-            for (k, v) in headers { request.setValue(v, forHTTPHeaderField: k) }
+            for (k, v) in ClaudeEndpoint.oauthUsageHeaders(token: t) { request.setValue(v, forHTTPHeaderField: k) }
         }
 
         let (data, response): (Data, URLResponse)

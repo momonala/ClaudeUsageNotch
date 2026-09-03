@@ -41,7 +41,7 @@ final class HistorySyncService {
 
     private func reschedule() {
         timer?.invalidate()
-        guard !settings.apiBaseURL.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        guard settings.syncEnabled else { return }
 
         timer = Timer.scheduledTimer(
             withTimeInterval: settings.syncIntervalSeconds, repeats: true
@@ -60,7 +60,7 @@ final class HistorySyncService {
     }
 
     private func syncNow() async {
-        guard let url = recordsURL() else { return }
+        guard let url = settings.apiURL(path: "api/records") else { return }
         // A slow scan/POST can overlap the next timer tick (or a settings-change
         // reschedule); both would read the same cursor and push overlapping batches.
         guard !isSyncing else { return }
@@ -93,11 +93,5 @@ final class HistorySyncService {
         } catch {
             NSLog("[ClaudeUsageNotch] sync POST failed: \(error.localizedDescription)")
         }
-    }
-
-    private func recordsURL() -> URL? {
-        let base = settings.apiBaseURL.trimmingCharacters(in: .whitespaces)
-        guard !base.isEmpty, let url = URL(string: base) else { return nil }
-        return url.appendingPathComponent("api/records")
     }
 }

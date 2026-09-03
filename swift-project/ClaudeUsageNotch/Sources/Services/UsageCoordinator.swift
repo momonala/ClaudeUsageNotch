@@ -32,7 +32,6 @@ public final class UsageCoordinator {
             .sink { [weak self] snapshot in
                 guard let self else { return }
                 self.appState.snapshot = snapshot
-                self.appState.providerError = nil
                 self.appState.authStatus = .valid
                 self.appState.syncStatus = .ok(at: Date())
                 self.handleNotifications(for: snapshot)
@@ -44,7 +43,6 @@ public final class UsageCoordinator {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] err in
                 guard let self else { return }
-                self.appState.providerError = err
                 if err.isAuthIssue {
                     let wasValid = self.appState.authStatus == .valid
                     self.appState.authStatus = (err == .missingCredentials) ? .notConfigured : .expired

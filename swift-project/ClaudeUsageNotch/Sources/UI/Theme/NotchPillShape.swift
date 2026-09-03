@@ -1,7 +1,5 @@
 import SwiftUI
 
-// MARK: - NotchPillShape
-
 /// Rounded rectangle whose top and bottom corner radii are independent.
 ///
 /// Set `topRadius ≈ 8` to match the physical notch's inner corner so the
