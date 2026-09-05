@@ -191,7 +191,8 @@ Sources/
 │   └── Claude/
 │       ├── ClaudeProvider.swift   OAuth + cookie auth; session + weekly fetch
 │       ├── ClaudeCredential.swift  The keychain-stored session cookie
-│       ├── ClaudeOAuthCredential.swift
+│       ├── ClaudeOAuthCredential.swift  CLI token: file → mirror → refresh → Keychain
+│       ├── ClaudeOAuthRefresher.swift   refresh_token grant, so the CLI item is read once
 │       ├── ClaudeEndpoint.swift
 │       └── ClaudeUsageDTO.swift
 │
@@ -375,21 +376,40 @@ miss along its edge would collapse it mid-interaction.
 
 Claude auth is tried in this order:
 
-1. **CLI OAuth** — `Claude Code-credentials` Keychain item or `~/.claude/credentials.json`
+1. **CLI OAuth** — `~/.claude/.credentials.json`, the app-owned mirror, an in-process
+   token refresh, or the `Claude Code-credentials` Keychain item (in that order)
 2. **Session cookie** — pasted from a claude.ai browser session, stored in Keychain
 
 Onboarding skips the cookie step when CLI OAuth is detected.
 
+### Why the app refreshes its own token
+
 The `Claude Code-credentials` Keychain item is owned by the Claude CLI, so reading it
-is a cross-app access that prompts whenever the CLI rewrites the item on token refresh
-(a rewrite resets its ACL). To avoid prompting on every poll, `ClaudeOAuthCredential`
-mirrors a successful read into an app-owned Keychain item and reads from that mirror
-while the token is unexpired, only falling back to the CLI item (and a possible prompt)
-once the mirrored token rotates. The mirror stays silent across rebuilds **only with a
-stable code signature** — `./build.sh` picks one up automatically when the keychain has
-one (see [Build](#build)); an ad-hoc build re-prompts after every rebuild.
+is a cross-app access gated on two separate grants: an entry in the item's trusted-app
+ACL, and the app's team id in the item's **partition list**. Claude Code rewrites the
+item on every token rotation, which resets both — and re-granting a partition entry is
+the operation macOS demands the login-keychain password for. That is why the password
+sheet used to reappear every few hours no matter how often "Always Allow" was clicked:
+the grant did stick, until the next rotation wiped it.
+
+`ClaudeOAuthCredential` therefore treats the CLI item as a *seed*, not a poll path. One
+read mirrors the blob into an app-owned Keychain item (silent, since we own it), and
+once the mirrored access token expires the app runs a `refresh_token` grant against
+`platform.claude.com/v1/oauth/token` itself (`ClaudeOAuthRefresher`) and writes the
+result back to the mirror. Refresh tokens outlive access tokens by weeks, so in steady
+state the CLI item is never touched again and no prompt appears. The CLI item is
+re-read only if a refresh is rejected outright and the credential has to be re-seeded.
+
+Resolution is serialized through an actor so two concurrent polls can't race and burn
+each other's rotated refresh token. The mirror stays silent across rebuilds **only with
+a stable code signature** — `./build.sh` picks one up automatically when the keychain
+has one (see [Build](#build)); an ad-hoc build re-prompts after every rebuild.
 `UsageService` also retries auth failures on a short fixed interval instead of its
-exponential backoff, so the access prompt re-surfaces in seconds rather than minutes.
+exponential backoff, so any access prompt re-surfaces in seconds rather than minutes.
+
+Note that Claude Code may rotate the refresh token on each grant. If a future CLI
+release starts revoking the previous one immediately, the app and the CLI would
+invalidate each other and the CLI would need a fresh `claude login`.
 
 ---
 

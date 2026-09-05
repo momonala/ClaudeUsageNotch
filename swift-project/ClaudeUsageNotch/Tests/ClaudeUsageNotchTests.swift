@@ -174,11 +174,76 @@ final class ClaudeOAuthCredentialTests: XCTestCase {
         XCTAssertFalse(cred?.isLikelyExpired ?? true)
     }
 
+    func test_parse_refreshToken_fromNestedAndFlatShapes() {
+        let nested = #"{"claudeAiOauth":{"accessToken":"a","refreshToken":"r"}}"#.data(using: .utf8)!
+        XCTAssertEqual(ClaudeOAuthCredential.parse(from: nested)?.refreshToken, "r")
+
+        let flat = #"{"accessToken":"a","refreshToken":"r"}"#.data(using: .utf8)!
+        XCTAssertEqual(ClaudeOAuthCredential.parse(from: flat)?.refreshToken, "r")
+
+        let none = #"{"accessToken":"a","refreshToken":""}"#.data(using: .utf8)!
+        XCTAssertNil(ClaudeOAuthCredential.parse(from: none)?.refreshToken)
+    }
+
     func test_parse_noExpiry_notExpired() {
         let json = #"{"claudeAiOauthToken":"t"}"#.data(using: .utf8)!
         let cred = ClaudeOAuthCredential.parse(from: json)
         XCTAssertNil(cred?.expiresAt)
         XCTAssertFalse(cred?.isLikelyExpired ?? true)
+    }
+}
+
+// MARK: - ClaudeOAuthRefresher
+
+final class ClaudeOAuthRefresherTests: XCTestCase {
+
+    private let previous = #"""
+    {"claudeAiOauth":{"accessToken":"old-access","refreshToken":"old-refresh",
+     "expiresAt":1000,"subscriptionType":"team"},"organizationUuid":"ORG"}
+    """#.data(using: .utf8)!
+
+    private func merged(_ response: String) -> [String: Any]? {
+        guard let data = ClaudeOAuthRefresher.mergedBlob(
+            previous: previous, tokenResponse: response.data(using: .utf8)!) else { return nil }
+        return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    }
+
+    func test_mergedBlob_replacesTokensAndKeepsUnrelatedFields() throws {
+        let blob = try XCTUnwrap(merged(#"{"access_token":"new-access","refresh_token":"new-refresh","expires_in":3600}"#))
+        let oauth = try XCTUnwrap(blob["claudeAiOauth"] as? [String: Any])
+
+        XCTAssertEqual(oauth["accessToken"] as? String, "new-access")
+        XCTAssertEqual(oauth["refreshToken"] as? String, "new-refresh")
+        XCTAssertEqual(oauth["subscriptionType"] as? String, "team", "unrelated fields survive the merge")
+        XCTAssertEqual(blob["organizationUuid"] as? String, "ORG")
+
+        // expires_in is relative seconds; the blob stores absolute ms since epoch.
+        let expiresAt = try XCTUnwrap(oauth["expiresAt"] as? TimeInterval)
+        let expected  = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
+        XCTAssertEqual(expiresAt, expected, accuracy: 5000)
+    }
+
+    func test_mergedBlob_keepsOldRefreshTokenWhenNotRotated() throws {
+        let blob  = try XCTUnwrap(merged(#"{"access_token":"new-access","expires_in":3600}"#))
+        let oauth = try XCTUnwrap(blob["claudeAiOauth"] as? [String: Any])
+        XCTAssertEqual(oauth["refreshToken"] as? String, "old-refresh")
+    }
+
+    func test_mergedBlob_parsesBackAsUsableCredential() throws {
+        let data = try XCTUnwrap(ClaudeOAuthRefresher.mergedBlob(
+            previous: previous,
+            tokenResponse: #"{"access_token":"new-access","refresh_token":"new-refresh","expires_in":3600,"scope":"user:profile user:inference"}"#.data(using: .utf8)!))
+        let cred = try XCTUnwrap(ClaudeOAuthCredential.parse(from: data))
+
+        XCTAssertEqual(cred.accessToken, "new-access")
+        XCTAssertEqual(cred.refreshToken, "new-refresh")
+        XCTAssertEqual(cred.orgId, nil, "ORG is not a UUID, so it is rejected as an org id")
+        XCTAssertFalse(cred.isLikelyExpired)
+    }
+
+    func test_mergedBlob_missingAccessToken_returnsNil() {
+        XCTAssertNil(merged(#"{"error":"invalid_grant"}"#))
+        XCTAssertNil(merged(#"{"access_token":""}"#))
     }
 }
 

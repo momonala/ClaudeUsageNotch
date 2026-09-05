@@ -2,7 +2,7 @@ import Foundation
 
 /// Reads Claude's usage endpoints, resolving auth fresh on every fetch:
 ///
-///   1. `~/.claude/credentials.json` → Bearer token against
+///   1. Claude CLI OAuth token → Bearer against
 ///      `api.anthropic.com/api/oauth/usage` (scoped, short-lived, preferred)
 ///   2. Keychain session cookie → `claude.ai/api/organizations/{org}/usage`
 ///      (full account access, fallback)
@@ -50,14 +50,10 @@ final class ClaudeProvider {
     /// is available, or the specific auth error from whichever tier was attempted.
     private func resolveAuthContext() async throws -> AuthContext {
         // ── Tier 1: OAuth ──────────────────────────────────────────────────
-        if let oauthCred = ClaudeOAuthCredential.readFromDisk(),
-           !oauthCred.isLikelyExpired {
-            // The OAuth usage endpoint (api.anthropic.com/api/oauth/usage) is
-            // org-agnostic — fetchUsage's .bearer branch never reads orgId. So we
-            // skip the claude.ai/api/bootstrap round-trip entirely: it exists only
-            // to populate an org id the bearer path doesn't use, and it's now
-            // Cloudflare-gated (returns 403 to non-browser clients), which would
-            // otherwise look like a rejected token and drop us to the cookie tier.
+        if let oauthCred = await ClaudeOAuthCredential.current(session: session) {
+            // No bootstrap round-trip: the OAuth usage endpoint is org-agnostic, and
+            // bootstrap is now Cloudflare-gated, so calling it would look like a
+            // rejected token and drop us to the cookie tier.
             return AuthContext(auth: .bearer(oauthCred.accessToken), orgId: oauthCred.orgId ?? "")
         }
 

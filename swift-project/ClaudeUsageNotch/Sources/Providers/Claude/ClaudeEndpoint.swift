@@ -12,6 +12,11 @@ enum ClaudeEndpoint {
     /// claude.ai endpoint, so `ClaudeUsageMapper` parses it unchanged.
     static let oauthUsage  = URL(string: "https://api.anthropic.com/api/oauth/usage")!
 
+    /// The `refresh_token` grant. Endpoint and client id both come from the Claude
+    /// Code binary; the client id is the CLI's public one, not a secret.
+    static let oauthToken    = URL(string: "https://platform.claude.com/v1/oauth/token")!
+    static let oauthClientID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+
     /// Headers the Claude Code CLI sends for the OAuth usage endpoint.
     static func oauthUsageHeaders(token: String) -> [String: String] {
         [

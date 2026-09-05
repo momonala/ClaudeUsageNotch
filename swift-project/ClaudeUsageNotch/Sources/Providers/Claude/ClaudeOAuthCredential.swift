@@ -1,26 +1,19 @@
 import Foundation
 import Security
+import os.log
 
-/// Reads Claude OAuth credentials, preferring the Claude CLI / Claude Code login.
+private let logger = Logger(subsystem: "com.claudeusagenotch.ClaudeUsageNotch", category: "OAuth")
+
+/// The Claude CLI's OAuth credential, resolved from the CLI file, our own mirror of
+/// it, or a refresh of the mirrored token — in that order, none of which prompt.
 ///
-/// Sources, in order:
-///   1. `~/.claude/credentials.json` (older Claude CLI file format)
-///   2. App-owned mirror (`mirror`) — our own copy of the CLI blob, read silently
-///   3. macOS Keychain item `Claude Code-credentials` (current Claude Code) —
-///      a JSON blob with `claudeAiOauth.accessToken` + top-level `organizationUuid`.
-///
-/// The CLI item (3) is owned by the Claude CLI, so reading it cross-app prompts for
-/// access whenever the CLI rewrites the item on token refresh (which resets its ACL).
-/// To avoid prompting on every poll/launch, a successful read is copied into an
-/// app-owned Keychain item (2); since we own that item, reads are silent. We only
-/// fall back to the CLI item — and risk a prompt — once the mirrored token expires,
-/// i.e. roughly once per token rotation rather than on every read.
-///
-/// Using this scoped, auto-refreshed OAuth token avoids the full browser session
-/// cookie. When the org id is known (Keychain case) the provider can skip the
-/// bootstrap round-trip entirely.
+/// The CLI's `Claude Code-credentials` Keychain item is a last resort because reading
+/// it cross-app costs a login-keychain password prompt every time Claude Code rotates
+/// the token and resets the item's ACL and partition list. One read seeds the mirror;
+/// after that the app refreshes the token itself. See the Auth section of the README.
 struct ClaudeOAuthCredential {
     let accessToken: String
+    let refreshToken: String?
     let expiresAt: Date?
     let orgId: String?
 
@@ -31,33 +24,60 @@ struct ClaudeOAuthCredential {
 
     // MARK: - Reading
 
-    static func readFromDisk() -> ClaudeOAuthCredential? {
-        // 1. Legacy file format (older Claude CLI). Never prompts.
-        if let data = fileData(), let cred = parse(from: data) { return cred }
-
-        // 2. App-owned mirror — a copy of the CLI blob this app wrote itself, so
-        //    reads are silent (no ACL prompt). Use it while the token is unexpired.
-        if let data = mirror.get(account: mirrorAccount),
-           let cred = parse(from: data), !cred.isLikelyExpired {
-            return cred
-        }
-
-        // 3. Cross-app CLI Keychain item. This is the read that may prompt, because
-        //    the item is owned by the Claude CLI and its ACL drops us whenever the
-        //    CLI rewrites it on token refresh. Re-mirror on success so subsequent
-        //    reads stay silent until the token next rotates.
-        if let data = keychainData(), let cred = parse(from: data) {
-            mirror.set(account: mirrorAccount, data: data)
-            return cred
-        }
-        return nil
+    static func current(session: URLSession = .shared) async -> ClaudeOAuthCredential? {
+        await Resolver.shared.current(session: session)
     }
 
-    /// Existence check that does NOT decrypt the Keychain secret (so it never
-    /// triggers an ACL prompt): file present, or a matching Keychain item exists.
+    /// True if a credential exists without decrypting anything, so it never prompts.
     static func isAvailable() -> Bool {
         if FileManager.default.fileExists(atPath: filePath().path) { return true }
         return keychainItemExists()
+    }
+
+    /// An actor so two concurrent polls can't race and burn each other's rotated
+    /// refresh token.
+    private actor Resolver {
+        static let shared = Resolver()
+
+        func current(session: URLSession) async -> ClaudeOAuthCredential? {
+            if let cred = unexpired(fileData()) { return cred }
+
+            let mirrored = mirror.get(account: mirrorAccount)
+            if let cred = unexpired(mirrored) { return cred }
+            if let cred = await refreshed(mirrored, session: session) { return cred }
+
+            return seededFromCLIKeychain()
+        }
+
+        private func unexpired(_ blob: Data?) -> ClaudeOAuthCredential? {
+            guard let blob, let cred = parse(from: blob), !cred.isLikelyExpired else { return nil }
+            return cred
+        }
+
+        /// Rotates the mirrored credential in place. Refresh tokens outlive access
+        /// tokens by weeks, so this is the steady-state path.
+        private func refreshed(_ blob: Data?, session: URLSession) async -> ClaudeOAuthCredential? {
+            guard let blob,
+                  let refreshToken = parse(from: blob)?.refreshToken else { return nil }
+            do {
+                let rotated = try await ClaudeOAuthRefresher.refresh(
+                    previousBlob: blob, refreshToken: refreshToken, session: session)
+                guard let cred = parse(from: rotated) else { return nil }
+                mirror.set(account: mirrorAccount, data: rotated)
+                return cred
+            } catch {
+                logger.error("OAuth refresh failed, re-seeding from the CLI item: \(String(describing: error), privacy: .public)")
+                return nil
+            }
+        }
+
+        /// The read that may prompt. Reached once, and after that only when a refresh
+        /// is rejected and the credential has to be re-seeded.
+        private func seededFromCLIKeychain() -> ClaudeOAuthCredential? {
+            guard let blob = keychainData(), let cred = parse(from: blob) else { return nil }
+            mirror.set(account: mirrorAccount, data: blob)
+            return cred
+        }
     }
 
     // MARK: - Parsing
@@ -65,7 +85,6 @@ struct ClaudeOAuthCredential {
     static func parse(from data: Data) -> ClaudeOAuthCredential? {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
 
-        // Claude Code Keychain shape: { "claudeAiOauth": {...}, "organizationUuid": "..." }
         let oauth = (json["claudeAiOauth"] as? [String: Any]) ?? json
         let token = (oauth["accessToken"] as? String)
                  ?? (json["claudeAiOauthToken"] as? String)
@@ -74,10 +93,12 @@ struct ClaudeOAuthCredential {
                  ?? (json["token"] as? String)
         guard let token, !token.isEmpty else { return nil }
 
+        let refresh = (oauth["refreshToken"] as? String) ?? (json["refreshToken"] as? String)
         let org = (json["organizationUuid"] as? String)
                ?? (oauth["organizationUuid"] as? String)
         return ClaudeOAuthCredential(
             accessToken: token,
+            refreshToken: (refresh?.isEmpty == false) ? refresh : nil,
             expiresAt: parseExpiry(from: oauth) ?? parseExpiry(from: json),
             orgId: (org.flatMap { UUID(uuidString: $0) != nil ? $0 : nil })
         )
@@ -85,9 +106,8 @@ struct ClaudeOAuthCredential {
 
     static func parseExpiry(from json: [String: Any]) -> Date? {
         if let value = json["expiresAt"] as? TimeInterval {
-            // The Claude Code Keychain blob stores ms since epoch; older file
-            // formats may use seconds. A 2001-era seconds value is ~1e9, while
-            // any plausible ms value is ~1e12, so the magnitude disambiguates.
+            // Claude Code writes ms since epoch; older file formats used seconds. Any
+            // plausible ms value is ~1e12, while a seconds value is ~1e9.
             return value > 1_000_000_000_000
                 ? Date(timeIntervalSince1970: value / 1000)
                 : Date(timeIntervalSince1970: value)
@@ -97,8 +117,13 @@ struct ClaudeOAuthCredential {
 
     // MARK: - Sources
 
+    /// Claude Code writes `.credentials.json`; the undotted name is the older CLI's.
     private static func filePath() -> URL {
-        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude/credentials.json")
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let dotted = home.appendingPathComponent(".claude/.credentials.json")
+        return FileManager.default.fileExists(atPath: dotted.path)
+            ? dotted
+            : home.appendingPathComponent(".claude/credentials.json")
     }
 
     private static func fileData() -> Data? {
@@ -107,13 +132,10 @@ struct ClaudeOAuthCredential {
 
     private static let keychainService = "Claude Code-credentials"
 
-    /// App-owned mirror of the CLI OAuth blob. Reads are silent (we created the
-    /// item), so polling never re-triggers the cross-app ACL prompt while the
-    /// mirrored token is still valid.
+    /// Our own copy of the CLI blob. We created the item, so reads never prompt.
     private static let mirror = KeychainStore(service: "com.claudeusagenotch.oauth-mirror")
     private static let mirrorAccount = "claude-oauth"
 
-    /// Decrypts the Keychain blob (may prompt for access on first read).
     private static func keychainData() -> Data? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -127,7 +149,7 @@ struct ClaudeOAuthCredential {
         return data
     }
 
-    /// Existence only — returns attributes, not the secret, so no ACL prompt.
+    /// Attributes only, not the secret, so this never prompts.
     private static func keychainItemExists() -> Bool {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
