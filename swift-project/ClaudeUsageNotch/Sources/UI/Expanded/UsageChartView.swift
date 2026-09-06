@@ -62,9 +62,7 @@ private struct ChartData {
     var analytics: AnalyticsData = .empty
 }
 
-/// Process-global so the 60s cache survives view teardown on hover-away and
-/// return. `@MainActor` pins all access to the main actor, the only place it's
-/// touched.
+/// Process-global so the 60s cache survives view teardown on hover-away.
 @MainActor private var chartCache: (data: ChartData, period: LookbackPeriod, at: Date)?
 
 @MainActor private func cachedChartData(for period: LookbackPeriod) -> (ChartData, Date)? {
@@ -334,9 +332,8 @@ struct UsageChartView: View {
         .chartPlotStyle { $0.background(Color.clear) }
     }
 
-    /// Unlike the session and weekly charts, always plots the real % of the
-    /// credit pool (a step function held between polls) — there's no
-    /// per-request token analog to dual-render with the Tokens/% Quota toggle.
+    /// Always plots the real % of the credit pool: there's no per-request token
+    /// analog to dual-render with the Tokens/% Quota toggle.
     private var creditChart: some View {
         Chart {
             ForEach(data.credit.buckets) { bucket in
@@ -537,13 +534,11 @@ struct UsageChartView: View {
         isLoading = true
         let now = Date()
         // A full 24h so the 5h session window can be seen resetting several
-        // times across the chart. The "Session" cost pill needs the *actual*
-        // current session instead, hence the separate cutoff below.
+        // times across the chart.
         let sessionSince = now.addingTimeInterval(-24 * 3600)
         // The real start of the current 5h session, so the "Session" cost pill
-        // doesn't pick up spend from outside the rolling window (which made it
-        // possible for "Session" to exceed "Today"). Falls back to the 24h-back
-        // value before the first poll has populated sessionWindow.
+        // doesn't pick up spend from outside the rolling window. Falls back to
+        // the 24h cutoff before the first poll populates sessionWindow.
         let sessionCostSince = sessionWindow
             .flatMap { window in window.resetAt.map { $0.addingTimeInterval(-window.windowDuration) } }
             ?? sessionSince

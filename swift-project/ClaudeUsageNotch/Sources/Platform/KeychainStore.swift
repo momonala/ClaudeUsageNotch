@@ -4,29 +4,18 @@ import os.log
 
 private let logger = Logger(subsystem: "com.claudeusagenotch.ClaudeUsageNotch", category: "Keychain")
 
-/// Tiny Keychain wrapper for `kSecClassGenericPassword` items.
-/// Used to store provider credentials (e.g. Claude session cookie).
+/// Keychain wrapper for the `kSecClassGenericPassword` items holding provider
+/// credentials.
 ///
-/// Security posture:
-///  - `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` — readable only while
-///    the screen is unlocked; never leaves the device via iCloud backup.
-///  - Access is governed by the default ACL: the app that created an item can
-///    read it back without a prompt **once it has a stable code signature**.
-///
-/// Prompt behaviour: macOS keys keychain access to the app's code-signing
-/// identity. A signed + notarized build reads its own items silently (and any
-/// one-time "Always Allow" sticks). Unsigned/ad-hoc dev builds present a
-/// changing identity, so macOS may still prompt — but the in-memory cache below
-/// collapses that to at most one prompt per credential per launch instead of
-/// one on every usage poll.
+/// Items are `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`, so they never
+/// leave the device. macOS keys access to the app's code-signing identity: a
+/// signed build reads its own items silently, while unsigned dev builds present
+/// a changing identity and may prompt.
 public final class KeychainStore {
     private let service: String
 
-    /// In-memory cache of decrypted items, keyed by account. The first read of
-    /// each credential hits the Keychain (and may prompt on unsigned builds);
-    /// every subsequent read in the same launch is served from memory, so the
-    /// 5-minute usage poll never re-triggers a Keychain prompt. Writes/deletes
-    /// keep the cache coherent.
+    /// Serves every read after the first from memory, so the usage poll can't
+    /// re-trigger a Keychain prompt on an unsigned build.
     private var cache: [String: Data] = [:]
     private let lock = NSLock()
 

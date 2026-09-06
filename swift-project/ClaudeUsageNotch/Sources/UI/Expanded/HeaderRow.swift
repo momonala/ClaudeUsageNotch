@@ -8,9 +8,8 @@ struct HeaderRow: View {
     @State private var quitPressed = false
 
     var body: some View {
-        // Mode buttons sit LEFT of the spacer so they stay in the left "ear"
-        // (clear of the hardware notch). Eye and power anchor the right "ear".
-        // The spacer spans the notch dead-zone in between.
+        // The spacer spans the notch dead-zone, keeping the controls in the
+        // "ears" either side of the hardware cutout.
         HStack(spacing: 6) {
             if appState.notchState == .expandedPinned {
                 Image(systemName: "pin.fill")

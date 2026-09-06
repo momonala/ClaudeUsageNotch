@@ -1,10 +1,8 @@
 import SwiftUI
 
-/// Rounded rectangle whose top and bottom corner radii are independent.
-///
-/// Set `topRadius ≈ 8` to match the physical notch's inner corner so the
-/// compact pill appears as a seamless downward extension of the hardware.
-/// Set `bottomRadius ≈ 12–20` for the free, rounded bottom edge.
+/// Rounded rectangle whose top and bottom corner radii are independent, so the
+/// top can match the physical notch's inner corner while the bottom sweeps
+/// wider.
 struct NotchPillShape: Shape {
     var topRadius: CGFloat
     var bottomRadius: CGFloat

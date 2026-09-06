@@ -17,11 +17,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var onboardingWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // `xcodebuild test` injects the unit-test bundle into this app, so a
-        // normal launch would spin up a second notch panel and start Keychain
-        // reads, network polling and timers inside the test process — which
-        // traps before a single test runs. The tests exercise pure types via
-        // `@testable import`; they need the module loaded, not the app running.
+        // `xcodebuild test` injects the test bundle into this app: a normal
+        // launch would start Keychain reads, polling and a second notch panel
+        // inside the test process. The tests need the module, not the app.
         if NSClassFromString("XCTestCase") != nil { return }
 
         NSLog("[ClaudeUsageNotch] launched — v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?")")
@@ -50,7 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }
         }
 
-        // Retry immediately on screen unlock — Keychain is available and network is stable.
+        // Retry on unlock, when the Keychain is available again.
         DistributedNotificationCenter.default().addObserver(
             forName: NSNotification.Name("com.apple.screenIsUnlocked"),
             object: nil,
@@ -112,9 +110,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.makeKeyAndOrderFront(nil)
     }
 
-    /// Resizes the onboarding window to hug the current step's content instead
-    /// of leaving empty space below shorter steps. Keeps the top edge anchored
-    /// so the header/progress dots don't jump around as the height changes.
+    /// Resizes the onboarding window to hug the current step's content, top
+    /// edge anchored so the header doesn't jump as the height changes.
     private func resizeOnboardingWindow(toContentHeight height: CGFloat) {
         guard let window = onboardingWindow else { return }
         let targetContentSize = NSSize(width: 420, height: height)

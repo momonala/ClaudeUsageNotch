@@ -7,9 +7,8 @@ import Foundation
 enum ClaudeEndpoint {
     static let bootstrap   = URL(string: "https://claude.ai/api/bootstrap")!
 
-    /// Claude Code / Max-plan usage for an OAuth token (`sk-ant-oat…`). Returns
-    /// the same `five_hour` / `seven_day` / `seven_day_sonnet` shape as the
-    /// claude.ai endpoint, so `ClaudeUsageMapper` parses it unchanged.
+    /// Usage for an OAuth token (`sk-ant-oat…`), in the same shape as the
+    /// claude.ai endpoint below.
     static let oauthUsage  = URL(string: "https://api.anthropic.com/api/oauth/usage")!
 
     /// The `refresh_token` grant. Endpoint and client id both come from the Claude
@@ -29,8 +28,8 @@ enum ClaudeEndpoint {
     }
 
     static func usage(orgId: String) -> URL {
-        // Use URLComponents so the path is percent-encoded by the system,
-        // preventing orgId content from escaping the intended path segment.
+        // URLComponents percent-encodes the path, so orgId can't escape its
+        // segment.
         var c = URLComponents()
         c.scheme = "https"
         c.host   = "claude.ai"

@@ -4,11 +4,9 @@ import Combine
 
 /// Owns the borderless, non-activating NSPanel that hosts the notch UI.
 ///
-/// Hover is detected by polling `NSEvent.mouseLocation` on a timer:
-/// `NSTrackingArea.mouseExited` is unreliable on non-activating panels during
-/// resize, and `NSEvent.addGlobalMonitorForEvents` only sees *other* apps'
-/// events. Polling is the only approach that holds at any window level
-/// regardless of activation state.
+/// Hover is polled rather than tracked: `NSTrackingArea.mouseExited` is
+/// unreliable on non-activating panels during resize, and global event monitors
+/// only see *other* apps' events.
 @MainActor
 final class NotchWindowController: NSObject {
     private let panel: NSPanel
@@ -20,23 +18,14 @@ final class NotchWindowController: NSObject {
     private var isCurrentlyHovering = false
     private var clickOutsideMonitor: Any?
 
-    // MARK: - Layout constants
-
-    // Expanded panel sizes live in `ExpandedPanelGeometry`, shared with
-    // `ExpandedPanelView` so the window and its card can't desync.
     private enum Layout {
-        /// Minimum height delta above compact that means the panel is already expanded.
         static let expandedHeightThreshold: CGFloat = 80
-        /// Grow applied to the *expanded* panel's frame when testing for hover.
-        /// Forgiving on purpose: a hairline miss along the card's edge would
-        /// collapse the panel mid-interaction.
+        /// Slack around the expanded frame, so a hairline miss along the card's
+        /// edge doesn't collapse the panel.
         static let expandedHoverGrow: CGFloat = 4
-        /// Trimmed from each side of the *compact* hover target. The pill is
-        /// exactly as wide as the cutout and the menu bar items flanking it are
-        /// a pointer's width away, so reaching for one would otherwise expand.
+        /// Trimmed from each side of the compact hover target: the flanking menu
+        /// bar items are a pointer's width away.
         static let compactHoverInsetX: CGFloat = 20
-        /// Trimmed from the bottom of the compact hover target on screens with
-        /// no cutout, where the visible strip is all there is to aim at.
         static let compactHoverInsetBottom: CGFloat = 5
 
         static let expandPhase1Duration: TimeInterval = 0.16
@@ -45,21 +34,13 @@ final class NotchWindowController: NSObject {
         static let collapseDuration:     TimeInterval = 0.22
     }
 
-    // Every panel height includes `ScreenUtils.notchHeight`: the panel is
-    // anchored at the screen's top edge so that much of it sits inside the
-    // hardware cutout, invisible against the camera housing, and only the
-    // extension below the notch is ever seen — as with the Dynamic Island.
+    // Every panel height includes `ScreenUtils.notchHeight`: the panel is anchored
+    // at the screen's top edge, so that much of it hides inside the hardware cutout.
 
-    /// Panel frame in compact mode: the pill (exactly the hardware cutout) plus
-    /// `AgentStatusGlow.outset` of transparent margin on its sides and bottom.
-    ///
-    /// The margin is always reserved, whether or not the status ring is
-    /// showing — it costs nothing on a transparent panel and keeps the window
-    /// from resizing every time an agent starts or stops working.
+    /// The pill plus `AgentStatusGlow.outset` of margin, always reserved so the
+    /// window doesn't resize whenever an agent starts or stops working.
     private var compactSize: NSSize {
         let creditExtra = appState.snapshot?.creditWindow != nil ? Theme.compactStripHeightCredit : 0
-        // No readout, no strip: the pill shrinks to the cutout itself, so
-        // nothing hangs below the notch when you're not in your terminal.
         let strip = appState.showsCompactContent ? Theme.compactStripHeight + creditExtra : 0
         return NSSize(
             width: ScreenUtils.compactPanelWidthBase + AgentStatusGlow.outset * 2,
@@ -90,8 +71,8 @@ final class NotchWindowController: NSObject {
         )
         super.init()
 
-        // .popUpMenu (101) sits above the menu bar compositor (mainMenu = 24),
-        // which is required to render inside the notch area on MacBook.
+        // .popUpMenu (101) outranks the menu bar compositor (mainMenu = 24), which
+        // is required to render inside the notch area.
         panel.level = .popUpMenu
         panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
         panel.isOpaque         = false
@@ -102,11 +83,8 @@ final class NotchWindowController: NSObject {
         panel.acceptsMouseMovedEvents = true
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = true
-        // The notch UI is permanently dark (it blends with the camera
-        // housing), so pin the appearance rather than inheriting the system's:
-        // in Light Mode the settings pane's stock controls would otherwise draw
-        // their light variant on pure black, with semantic label colors
-        // resolving to near-black on near-black.
+        // The notch UI is permanently dark; unpinned, Light Mode would draw
+        // near-black stock labels on pure black.
         panel.appearance = NSAppearance(named: .darkAqua)
 
         appState.$notchState
@@ -136,10 +114,8 @@ final class NotchWindowController: NSObject {
             .store(in: &cancellables)
     }
 
-    /// Explicitly remove the notch panel from screen and stop all observers.
-    /// Called when the display mode no longer includes the notch — relying on
-    /// `deinit` alone is unreliable because AppKit can keep an on-screen window
-    /// alive, leaving a ghost pill behind.
+    /// `deinit` alone is unreliable — AppKit can keep an on-screen window alive,
+    /// leaving a ghost pill behind.
     func teardown() {
         hoverTimer?.invalidate()
         hoverTimer = nil
@@ -193,11 +169,8 @@ final class NotchWindowController: NSObject {
         hoverTimer = timer
     }
 
-    /// Hover-to-expand target. Asymmetric by state: a deliberately tight
-    /// region while compact (so the pill isn't tripped by passing traffic), a
-    /// forgiving one while expanded (so the card doesn't collapse under the
-    /// pointer). Both are keyed off `panel.frame`, which already tracks the
-    /// current size.
+    /// Tight while compact so passing traffic doesn't trip the pill, forgiving
+    /// while expanded so the card doesn't collapse under the pointer.
     private var hoverHitRect: NSRect {
         let frame = panel.frame
         switch appState.notchState {
@@ -208,18 +181,13 @@ final class NotchWindowController: NSObject {
         }
     }
 
-    /// Collapsed hover target: the hardware cutout itself, and nothing below it.
-    ///
-    /// The panel's lower portion — the strip carrying the bars — hangs below the
-    /// menu bar over ordinary window content, so treating it as a hover target
-    /// expands the panel whenever the pointer merely travels up to a window's
-    /// title bar. Nothing else lives in the cutout, and collapsing requires
-    /// leaving the much larger expanded frame, so the two regions can't
-    /// oscillate. Screens with no cutout keep the strip as the target instead.
+    /// The hardware cutout itself, and nothing below it: the strip hangs over
+    /// ordinary window content, so treating it as a target would expand the panel
+    /// whenever the pointer travels up to a title bar. Cutout-less screens use
+    /// the strip instead.
     private func compactHoverHitRect(in frame: NSRect) -> NSRect {
-        // Insets run from the pill's edges, not the panel's: the panel is wider
-        // by the status ring's margin, and counting that as hover target would
-        // loosen the tight aim this state depends on.
+        // Insets run from the pill's edges, not the panel's, which is wider by the
+        // status ring's margin.
         let insetX = Layout.compactHoverInsetX + AgentStatusGlow.outset
         let x = frame.minX + insetX
         let width = max(0, frame.width - insetX * 2)
@@ -245,8 +213,6 @@ final class NotchWindowController: NSObject {
     // MARK: - State transitions
 
     func userHoveredIn() {
-        // Expand immediately on hover-in; the compactHover state is transient
-        // (it renders identically to compactIdle) before the expand animation.
         if appState.notchState == .compactIdle {
             appState.notchState = .expandedHover
         }
@@ -270,14 +236,10 @@ final class NotchWindowController: NSObject {
 
     // MARK: - Layout
 
-    /// Animate compact width when countdown text needs more room beside the notch.
     private func updateCompactLayoutIfNeeded() {
         switch appState.notchState {
         case .compactIdle, .compactHover:
             let target = compactSize
-            // Compact width is fixed at the cutout, so every compact resize is
-            // a height change — the credit row appearing, or the readout being
-            // gated on which app is frontmost.
             guard abs(panel.frame.width - target.width) > 0.5
                 || abs(panel.frame.height - target.height) > 0.5 else { return }
             animate(to: target, duration: 0.25, timing: .easeInEaseOut)
@@ -302,8 +264,7 @@ final class NotchWindowController: NSObject {
             return
         }
 
-        // Stretch width first (pill → wide strip), then drop the height once
-        // the stretch has settled.
+        // Stretch width first (pill → wide strip), then drop the height.
         let midSize = NSSize(width: expandedSize.width, height: compactSize.height)
         animate(to: midSize, duration: Layout.expandPhase1Duration, timing: .easeOut)
         DispatchQueue.main.asyncAfter(deadline: .now() + Layout.expandPhase2Delay) { [weak self] in
@@ -311,7 +272,6 @@ final class NotchWindowController: NSObject {
         }
     }
 
-    /// Resize the panel around its top-centre anchor.
     private func animate(to size: NSSize, duration: TimeInterval, timing: CAMediaTimingFunctionName) {
         let origin = ScreenUtils.topCenteredOrigin(forPanelSize: size)
         NSAnimationContext.runAnimationGroup { ctx in
@@ -324,16 +284,14 @@ final class NotchWindowController: NSObject {
 
 // MARK: - Keyable panel
 
-/// A borderless panel returns `canBecomeKey == false` by default, which blocks
-/// text-field editing (e.g. the sync-server URL in settings). Paired with
-/// `becomesKeyOnlyIfNeeded = true` and `.nonactivatingPanel`, overriding it
+/// A borderless panel returns `canBecomeKey == false`, which blocks text-field
+/// editing. With `becomesKeyOnlyIfNeeded` and `.nonactivatingPanel`, overriding it
 /// makes the panel key on click-into-field only, never foregrounding the app.
 private final class KeyablePanel: NSPanel {
     override var canBecomeKey: Bool { true }
 
-    /// This is an accessory app with no menu bar, so the standard Edit-menu key
-    /// equivalents (⌘A/C/V/X/Z) never get dispatched to the focused field editor.
-    /// Translate them here and send the matching action down the responder chain.
+    /// An accessory app has no menu bar, so Edit-menu key equivalents never reach
+    /// the focused field editor. Dispatch them down the responder chain.
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         guard event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command else {
             return super.performKeyEquivalent(with: event)

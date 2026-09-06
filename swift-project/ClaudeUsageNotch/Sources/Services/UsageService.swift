@@ -3,11 +3,9 @@ import Combine
 
 /// Owns the polling loop for Claude.
 ///
-/// Failure backoff: consecutive errors double the wait interval (cap: 5 minutes).
-/// A 429 rate-limit forces at least 5-minute backoff regardless of the configured interval.
-/// Auth failures (missing credentials / unauthorized) skip the exponential ramp and
-/// retry on a short fixed interval — waiting doesn't fix them, but a quick retry lets
-/// the Keychain access prompt re-surface in seconds rather than minutes.
+/// Consecutive errors double the wait, capped at 5 minutes, which a 429 also
+/// forces. Auth failures skip the ramp for a short fixed retry: waiting doesn't
+/// fix them, but retrying re-surfaces the Keychain prompt in seconds.
 @MainActor
 public final class UsageService {
     public static let shared = UsageService()
@@ -23,7 +21,6 @@ public final class UsageService {
     private var consecutiveErrors: Int = 0
     private var lastErrorWasAuth: Bool = false
 
-    /// Short fixed retry for auth failures, so the Keychain prompt re-fires quickly.
     private let authRetryInterval: TimeInterval = 15
 
     // MARK: - Lifecycle
@@ -85,8 +82,8 @@ public final class UsageService {
             consecutiveErrors += 1
             lastErrorWasAuth = error.isAuthIssue
             if case .rateLimited = error {
-                // Floor the next wait at 300s on a 429, regardless of the configured
-                // interval: pick the smallest exponent n where interval·2ⁿ ≥ 300.
+                // Floor the next wait at 300s: the smallest n where
+                // interval·2ⁿ ≥ 300.
                 let minBackoffExponent = max(0, Int(ceil(log2(300.0 / intervalSeconds))))
                 consecutiveErrors = max(consecutiveErrors, minBackoffExponent)
             }

@@ -25,17 +25,14 @@ struct CompactView: View {
         .help(appState.sessionResetString ?? "ClaudeUsageNotch")
     }
 
-    /// The pill proper: black fill plus the visible content strip, inset from
-    /// the panel by the status ring's margin so the fill measures exactly one
-    /// hardware cutout.
+    /// Black fill plus the visible content strip, inset from the panel by the
+    /// status ring's margin so the fill measures exactly one hardware cutout.
     private var pill: some View {
         ZStack(alignment: .bottom) {
             NotchPillShape(topRadius: 0, bottomRadius: Theme.compactPillBottomRadius)
                 .fill(Color.black)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            // Away from the app you run Claude Code in, the pill collapses to
-            // the cutout itself — see `AppState.showsCompactContent`.
             if appState.showsCompactContent {
                 strip
             }
@@ -57,19 +54,17 @@ struct CompactView: View {
             }
         }
         .padding(.horizontal, 10)
-        // Anchored to the bottom with a real inset rather than centred: centring
-        // left the last row hard against the pill's curved bottom edge. The
-        // strip constants already account for this inset.
+        // Anchored to the bottom with a real inset: centring leaves the last
+        // row hard against the pill's curved bottom edge.
         .padding(.bottom, Theme.compactContentBottomInset)
         .frame(height: Theme.compactStripHeight
             + (appState.snapshot?.creditWindow != nil ? Theme.compactStripHeightCredit : 0),
                alignment: .bottom)
     }
 
-    /// One bar plus its readout. `label` overrides the default percentage —
-    /// used for the session row, which shows a reset countdown at the limit.
-    /// Both occupy the same slot width, so what the label says can change
-    /// without the pill's width moving off the cutout.
+    /// One bar plus its readout. `label` overrides the default percentage — the
+    /// session row shows a reset countdown at the limit. Both occupy the same
+    /// slot width, so the pill's width never moves off the cutout.
     private func barRow(window: UsageWindow?, label: String? = nil) -> some View {
         let pct = window?.effectivePercentUsed() ?? 0
         return HStack(spacing: 6) {
@@ -91,9 +86,8 @@ struct CompactView: View {
         return appState.sessionResetCompactString ?? "MAX"
     }
 
-    /// Only in the untouched idle state — `.compactHover` is a brief transient
-    /// en route to `.expandedHover`, so this hides the glow the instant the
-    /// mouse arrives rather than waiting for the expansion animation.
+    /// Idle only: `.compactHover` is a transient en route to `.expandedHover`,
+    /// so the glow goes the instant the mouse arrives.
     private var showAgentGlow: Bool {
         appSettings.showAgentStatusPulse
             && appState.notchState == .compactIdle

@@ -2,19 +2,16 @@ import SwiftUI
 
 /// Settings pane of the expanded notch panel.
 ///
-/// A plain form: sentence-case section headers over unboxed groups of
-/// same-height rows, each a leading label and a trailing control. Buttons,
-/// pop-up buttons and the text field are stock AppKit-backed controls at
-/// `.small`, so press feedback, keyboard access and VoiceOver come from the
-/// platform. Switches and checkboxes use `NotchToggleStyles`, which exists only
-/// because AppKit desaturates its own controls on a panel that never takes key
-/// focus.
+/// Controls are stock AppKit-backed ones at `.small`, so press feedback,
+/// keyboard access and VoiceOver come from the platform. Switches and
+/// checkboxes use `NotchToggleStyles`, which exists only because AppKit
+/// desaturates its own controls on a panel that never takes key focus.
 struct InlineSettingsView: View {
     @ObservedObject var appSettings: AppSettings
     @ObservedObject var appState: AppState
 
     /// Set only once the field has been left with a bad value, so the pane
-    /// doesn't scold anyone mid-keystroke.
+    /// doesn't scold mid-keystroke.
     @State private var urlIsInvalid = false
     @FocusState private var urlFieldFocused: Bool
 
@@ -45,9 +42,6 @@ struct InlineSettingsView: View {
 
     // MARK: - Notifications
 
-    /// The switch governs the two rows under it, which are indented and
-    /// disabled together so the dependency reads structurally, not just by
-    /// dimming.
     private var notificationsSection: some View {
         SettingsSection("Notifications") {
             SettingsRow("Usage alerts") {
@@ -71,14 +65,13 @@ struct InlineSettingsView: View {
         }
     }
 
-    /// Multi-select, so checkboxes rather than radio buttons. Each gets the
-    /// same fixed width so the column of boxes aligns.
+    /// Multi-select, so checkboxes rather than radio buttons.
     private var thresholdCheckboxes: some View {
         HStack(spacing: 0) {
             ForEach(AppSettings.availableThresholds, id: \.self) { threshold in
                 Toggle(isOn: thresholdBinding(threshold)) {
                     // Locale percent formatting can carry a space ("100 %"),
-                    // which is wide enough to wrap inside the fixed slot.
+                    // wide enough to wrap inside the fixed slot.
                     Text(threshold.formatted(.percent))
                         .font(Theme.settingsRowFont)
                         .lineLimit(1)
@@ -142,16 +135,12 @@ struct InlineSettingsView: View {
         }
     }
 
-    /// Validation message below the group rather than crammed beside the field.
     private var syncFooter: String? {
         urlIsInvalid ? "Enter a full address including http:// or https://." : nil
     }
 
     // MARK: - Interval pop-up buttons
 
-    /// A flat list of mutually exclusive values in a tight pane is the pop-up
-    /// button's job, not the segmented control's — the latter gets awkward past
-    /// about five segments.
     private func intervalPicker(selection: Binding<TimeInterval>,
                                 accessibilityLabel: String) -> some View {
         Picker("", selection: selection) {
@@ -168,8 +157,8 @@ struct InlineSettingsView: View {
 
     private static let intervalMinutes: [Int] = [1, 2, 5, 10, 15, 30, 60]
 
-    /// A value persisted before this list existed would otherwise select no
-    /// menu item and render the pop-up button blank, so it's folded in.
+    /// A persisted value outside this list would select no menu item and render
+    /// the pop-up button blank, so it's folded in.
     private static func intervalChoices(including current: TimeInterval) -> [TimeInterval] {
         let known = intervalMinutes.map { TimeInterval($0 * 60) }
         guard !known.contains(current) else { return known }
@@ -229,8 +218,7 @@ struct InlineSettingsView: View {
 
 /// How one auth state presents in the Account row. One switch rather than four
 /// parallel ones, so a new `AuthStatus` case can't pick up a label without a
-/// matching symbol and tint. The symbol accompanies the tint so the state never
-/// rests on colour alone.
+/// matching symbol and tint.
 private struct AccountRow {
     let label: String
     let icon: String
@@ -261,8 +249,7 @@ private struct AccountRow {
 // MARK: - Grouped form primitives
 
 /// A sentence-case header over a group of rows, with optional explanatory text
-/// below. Grouping is carried by negative space alone — no box, fill or
-/// separators.
+/// below.
 private struct SettingsSection<Content: View>: View {
     let title: String
     /// Validation message shown under the group. Nil when the group is valid.
@@ -297,9 +284,8 @@ private struct SettingsSection<Content: View>: View {
 }
 
 /// One row: leading label (plus optional caption), trailing control, uniform
-/// minimum height. Reads `isEnabled` so a disabled row's own text drops to the
-/// tertiary label color, instead of the caller hand-applying an opacity to
-/// every subview.
+/// minimum height. Reads `isEnabled` so a disabled row's text drops to the
+/// tertiary label color without the caller applying opacity to every subview.
 private struct SettingsRow<Control: View>: View {
     @Environment(\.isEnabled) private var isEnabled
 

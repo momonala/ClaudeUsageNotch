@@ -71,9 +71,8 @@ struct ExpandedPanelView: View {
         return f
     }()
 
-    /// Outage (if any) and last-synced status share one compact row instead
-    /// of each claiming a full-width banner — the outage text is short and
-    /// doesn't need the whole row.
+    /// Outage and last-synced status share one compact row rather than each
+    /// claiming a full-width banner.
     @ViewBuilder
     private var statusRow: some View {
         HStack(spacing: 6) {
@@ -99,8 +98,7 @@ struct ExpandedPanelView: View {
         ExpandedPanelGeometry.width(for: appState.expandedMode)
     }
 
-    /// Card height only — the notch overlap and the gap below it are the
-    /// window's business, not the card's.
+    /// Card height only; the notch overlap and gap are the window's business.
     private var panelHeight: CGFloat {
         let mode = appState.expandedMode
         let creditExtra = (mode == .usage && appState.snapshot?.creditWindow != nil)

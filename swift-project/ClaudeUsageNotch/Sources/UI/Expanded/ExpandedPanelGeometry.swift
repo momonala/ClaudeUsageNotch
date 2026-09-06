@@ -1,23 +1,19 @@
 import CoreGraphics
 
-/// Single source of truth for the expanded panel's size, per mode.
+/// Single source of truth for the expanded panel's size, per mode: shared by
+/// `NotchWindowController`, which sizes the `NSPanel`, and `ExpandedPanelView`,
+/// which sizes the card inside it.
 ///
-/// Two things need these numbers and must agree: `NotchWindowController` sizes
-/// the `NSPanel`, and `ExpandedPanelView` sizes the card drawn inside it.
-///
-/// The window is taller than the card by `notchGap`: the panel is anchored at
-/// the screen top so its first `ScreenUtils.notchHeight` points sit inside the
-/// hardware notch, and the gap is the transparent run between the notch's
-/// bottom edge and the top of the card.
+/// The window is taller than the card by `notchGap`, plus the
+/// `ScreenUtils.notchHeight` points hidden inside the hardware notch.
 enum ExpandedPanelGeometry {
     /// Card width — also the window width, since the card spans it fully.
     static func width(for mode: ExpandedMode) -> CGFloat {
         switch mode {
         case .usage:     return 380
         case .analytics: return 1090
-        // The settings pane's ideal width is 412pt, set by the threshold row:
-        // five 58pt checkboxes beside their indented label, inside the row and
-        // panel margins. Narrower and the percent labels wrap in their slots.
+        // The settings pane's ideal width, set by the threshold row: five 58pt
+        // checkboxes beside their indented label. Narrower wraps the labels.
         case .settings:  return 420
         }
     }
@@ -27,10 +23,9 @@ enum ExpandedPanelGeometry {
         switch mode {
         case .usage:     return 120
         case .analytics: return 590
-        // The settings pane measures ~463.5pt through `fittingSize` at the
-        // width above, in its tallest state (sync-server validation footer
-        // showing). Sized for that; the remainder is bottom clearance for the
-        // 20pt corner sweep. There's no scroll view, so too short clips a row.
+        // The settings pane measures ~463.5pt at the width above, in its
+        // tallest state (validation footer showing); the remainder is clearance
+        // for the corner sweep. There's no scroll view, so too short clips it.
         case .settings:  return 468
         }
     }

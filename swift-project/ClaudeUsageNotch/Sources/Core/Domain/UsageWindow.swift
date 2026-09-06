@@ -10,10 +10,10 @@ public enum UsageWindowType: String, Codable, Hashable {
 
 /// Health classification derived from percent used + reset proximity.
 public enum UsageStatus: String, Codable, Hashable {
-    case healthy   // under warning threshold
-    case warning   // approaching limit
-    case critical  // at or past hard threshold
-    case unknown   // no data yet
+    case healthy
+    case warning
+    case critical
+    case unknown
 }
 
 /// One rolling usage window inside a snapshot.
@@ -44,42 +44,34 @@ public struct UsageWindow: Codable, Hashable {
         self.lastUpdated = lastUpdated
     }
 
-    /// Percent-used cutoffs for the color/health classification (distinct from
-    /// `AppSettings.thresholds`, which drives *notifications*). Bar colors live here.
+    /// Cutoffs for the color/health classification, distinct from
+    /// `AppSettings.thresholds`, which drives notifications.
     public static let warningThreshold  = 0.7
     public static let criticalThreshold = 0.9
 
-    /// Derive a health classification from percent used.
     public var status: UsageStatus {
         if percentUsed >= Self.criticalThreshold { return .critical }
         if percentUsed >= Self.warningThreshold  { return .warning }
         return .healthy
     }
 
-    /// Whether the window is at or past its limit.
     public var isAtLimit: Bool { percentUsed >= 1.0 }
 
-    /// Whether `resetAt` has passed, meaning a fresh cycle should already be
-    /// underway even if the last poll hasn't confirmed it yet.
     public func hasResetPassed(now: Date = Date()) -> Bool {
         guard let resetAt else { return false }
         return now >= resetAt
     }
 
-    /// Usage percent to display: the last polled value, optimistically zeroed
-    /// once `resetAt` has passed. A poll always lands within moments of a
-    /// reset, so the UI shouldn't stay pinned to the stale pre-reset value
-    /// in the meantime.
+    /// The last polled value, optimistically zeroed once `resetAt` has passed
+    /// so the UI isn't pinned to a stale pre-reset value until the next poll.
     public func effectivePercentUsed(now: Date = Date()) -> Double {
         hasResetPassed(now: now) ? 0 : percentUsed
     }
 
-    /// Health classification for `effectivePercentUsed`.
     public func effectiveStatus(now: Date = Date()) -> UsageStatus {
         hasResetPassed(now: now) ? .healthy : status
     }
 
-    /// Rolling-window length for this type.
     public var windowDuration: TimeInterval {
         switch type {
         case .session:              return 5 * 3600
@@ -88,24 +80,20 @@ public struct UsageWindow: Codable, Hashable {
         }
     }
 
-    /// How far through the rolling window we are by elapsed time (0…1).
-    /// E.g. 20% of a week elapsed → 0.2. Nil when reset time or duration is unknown.
+    /// How far through the rolling window elapsed time has taken us (0…1).
+    /// Nil when the reset time is unknown.
     public func expectedProgress(now: Date = Date()) -> Double? {
         guard let resetAt else { return nil }
         let elapsed = windowDuration - resetAt.timeIntervalSince(now)
         return min(1, max(0, elapsed / windowDuration))
     }
 
-    /// Reset countdown at two useful widths, plus the sentence form.
-    ///
-    /// `.compact` is at most three characters ("45m", "2h", "1d") because the
-    /// pill is exactly as wide as the hardware cutout and a countdown shown
-    /// there has to fit the same slot the "%" readout uses. Components are
-    /// floored in both widths: "2h" means at least two hours to go, never less.
+    /// Components are floored in both widths: "2h" means at least two hours to
+    /// go, never less.
     public enum CountdownWidth {
         /// Two units where they help: "1h 12m", "3d 4h".
         case short
-        /// Largest unit only: "45m", "2h", "1d".
+        /// Largest unit only, to fit the same slot the pill's "%" readout uses.
         case compact
     }
 
@@ -123,14 +111,12 @@ public struct UsageWindow: Codable, Hashable {
         return "\(max(minutes, 1))m"
     }
 
-    /// Sentence form for roomier spots, e.g. "Resets in 1h 12m".
     public func timeToResetString(now: Date = Date()) -> String? {
         guard let resetAt else { return nil }
         guard resetAt > now else { return "Resetting…" }
         return timeToReset(.short, now: now).map { "Resets in \($0)" }
     }
 
-    /// When the window resets — time of day for the 5h session, date for longer windows.
     public func resetAtLabel() -> String? {
         guard let resetAt else { return nil }
         return type == .session

@@ -35,10 +35,9 @@ final class AgentStatusService {
         task = nil
     }
 
-    /// No status file means no hook has ever run (or every session ended) —
-    /// genuinely idle. A file that exists but won't decode is a bug in the hook
-    /// or a truncated write, which would otherwise be indistinguishable from an
-    /// idle machine forever, so it gets logged rather than silently swallowed.
+    /// No status file means genuinely idle. A file that won't decode is a
+    /// truncated write or a hook bug, so it's logged rather than swallowed as
+    /// another idle reading.
     private func pollOnce() {
         guard let data = try? Data(contentsOf: Self.statusFileURL) else {
             readingPublisher.send(.idle)

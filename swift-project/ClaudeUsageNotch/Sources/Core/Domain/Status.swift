@@ -30,9 +30,8 @@ public enum ProviderError: Error, Hashable, CustomStringConvertible {
         case .missingCredentials: return "Missing credentials"
         case .unauthorized:       return "Authentication expired"
         case .rateLimited:        return "Rate limited"
-        // transport and unknown intentionally omit the raw message —
-        // URLError.localizedDescription can contain request URLs (with orgId)
-        // and system paths. Fixed strings prevent accidental PII exposure in UI.
+        // Fixed strings: `URLError.localizedDescription` can carry request
+        // URLs (with orgId) and system paths.
         case .transport:          return "Network error — check your connection."
         case .decoding(let m):    return "Response schema changed: \(m)"
         case .server(let code):   return "Server error (\(code))"

@@ -15,10 +15,9 @@ import AppKit
 public final class NotificationService {
     public static let shared = NotificationService()
 
-    /// Injected so tests can run against a throwaway suite. The app bundle is
-    /// its own test host, so `.standard` in a test process is the *live* app's
-    /// preferences — tests sharing it would clobber the user's real high-water
-    /// marks and then read each other's leftovers.
+    /// Injected so tests can run against a throwaway suite: the app bundle is
+    /// its own test host, so `.standard` in a test process is the live app's
+    /// preferences.
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
@@ -77,9 +76,8 @@ public final class NotificationService {
         if lastPercentDirty { saveLastPercent() }
     }
 
-    /// True when usage dropped to near-zero — i.e. the window actually reset,
-    /// not just a rolling-window dip as old usage ages out (which would otherwise
-    /// fire a spurious "reset" banner while usage is still meaningfully high).
+    /// True when usage dropped to near-zero — an actual reset, not a rolling
+    /// window dipping as old usage ages out.
     static func didWindowReset(previous: Double, current: Double) -> Bool {
         current < previous - 0.001 && current < 0.10
     }
@@ -123,8 +121,8 @@ public final class NotificationService {
 
     private func usageBody(window: UsageWindow, label: String) -> String {
         if window.isAtLimit {
-            // The session window running out doesn't stop work — Claude Code
-            // falls through to the usage-credit pool — so don't say "blocked".
+            // The session window running out doesn't stop work: Claude Code
+            // falls through to the usage-credit pool.
             let lead = window.type == .session
                 ? "Switching to usage credits."
                 : "\(label.capitalized) limit reached."

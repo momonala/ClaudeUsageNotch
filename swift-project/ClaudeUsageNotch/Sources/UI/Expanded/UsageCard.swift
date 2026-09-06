@@ -1,9 +1,7 @@
 import SwiftUI
 
 /// One quota window in the expanded panel: title, reset info, bar, percentage.
-///
-/// The session card is `emphasized` — a larger value that animates as it
-/// changes; the secondary windows below it are not.
+/// The session card is `emphasized`, giving it a larger animated value.
 struct UsageCard: View {
     let window: UsageWindow?
     let title: String

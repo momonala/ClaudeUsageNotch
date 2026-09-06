@@ -2,18 +2,12 @@ import SwiftUI
 
 /// Switch and checkbox styles for the notch panel.
 ///
-/// The panel is a non-activating `NSPanel` that deliberately never takes key
-/// focus on hover, and AppKit draws its controls in the *inactive* appearance
-/// whenever their window isn't key — so a stock `.switch` toggle renders its
-/// "on" track in desaturated grey and never shows the accent colour, and
-/// `.tint` doesn't override it because the switch reads the system accent
-/// directly. These styles reproduce the appearance AppKit is meant to give us,
-/// pinned to the accent and to the panel's permanently dark surface.
-///
-/// Both wrap their content in a `Button` rather than a tap gesture, so they
-/// keep the platform's hit testing, keyboard activation and press feedback.
-/// Metrics come from `Theme` and follow the mini/small control sizes they
-/// replace, keeping rows the consistent height the HIG asks of a grouped form.
+/// The panel never takes key focus, and AppKit draws controls in their *inactive*
+/// appearance whenever their window isn't key — a stock `.switch` renders its "on"
+/// track desaturated, and `.tint` can't override it. These reproduce the intended
+/// appearance, pinned to the accent and the panel's dark surface. Both wrap their
+/// content in a `Button` so hit testing, keyboard activation and press feedback
+/// stay the platform's.
 
 // MARK: - Switch
 
@@ -79,10 +73,8 @@ struct NotchCheckboxStyle: ToggleStyle {
             .overlay(
                 shape.strokeBorder(isOn ? .clear : Theme.toggleOffStroke, lineWidth: Theme.cardStrokeWidth)
             )
-            // The checkmark carries the state on its own, so the control never
-            // depends on colour alone to read as on — HIG > Toggles: "Avoid
-            // relying solely on different colors to communicate state, because
-            // not everyone can perceive the differences."
+            // The checkmark carries the state, so "on" never rests on colour
+            // alone (HIG > Toggles).
             .overlay {
                 if isOn {
                     Image(systemName: "checkmark")

@@ -18,11 +18,9 @@ import time
 
 STATUS_DIR = os.path.expanduser("~/Library/Application Support/ClaudeUsageNotch")
 STATUS_FILE = os.path.join(STATUS_DIR, "agent-status.json")
-# Locking the status file itself doesn't work: an atomic replace swaps in a new
-# inode, so a second invocation can end up holding a lock on the orphaned old
-# one and clobber the first's update. The lock lives on its own file, which is
-# only ever created and locked — never replaced — so all invocations contend
-# for the same inode.
+# A dedicated lock file, never replaced, so every invocation contends for the
+# same inode. Locking the status file itself would not: an atomic replace swaps
+# in a new inode, leaving a second invocation holding a lock on the orphan.
 LOCK_FILE = os.path.join(STATUS_DIR, "agent-status.lock")
 
 STATUS_BY_EVENT = {
@@ -31,30 +29,26 @@ STATUS_BY_EVENT = {
 }
 
 # `notification_type` values that mean something is blocked on the user, as
-# opposed to `idle_prompt` (the 60s "are you still there" nudge, which says
-# nothing about whether Claude is waiting on anything).
+# opposed to `idle_prompt`, the 60s "are you still there" nudge.
 BLOCKED_NOTIFICATIONS = {
     "permission_prompt",
     "worker_permission_prompt",
     "agent_needs_input",
 }
 
-# Optional explicit marker: a global CLAUDE.md can instruct Claude to append
-# this when it's blocked on something only the user can do outside the chat
-# (e.g. reconnecting a VPN). Honoured when present, but `_asks_a_question`
-# below is what carries most turns — the marker depends on an instruction
-# that isn't installed on every machine.
+# Optional marker a global CLAUDE.md can instruct Claude to append when it's
+# blocked on something only the user can do outside the chat. Honoured when
+# present, but that instruction isn't installed everywhere, so
+# `_asks_a_question` carries most turns.
 NEEDS_ACTION_MARKER = "[NEEDS-ACTION]"
 
 
 def _status_for_notification(payload, current_status):
     """Classify a Notification by its `notification_type`.
 
-    Claude Code fires this hook for several unrelated situations. Only the
-    ones in `BLOCKED_NOTIFICATIONS` mean something is actually waiting on the
-    user. `idle_prompt` — the 60s "Claude is waiting for your input" nudge —
-    is a heartbeat: it fires repeatedly, so it must not clobber a
-    `needsInput` an earlier event already set for the same unresolved ask.
+    Only `BLOCKED_NOTIFICATIONS` mean something is waiting on the user.
+    `idle_prompt` is a repeating heartbeat, so it must not clobber a
+    `needsInput` an earlier event set for the same unresolved ask.
     """
     if payload.get("notification_type") in BLOCKED_NOTIFICATIONS:
         return "needsInput"
@@ -64,24 +58,20 @@ def _status_for_notification(payload, current_status):
 def _asks_a_question(text):
     """True when the turn's closing paragraph puts a question to the user.
 
-    Claude Code fires no Notification for a turn that simply ends on a
-    question ("Want me to also update the README?"), yet the session is every
-    bit as blocked as it is on a permission prompt.
+    Claude Code fires no Notification for a turn that merely ends on a
+    question, yet the session is as blocked as it is on a permission prompt.
 
-    Scoped to the last blank-line-separated block rather than the whole
-    message or just the final line. The whole message is too broad — any
-    rhetorical "why did it race?" mid-answer would leave the notch amber
-    after nearly every turn. The final line is too narrow: an ask is usually
-    followed by a sentence or two qualifying it, so the "?" lands mid-block.
+    Scoped to the last blank-line-separated block: the whole message would
+    catch any rhetorical mid-answer question, and the final line alone misses
+    asks followed by a qualifying sentence.
     """
     blocks = [b for b in re.split(r"\n\s*\n", text.strip()) if b.strip()]
     return "?" in blocks[-1] if blocks else False
 
 
 def _status_for_stop(payload):
-    """`last_assistant_message` is supplied by the Stop payload itself, so
-    there's no transcript to open and parse. It's optional in the schema —
-    absent means nothing to classify, which reads as plain idle.
+    """The Stop payload carries `last_assistant_message` itself, so there's no
+    transcript to parse. It's optional; absent reads as plain idle.
     """
     text = str(payload.get("last_assistant_message") or "")
     if NEEDS_ACTION_MARKER in text or _asks_a_question(text):
@@ -132,8 +122,7 @@ def main():
         return
 
     os.makedirs(STATUS_DIR, exist_ok=True)
-    # Hold an flock on the dedicated lock file across the read-modify-write so
-    # concurrent hook invocations from different sessions don't race.
+    # Locked across the read-modify-write so concurrent sessions don't race.
     with open(LOCK_FILE, "a+") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         try:

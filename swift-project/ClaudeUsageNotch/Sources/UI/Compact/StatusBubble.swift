@@ -3,7 +3,6 @@ import SwiftUI
 // MARK: - Incident styling
 
 extension IncidentLevel {
-    /// Tint used for outage badges in the UI.
     var tint: Color {
         switch self {
         case .none:        return Theme.statusHealthy
@@ -21,8 +20,7 @@ extension IncidentLevel {
     }
 }
 
-/// Small pill used for one-line status callouts (outage, last-synced) that
-/// share a row instead of each claiming a full-width banner.
+/// Small pill for one-line status callouts (outage, last-synced).
 struct StatusBubble: View {
     let icon: String?
     let text: String

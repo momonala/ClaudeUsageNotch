@@ -33,9 +33,8 @@ struct ClaudeUsageDTO: Decodable {
         }
     }
 
-    /// Org-wide monthly usage-credit pool (Team plans). Distinct from the
-    /// five_hour/seven_day rate-limit windows above — this is a dollar budget,
-    /// not a rolling percentage window.
+    /// Org-wide monthly usage-credit pool (Team plans): a dollar budget, not a
+    /// rolling percentage window like the ones above.
     struct Spend: Decodable {
         let used: Money?
         let limit: Money?
@@ -70,7 +69,6 @@ struct ClaudeBootstrapDTO: Decodable {
 
     struct Account: Decodable {
         let lastActiveOrgId: String?
-        // lastActiveOrgId matches JSON key — no CodingKeys needed
     }
 }
 
@@ -127,9 +125,8 @@ enum ClaudeUsageMapper {
         )
     }
 
-    /// The Claude usage-credit pool resets on the first of the next calendar
-    /// month; the API doesn't report a `resets_at` for `spend`, unlike the
-    /// five_hour/seven_day windows.
+    /// The API reports no `resets_at` for `spend`; the pool resets on the first
+    /// of the next calendar month.
     private static func startOfNextMonth(after date: Date) -> Date? {
         let cal = Calendar.current
         guard let startOfMonth = cal.date(from: cal.dateComponents([.year, .month], from: date)) else { return nil }

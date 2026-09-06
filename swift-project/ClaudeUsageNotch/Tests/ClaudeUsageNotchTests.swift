@@ -256,11 +256,9 @@ final class NotificationServiceEvaluateTests: XCTestCase {
     private let defaultsKey = "com.claudeusagenotch.NotificationService.highWaterMark"
     private let thresholds: [Double] = [0.25, 0.5, 0.75, 0.9]
 
-    // A throwaway suite and a fresh service per test. Clearing keys in
-    // `UserDefaults.standard` isn't enough on two counts: the shared instance
-    // caches its marks in memory at init, so a cleared key leaves the previous
-    // test's mark in play; and the test host *is* the app bundle, so
-    // `.standard` is the live app's own preferences.
+    // A throwaway suite per test: the shared instance caches its marks at
+    // init, and the test host *is* the app bundle, so `.standard` would be the
+    // live app's own preferences.
     private var suiteName = ""
     private var defaults: UserDefaults!
     private var service: NotificationService!
@@ -514,9 +512,8 @@ final class CompactCountdownTests: XCTestCase {
         XCTAssertNil(window.timeToReset(.compact, now: now))
     }
 
-    /// The whole point of the compact form: at the session limit the pill shows
-    /// this string in the same slot the "%" readout uses, so it has to fit —
-    /// otherwise the pill clips or grows wider than the hardware cutout.
+    /// At the session limit the pill shows this in the same slot the "%"
+    /// readout uses, so it has to fit or the pill clips.
     func test_compactString_fitsThePercentLabelSlot() {
         let slotWidth: CGFloat = 25
         let font = NSFont.monospacedSystemFont(ofSize: 9, weight: .bold)
@@ -549,8 +546,8 @@ final class FrontmostAppTests: XCTestCase {
         }
     }
 
-    /// Prefix matching is the point: build variants ship under their own
-    /// identifiers, and Cursor and its relatives get a per-build one.
+    /// Build variants ship under their own identifiers, and ToDesktop apps get
+    /// a per-build one.
     func test_buildVariantsMatchByPrefix() {
         XCTAssertTrue(FrontmostAppService.isWorkHost("com.googlecode.iterm2.beta"))
         XCTAssertTrue(FrontmostAppService.isWorkHost("com.microsoft.VSCodeInsiders"))

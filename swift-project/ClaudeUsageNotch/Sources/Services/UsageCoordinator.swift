@@ -81,8 +81,8 @@ public final class UsageCoordinator {
             }
             .store(in: &cancellables)
 
-        // Polling the status file is pointless work when the pulse is off, so
-        // the setting drives the service rather than only hiding the glow.
+        // The setting drives the service, not just the glow: no point polling
+        // the status file when the pulse is off.
         appSettings.$showAgentStatusPulse
             .receive(on: DispatchQueue.main)
             .sink { [weak self] enabled in

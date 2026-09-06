@@ -7,9 +7,8 @@ import Combine
 public final class AppSettings: ObservableObject {
     @Published public var pollIntervalSeconds: TimeInterval = 300 { didSet { persist() } }
     @Published public var notificationsEnabled: Bool = true { didSet { persist() } }
-    /// Fractions of a usage window that can fire a notification. Single source
-    /// of truth: the settings pane offers exactly these, so a default can never
-    /// be a value the UI has no control for.
+    /// Fractions of a usage window that can fire a notification. The settings
+    /// pane offers exactly these, so a default always has a control.
     public static let availableThresholds: [Double] = [0.25, 0.5, 0.75, 0.9, 1.0]
     @Published public var thresholds: [Double] = AppSettings.availableThresholds { didSet { persist() } }
     // Not persisted here: the source of truth is `SMAppService.mainApp.status`,
@@ -24,16 +23,14 @@ public final class AppSettings: ObservableObject {
     /// Perimeter glow reflecting local Claude Code session status. See `agent-status-hook/`.
     @Published public var showAgentStatusPulse: Bool = true { didSet { persist() } }
 
-    /// The sync server's base URL, or a path under it. Nil when sync is off
-    /// (empty address) or the address doesn't parse — the one place callers
-    /// need to check before reaching for the server.
+    /// The sync server's base URL, or a path under it. Nil when sync is off or
+    /// the address doesn't parse.
     public func apiURL(path: String? = nil) -> URL? {
         let base = apiBaseURL.trimmingCharacters(in: .whitespaces)
         guard !base.isEmpty, let url = URL(string: base) else { return nil }
         return path.map { url.appendingPathComponent($0) } ?? url
     }
 
-    /// Whether an address is configured at all.
     public var syncEnabled: Bool { apiURL() != nil }
 
     private var isLoading = false
@@ -63,8 +60,7 @@ public final class AppSettings: ObservableObject {
         if let t = d.array(forKey: Key.thresholds) as? [Double], !t.isEmpty {
             thresholds = t
         }
-        // Only override the default when a non-empty value was stored, so the
-        // localhost default still applies for installs that persisted "" earlier.
+        // Only override the default when a non-empty value was stored.
         if let url = d.string(forKey: Key.apiBaseURL), !url.isEmpty {
             apiBaseURL = url
         }

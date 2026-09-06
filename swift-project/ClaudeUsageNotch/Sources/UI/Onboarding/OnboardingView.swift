@@ -3,13 +3,13 @@ import AppKit
 
 /// Multi-step onboarding for Claude.
 ///
-/// If Claude CLI credentials are present on disk, the cookie step is skipped and OAuth is used automatically.
+/// The cookie step is skipped when Claude CLI credentials are on disk.
 struct OnboardingView: View {
     @ObservedObject var appState: AppState
     @ObservedObject var appSettings: AppSettings
     let onCredentialsSaved: () -> Void
-    /// Called whenever the ideal window content height changes, so the host
-    /// window can resize to fit instead of leaving empty space below short steps.
+    /// Fires when the ideal content height changes, so the host window can
+    /// resize to fit the current step.
     var onContentHeightChange: (CGFloat) -> Void = { _ in }
     private func close() { appState.showOnboarding = false }
 
@@ -63,8 +63,7 @@ struct OnboardingView: View {
     /// + the VStack spacing between them + the outer 20pt padding.
     private static let chromeHeight: CGFloat = 155
 
-    /// Ideal content height for the current step, so the onboarding window can
-    /// hug its content instead of leaving a fixed-size gap below shorter steps.
+    /// Ideal content height for the current step.
     private var windowContentHeight: CGFloat {
         let stepHeight: CGFloat
         switch step {

@@ -34,10 +34,8 @@ public struct AgentSessionEntry: Codable, Hashable {
 /// Aggregated read of the status file at a point in time.
 public struct AgentStatusReading: Hashable {
     public let status: AgentStatus
-    /// True when a session finished within the "just completed" flash window
-    /// *and* no other session currently wants attention. A live
-    /// `working`/`needsInput` session always outranks a completion flash, so
-    /// a green pulse can never mask a session that needs the user.
+    /// A session finished within the flash window and no other session wants
+    /// attention, so a green pulse can never mask one that needs the user.
     public let justCompleted: Bool
 
     public static let idle = AgentStatusReading(status: .idle, justCompleted: false)
@@ -47,9 +45,8 @@ public struct AgentStatusReading: Hashable {
         self.justCompleted = justCompleted
     }
 
-    /// Drops stale non-idle entries (a session that stopped reporting without a
-    /// `Stop`/`SessionEnd`, e.g. a killed terminal) before aggregating, so a dead
-    /// session can't hold `working`/`needsInput` forever.
+    /// Drops entries that stopped reporting without a `Stop`/`SessionEnd` (a
+    /// killed terminal) so a dead session can't hold `working` forever.
     public static func from(
         _ entries: [AgentSessionEntry],
         now: TimeInterval,

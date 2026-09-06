@@ -20,7 +20,6 @@ final class ClaudeProvider {
     func fetchUsage() async throws -> ServiceUsageSnapshot {
         let ctx = try await resolveAuthContext()
 
-        // Both endpoints return the same five_hour / seven_day / seven_day_sonnet shape.
         let url = switch ctx.auth {
         case .bearer: ClaudeEndpoint.oauthUsage
         case .cookie: ClaudeEndpoint.usage(orgId: ctx.orgId)
@@ -46,18 +45,15 @@ final class ClaudeProvider {
         let orgId: String
     }
 
-    /// Tries OAuth, falls back to cookie. Throws `missingCredentials` if neither
-    /// is available, or the specific auth error from whichever tier was attempted.
+    /// Throws `missingCredentials` when neither tier is available, or the
+    /// specific auth error from whichever tier was attempted.
     private func resolveAuthContext() async throws -> AuthContext {
-        // ── Tier 1: OAuth ──────────────────────────────────────────────────
         if let oauthCred = await ClaudeOAuthCredential.current(session: session) {
-            // No bootstrap round-trip: the OAuth usage endpoint is org-agnostic, and
-            // bootstrap is now Cloudflare-gated, so calling it would look like a
-            // rejected token and drop us to the cookie tier.
+            // No bootstrap round-trip: that endpoint is Cloudflare-gated, so a
+            // call would look like a rejected token and drop us to the cookie tier.
             return AuthContext(auth: .bearer(oauthCred.accessToken), orgId: oauthCred.orgId ?? "")
         }
 
-        // ── Tier 2: Session cookie ─────────────────────────────────────────
         let cookie = try currentCookie()
         if let orgFromCookie = ClaudeCredential(cookie: cookie).orgIdFromCookie {
             return AuthContext(auth: .cookie(cookie), orgId: orgFromCookie)

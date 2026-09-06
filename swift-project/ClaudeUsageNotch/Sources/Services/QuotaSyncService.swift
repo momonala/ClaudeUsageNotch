@@ -4,12 +4,9 @@ import Foundation
 /// every poll — the ground truth the chart's "% Quota" view prefers over its
 /// token-based estimate (see `quotaSeries`).
 ///
-/// Stateless and fire-and-forget: each snapshot is a complete, self-contained
-/// reading, so a dropped POST just loses that one sample — the next poll produces
-/// a fresh one. No retry cursor needed, unlike `HistorySyncService`, which must
-/// not drop a token record permanently.
-///
-/// Disabled entirely when `apiBaseURL` is empty, same as `HistorySyncService`.
+/// Fire-and-forget: each snapshot is self-contained, so a dropped POST loses
+/// one sample and needs no retry cursor, unlike `HistorySyncService`. Disabled
+/// when `apiBaseURL` is empty.
 @MainActor
 enum QuotaSyncService {
     private static let hostName = ProcessInfo.processInfo.hostName
