@@ -16,6 +16,9 @@ swift-project/ClaudeUsageNotch/.derived-data/
 # Root build script (local only)
 /build.sh
 
+# Local-only Claude Code context (points at tmp/issues.md)
+CLAUDE.local.md
+
 # Dev-only
 tmp/
 .claude/
