@@ -35,9 +35,9 @@ public final class AppState: ObservableObject {
     /// Reset countdown for the compact pill's label slot.
     public var sessionResetCompactString: String? { snapshot?.sessionWindow.timeToReset(.compact) }
 
-    /// Whether the compact pill draws its bars and percentages at all — see
-    /// `FrontmostAppService`.
-    public var showsCompactContent: Bool { isWorkHostFrontmost }
+    /// Whether the compact pill draws its bars and percentages at all. Gates
+    /// the readout alone — the pill's shape and status ring stay either way.
+    public var showsCompactContent: Bool { isWorkHostFrontmost && !isNotchUIHidden }
 
     public var activeIncident: ServiceIncident? {
         guard let i = incident, i.level.isActive else { return nil }

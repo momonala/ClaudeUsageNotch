@@ -103,14 +103,14 @@ final class NotchWindowController: NSObject {
             }
             .store(in: &cancellables)
 
-        appState.$snapshot
+        let compactSizeInputs = Publishers.MergeMany(
+            appState.$snapshot.map { _ in () }.eraseToAnyPublisher(),
+            appState.$isWorkHostFrontmost.map { _ in () }.eraseToAnyPublisher(),
+            appState.$isNotchUIHidden.map { _ in () }.eraseToAnyPublisher()
+        )
+        compactSizeInputs
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.updateCompactLayoutIfNeeded() }
-            .store(in: &cancellables)
-
-        appState.$isWorkHostFrontmost
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.updateCompactLayoutIfNeeded() }
+            .sink { [weak self] in self?.updateCompactLayoutIfNeeded() }
             .store(in: &cancellables)
     }
 
@@ -325,31 +325,25 @@ struct RootNotchView: View {
             case .hidden:
                 Color.clear
             case .compactIdle, .compactHover:
-                Group {
-                    if appState.isNotchUIHidden {
-                        Color.clear
-                    } else {
-                        CompactView(appState: appState, appSettings: appSettings)
+                CompactView(appState: appState, appSettings: appSettings)
+                    .onTapGesture { controller.userClicked() }
+                    .contextMenu {
+                        Button {
+                            appState.expandedMode = .settings
+                            appState.notchState = .expandedPinned
+                        } label: {
+                            Label("Settings", systemImage: "gearshape.fill")
+                        }
+                        Button { NotificationService.shared.sendTest() } label: {
+                            Label("Send test notification", systemImage: "bell.fill")
+                        }
+                        Divider()
+                        Button(role: .destructive) {
+                            NSApplication.shared.terminate(nil)
+                        } label: {
+                            Label("Quit ClaudeUsageNotch", systemImage: "power")
+                        }
                     }
-                }
-                .onTapGesture { controller.userClicked() }
-                .contextMenu {
-                    Button {
-                        appState.expandedMode = .settings
-                        appState.notchState = .expandedPinned
-                    } label: {
-                        Label("Settings", systemImage: "gearshape.fill")
-                    }
-                    Button { NotificationService.shared.sendTest() } label: {
-                        Label("Send test notification", systemImage: "bell.fill")
-                    }
-                    Divider()
-                    Button(role: .destructive) {
-                        NSApplication.shared.terminate(nil)
-                    } label: {
-                        Label("Quit ClaudeUsageNotch", systemImage: "power")
-                    }
-                }
             case .expandedHover, .expandedPinned:
                 ExpandedPanelView(appState: appState, appSettings: appSettings, controller: controller)
                     .transition(.asymmetric(

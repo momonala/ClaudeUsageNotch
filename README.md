@@ -338,6 +338,11 @@ Insiders, Cursor's per-build ToDesktop identifiers) come along for free.
 | a Claude Code host | the full strip: bars, percentages, reset countdown |
 | anything else | the cutout alone — black invisible behind the housing, nothing but the status ring |
 
+The eye button in the expanded header (`isNotchUIHidden`) drops the readout
+the same way, so hiding the notch by hand behaves exactly like being away from
+your terminal — status ring and hover intact. Both inputs meet in
+`AppState.showsCompactContent`, which is also what sizes the compact panel.
+
 Hover expands the full panel from either state; this only governs what the
 *collapsed* pill draws. Two details matter. The service ignores activations of
 this app itself, since the settings pane takes key focus and that isn't the

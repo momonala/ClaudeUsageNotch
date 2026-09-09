@@ -32,7 +32,7 @@ struct HeaderRow: View {
                     .foregroundColor(Theme.textSecondary.opacity(0.6))
             }
             .buttonStyle(.borderless)
-            .accessibilityLabel(appState.isNotchUIHidden ? "Show notch" : "Hide notch")
+            .accessibilityLabel(appState.isNotchUIHidden ? "Show usage readout" : "Hide usage readout")
             .padding(.trailing, 6)
 
             modeButton(.settings, icon: "gearshape.fill")
