@@ -49,6 +49,9 @@ struct CompactView: View {
             if let weekly = appState.snapshot?.weeklyWindow {
                 barRow(window: weekly)
             }
+            if let fable = appState.snapshot?.weeklyFableWindow {
+                barRow(window: fable)
+            }
             if let credit = appState.snapshot?.creditWindow {
                 barRow(window: credit)
             }
@@ -57,8 +60,7 @@ struct CompactView: View {
         // Anchored to the bottom with a real inset: centring leaves the last
         // row hard against the pill's curved bottom edge.
         .padding(.bottom, Theme.compactContentBottomInset)
-        .frame(height: Theme.compactStripHeight
-            + (appState.snapshot?.creditWindow != nil ? Theme.compactStripHeightCredit : 0),
+        .frame(height: Theme.compactStripHeight(extraRows: appState.snapshot?.extraWindowCount ?? 0),
                alignment: .bottom)
     }
 

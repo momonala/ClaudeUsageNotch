@@ -24,6 +24,32 @@ final class ClaudeUsageMappingTests: XCTestCase {
         XCTAssertNotNil(snapshot.sessionWindow.resetAt)
     }
 
+    func test_snapshot_parsesFableWindowFromScopedLimit() throws {
+        let json = """
+        {
+          "five_hour": { "utilization": 12.0, "resets_at": "2026-09-20T08:30:00Z" },
+          "seven_day": { "utilization": 2.0,  "resets_at": "2026-09-27T02:00:00Z" },
+          "limits": [
+            { "kind": "session",       "group": "session", "percent": 12, "scope": null },
+            { "kind": "weekly_all",    "group": "weekly",  "percent": 2,  "scope": null },
+            { "kind": "weekly_scoped", "group": "weekly",  "percent": 4,
+              "resets_at": "2026-09-27T02:00:00Z",
+              "scope": { "model": { "id": null, "display_name": "Fable" }, "surface": null } }
+          ]
+        }
+        """.data(using: .utf8)!
+
+        let dto = try JSONDecoder().decode(ClaudeUsageDTO.self, from: json)
+        let snapshot = try ClaudeUsageMapper.snapshot(from: dto)
+
+        let fable = try XCTUnwrap(snapshot.weeklyFableWindow)
+        XCTAssertEqual(fable.type, .weeklyFable)
+        XCTAssertEqual(fable.percentUsed, 0.04, accuracy: 0.0001)
+        XCTAssertNotNil(fable.resetAt)
+        XCTAssertEqual(snapshot.extraWindowCount, 1)
+        XCTAssertNil(snapshot.creditWindow)
+    }
+
     func test_snapshot_parsesCreditWindowFromSpend() throws {
         let json = """
         {
@@ -105,6 +131,7 @@ final class ClaudeUsageMappingTests: XCTestCase {
 
         XCTAssertNil(snapshot.weeklyWindow)
         XCTAssertNil(snapshot.weeklySonnetWindow)
+        XCTAssertNil(snapshot.weeklyFableWindow)
         XCTAssertNil(snapshot.sessionWindow.resetAt)
     }
 }
@@ -455,21 +482,31 @@ final class ExpandedPanelGeometryTests: XCTestCase {
     func test_cardAlwaysFitsInsideWindowContentWithGap() {
         for mode in [ExpandedMode.usage, .analytics, .settings] {
             let card = ExpandedPanelGeometry.cardHeight(for: mode)
-            let content = ExpandedPanelGeometry.windowContentHeight(for: mode, hasCredit: false)
+            let content = ExpandedPanelGeometry.windowContentHeight(for: mode, snapshot: nil)
             XCTAssertGreaterThan(content, card, "\(mode) card must leave room for the notch gap")
             XCTAssertEqual(content - card, ExpandedPanelGeometry.notchGap(for: mode), accuracy: 0.001)
         }
     }
 
-    func test_creditExtraAppliesToUsageOnly() {
-        XCTAssertEqual(
-            ExpandedPanelGeometry.windowContentHeight(for: .usage, hasCredit: true)
-                - ExpandedPanelGeometry.windowContentHeight(for: .usage, hasCredit: false),
-            ExpandedPanelGeometry.usageCreditExtra, accuracy: 0.001
+    private static func snapshot(fable: Bool, credit: Bool) -> ServiceUsageSnapshot {
+        let w = { (t: UsageWindowType) in UsageWindow(type: t, percentUsed: 0.1) }
+        return ServiceUsageSnapshot(
+            sessionWindow: w(.session),
+            weeklyWindow: w(.weekly),
+            weeklyFableWindow: fable ? w(.weeklyFable) : nil,
+            creditWindow: credit ? w(.monthly) : nil
         )
+    }
+
+    func test_extraCardsGrowUsageOnly() {
+        let base = ExpandedPanelGeometry.windowContentHeight(for: .usage, snapshot: Self.snapshot(fable: false, credit: false))
+        let one  = ExpandedPanelGeometry.windowContentHeight(for: .usage, snapshot: Self.snapshot(fable: true, credit: false))
+        let two  = ExpandedPanelGeometry.windowContentHeight(for: .usage, snapshot: Self.snapshot(fable: true, credit: true))
+        XCTAssertEqual(one - base, ExpandedPanelGeometry.usageFirstExtraCard, accuracy: 0.001)
+        XCTAssertEqual(two - one, ExpandedPanelGeometry.usageExtraCard, accuracy: 0.001)
         XCTAssertEqual(
-            ExpandedPanelGeometry.windowContentHeight(for: .settings, hasCredit: true),
-            ExpandedPanelGeometry.windowContentHeight(for: .settings, hasCredit: false), accuracy: 0.001
+            ExpandedPanelGeometry.windowContentHeight(for: .settings, snapshot: Self.snapshot(fable: true, credit: true)),
+            ExpandedPanelGeometry.windowContentHeight(for: .settings, snapshot: nil), accuracy: 0.001
         )
     }
 }

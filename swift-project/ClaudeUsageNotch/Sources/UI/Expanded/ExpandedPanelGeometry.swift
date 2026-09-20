@@ -39,13 +39,20 @@ enum ExpandedPanelGeometry {
         }
     }
 
-    /// Extra card height for the optional "Usage credits" card (Team plans only).
-    static let usageCreditExtra: CGFloat = 5
+    /// The `.usage` base height has slack for most of one optional card
+    /// (Fable, usage credits); each further card needs a full row.
+    static let usageFirstExtraCard: CGFloat = 5
+    static let usageExtraCard:      CGFloat = 38
+
+    static func cardHeight(for mode: ExpandedMode, snapshot: ServiceUsageSnapshot?) -> CGFloat {
+        let base = cardHeight(for: mode)
+        guard mode == .usage, let cards = snapshot?.extraWindowCount, cards > 0 else { return base }
+        return base + usageFirstExtraCard + CGFloat(cards - 1) * usageExtraCard
+    }
 
     /// Panel content height below the screen top, excluding the notch overlap.
     /// Callers add `ScreenUtils.notchHeight` to get the full panel height.
-    static func windowContentHeight(for mode: ExpandedMode, hasCredit: Bool) -> CGFloat {
-        let credit = (mode == .usage && hasCredit) ? usageCreditExtra : 0
-        return cardHeight(for: mode) + notchGap(for: mode) + credit
+    static func windowContentHeight(for mode: ExpandedMode, snapshot: ServiceUsageSnapshot?) -> CGFloat {
+        cardHeight(for: mode, snapshot: snapshot) + notchGap(for: mode)
     }
 }

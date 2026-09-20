@@ -40,8 +40,8 @@ final class NotchWindowController: NSObject {
     /// The pill plus `AgentStatusGlow.outset` of margin, always reserved so the
     /// window doesn't resize whenever an agent starts or stops working.
     private var compactSize: NSSize {
-        let creditExtra = appState.snapshot?.creditWindow != nil ? Theme.compactStripHeightCredit : 0
-        let strip = appState.showsCompactContent ? Theme.compactStripHeight + creditExtra : 0
+        let extraRows = appState.snapshot?.extraWindowCount ?? 0
+        let strip = appState.showsCompactContent ? Theme.compactStripHeight(extraRows: extraRows) : 0
         return NSSize(
             width: ScreenUtils.compactPanelWidthBase + AgentStatusGlow.outset * 2,
             height: ScreenUtils.notchHeight + strip + AgentStatusGlow.outset
@@ -49,11 +49,10 @@ final class NotchWindowController: NSObject {
     }
     private var expandedSize: NSSize {
         let mode = appState.expandedMode
-        let hasCredit = appState.snapshot?.creditWindow != nil
         return NSSize(
             width: ExpandedPanelGeometry.width(for: mode),
             height: ScreenUtils.notchHeight
-                + ExpandedPanelGeometry.windowContentHeight(for: mode, hasCredit: hasCredit)
+                + ExpandedPanelGeometry.windowContentHeight(for: mode, snapshot: appState.snapshot)
         )
     }
 

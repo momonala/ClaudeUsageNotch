@@ -33,6 +33,9 @@ struct ExpandedPanelView: View {
                         if let weeklySonnet = appState.snapshot?.weeklySonnetWindow {
                             UsageCard(window: weeklySonnet, title: "Weekly Sonnet", subtitle: "Pro plan")
                         }
+                        if let fable = appState.snapshot?.weeklyFableWindow {
+                            UsageCard(window: fable, title: "Weekly Fable")
+                        }
                         if let credit = appState.snapshot?.creditWindow {
                             UsageCard(window: credit, title: "Usage credits")
                         }
@@ -100,10 +103,7 @@ struct ExpandedPanelView: View {
 
     /// Card height only; the notch overlap and gap are the window's business.
     private var panelHeight: CGFloat {
-        let mode = appState.expandedMode
-        let creditExtra = (mode == .usage && appState.snapshot?.creditWindow != nil)
-            ? ExpandedPanelGeometry.usageCreditExtra : 0
-        return ExpandedPanelGeometry.cardHeight(for: mode) + creditExtra
+        ExpandedPanelGeometry.cardHeight(for: appState.expandedMode, snapshot: appState.snapshot)
     }
 }
 

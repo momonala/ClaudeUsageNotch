@@ -173,7 +173,7 @@ Sources/
 │
 ├── Core/
 │   ├── Domain/
-│   │   ├── ServiceUsageSnapshot.swift  One poll's session / weekly / sonnet / credit windows
+│   │   ├── ServiceUsageSnapshot.swift  One poll's session / weekly / sonnet / fable / credit windows
 │   │   ├── UsageRecord.swift      Token-level record parsed from JSONL history
 │   │   ├── UsageWindow.swift      One quota window: pace, status, reset helpers
 │   │   ├── Timestamps.swift       The two ISO8601 shapes every wire format here uses
@@ -216,7 +216,7 @@ Sources/
     ├── NotchWindowController.swift  Borderless NSPanel; hover timer; width animation
     ├── NotificationBanner.swift
     ├── Compact/
-    │   ├── CompactView.swift        Session/weekly/credit bars; countdown at session limit
+    │   ├── CompactView.swift        Session/weekly/fable/credit bars; countdown at session limit
     │   ├── CompactProgressBar.swift Pace marker tick
     │   ├── StatusBubble.swift       Inline outage / sync pill
     │   └── AgentStatusGlow.swift    Perimeter pulse for agent status (compact-idle only)

@@ -5,6 +5,7 @@ public enum UsageWindowType: String, Codable, Hashable {
     case session     // 5-hour rolling window
     case weekly      // 7-day window
     case weeklyModel // 7-day Sonnet sub-window (Pro plans)
+    case weeklyFable // 7-day Fable sub-window
     case monthly     // Monthly usage-credit pool (Team plans)
 }
 
@@ -75,7 +76,7 @@ public struct UsageWindow: Codable, Hashable {
     public var windowDuration: TimeInterval {
         switch type {
         case .session:              return 5 * 3600
-        case .weekly, .weeklyModel: return 7 * 24 * 3600
+        case .weekly, .weeklyModel, .weeklyFable: return 7 * 24 * 3600
         case .monthly:              return 30 * 24 * 3600
         }
     }

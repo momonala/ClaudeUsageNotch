@@ -95,6 +95,7 @@ public final class NotificationService {
         case .session:     return "session"
         case .weekly:      return "weekly"
         case .weeklyModel: return "sonnet"
+        case .weeklyFable: return "fable"
         case .monthly:     return "usage credits"
         }
     }

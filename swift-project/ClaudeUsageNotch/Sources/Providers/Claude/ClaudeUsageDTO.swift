@@ -7,20 +7,47 @@ import Foundation
 /// {
 ///   "five_hour":         {"utilization": 42.5, "resets_at": "2026-05-18T10:00:00Z"},
 ///   "seven_day":         {"utilization": 61.0, "resets_at": "2026-05-25T00:00:00Z"},
-///   "seven_day_sonnet":  {"utilization": 28.0, "resets_at": "2026-05-25T00:00:00Z"}
+///   "seven_day_sonnet":  {"utilization": 28.0, "resets_at": "2026-05-25T00:00:00Z"},
+///   "limits": [{"kind": "weekly_scoped", "percent": 4, "resets_at": "...",
+///               "scope": {"model": {"display_name": "Fable"}}}]
 /// }
 /// ```
+///
+/// Per-model weekly limits other than Sonnet only appear under obfuscated
+/// top-level keys; the `limits` array names them by model.
 struct ClaudeUsageDTO: Decodable {
     let fiveHour:       Window?
     let sevenDay:       Window?
     let sevenDaySonnet: Window?
+    let limits:         [Limit]?
     let spend:          Spend?
 
     enum CodingKeys: String, CodingKey {
         case fiveHour       = "five_hour"
         case sevenDay       = "seven_day"
         case sevenDaySonnet = "seven_day_sonnet"
+        case limits
         case spend          = "spend"
+    }
+
+    struct Limit: Decodable {
+        let kind: String?
+        let percent: Double?
+        let resetsAt: String?
+        let scope: Scope?
+
+        enum CodingKeys: String, CodingKey {
+            case kind, percent, scope
+            case resetsAt = "resets_at"
+        }
+
+        struct Scope: Decodable {
+            let model: Model?
+            struct Model: Decodable {
+                let displayName: String?
+                enum CodingKeys: String, CodingKey { case displayName = "display_name" }
+            }
+        }
     }
 
     struct Window: Decodable {
@@ -103,6 +130,17 @@ enum ClaudeUsageMapper {
             )
         }
 
+        let weeklyFable: UsageWindow? = dto.limits?
+            .first { $0.kind == "weekly_scoped" && $0.scope?.model?.displayName == "Fable" }
+            .map {
+                UsageWindow(
+                    type: .weeklyFable,
+                    percentUsed: ($0.percent ?? 0) / 100.0,
+                    resetAt: parseISO8601($0.resetsAt),
+                    lastUpdated: capturedAt
+                )
+            }
+
         let credit: UsageWindow? = {
             guard let spend = dto.spend, spend.enabled == true,
                   let used = spend.used?.dollars, let limit = spend.limit?.dollars else { return nil }
@@ -120,6 +158,7 @@ enum ClaudeUsageMapper {
             sessionWindow: session,
             weeklyWindow: weekly,
             weeklySonnetWindow: weeklySonnet,
+            weeklyFableWindow: weeklyFable,
             creditWindow: credit,
             capturedAt: capturedAt
         )

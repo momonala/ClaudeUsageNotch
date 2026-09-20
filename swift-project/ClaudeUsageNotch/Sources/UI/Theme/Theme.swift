@@ -100,8 +100,12 @@ enum Theme {
     /// Bottom corner radius of the compact pill's black fill. `AgentStatusGlow`
     /// derives its own radius from this so the ring curves parallel to it.
     static let compactPillBottomRadius: CGFloat = 14
-    /// Extra strip height for the optional third (credit) bar row.
-    static let compactStripHeightCredit: CGFloat = 14
+    /// Extra strip height per optional bar row (Fable, credits) beyond the
+    /// session and weekly rows.
+    static let compactStripHeightExtraRow: CGFloat = 14
+    static func compactStripHeight(extraRows: Int) -> CGFloat {
+        compactStripHeight + CGFloat(extraRows) * compactStripHeightExtraRow
+    }
     /// Gap between the last bar row and the pill's bottom edge; without it the
     /// trailing percentage label runs through the bottom corner's arc.
     static let compactContentBottomInset: CGFloat = 5
