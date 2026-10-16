@@ -102,6 +102,22 @@ struct InlineSettingsView: View {
                     .accessibilityLabel("Agent status glow")
             }
 
+            SettingsRow("Fable bar in notch",
+                        caption: "Show the weekly Fable limit in the compact bar") {
+                Toggle("", isOn: $appSettings.showFableInCompact)
+                    .toggleStyle(.notchSwitch)
+                    .labelsHidden()
+                    .accessibilityLabel("Fable bar in notch")
+            }
+
+            SettingsRow("Credits bar in notch",
+                        caption: "Show usage credits in the compact bar") {
+                Toggle("", isOn: $appSettings.showCreditsInCompact)
+                    .toggleStyle(.notchSwitch)
+                    .labelsHidden()
+                    .accessibilityLabel("Credits bar in notch")
+            }
+
             SettingsRow("Check usage every") {
                 intervalPicker(selection: $appSettings.pollIntervalSeconds,
                                accessibilityLabel: "Check usage every")

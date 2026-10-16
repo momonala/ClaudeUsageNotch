@@ -23,6 +23,15 @@ public final class AppSettings: ObservableObject {
     /// Perimeter glow reflecting local Claude Code session status. See `agent-status-hook/`.
     @Published public var showAgentStatusPulse: Bool = true { didSet { persist() } }
 
+    @Published public var showFableInCompact: Bool = true { didSet { persist() } }
+    @Published public var showCreditsInCompact: Bool = true { didSet { persist() } }
+
+    /// Optional rows (Fable, credits) the compact pill shows for this snapshot.
+    public func compactExtraWindows(for snapshot: ServiceUsageSnapshot?) -> [UsageWindow] {
+        [showFableInCompact ? snapshot?.weeklyFableWindow : nil,
+         showCreditsInCompact ? snapshot?.creditWindow : nil].compactMap { $0 }
+    }
+
     /// The sync server's base URL, or a path under it. Nil when sync is off or
     /// the address doesn't parse.
     public func apiURL(path: String? = nil) -> URL? {
@@ -42,6 +51,8 @@ public final class AppSettings: ObservableObject {
         static let apiBaseURL       = "claudeusagenotch.apiBaseURL"
         static let syncInterval     = "claudeusagenotch.syncIntervalSeconds"
         static let showAgentPulse   = "claudeusagenotch.showAgentStatusPulse"
+        static let showFable        = "claudeusagenotch.showFableInCompact"
+        static let showCredits      = "claudeusagenotch.showCreditsInCompact"
     }
 
     public init() { load() }
@@ -71,6 +82,12 @@ public final class AppSettings: ObservableObject {
         if d.object(forKey: Key.showAgentPulse) != nil {
             showAgentStatusPulse = d.bool(forKey: Key.showAgentPulse)
         }
+        if d.object(forKey: Key.showFable) != nil {
+            showFableInCompact = d.bool(forKey: Key.showFable)
+        }
+        if d.object(forKey: Key.showCredits) != nil {
+            showCreditsInCompact = d.bool(forKey: Key.showCredits)
+        }
     }
 
     private func persist() {
@@ -82,5 +99,7 @@ public final class AppSettings: ObservableObject {
         d.set(apiBaseURL, forKey: Key.apiBaseURL)
         d.set(syncIntervalSeconds, forKey: Key.syncInterval)
         d.set(showAgentStatusPulse, forKey: Key.showAgentPulse)
+        d.set(showFableInCompact, forKey: Key.showFable)
+        d.set(showCreditsInCompact, forKey: Key.showCredits)
     }
 }

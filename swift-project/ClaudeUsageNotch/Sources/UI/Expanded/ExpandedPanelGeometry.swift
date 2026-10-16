@@ -23,10 +23,10 @@ enum ExpandedPanelGeometry {
         switch mode {
         case .usage:     return 120
         case .analytics: return 590
-        // The settings pane measures ~463.5pt at the width above, in its
-        // tallest state (validation footer showing); the remainder is clearance
-        // for the corner sweep. There's no scroll view, so too short clips it.
-        case .settings:  return 468
+        // Fits the settings pane at the width above in its tallest state
+        // (validation footer showing), plus clearance for the corner sweep.
+        // There's no scroll view, so too short clips it.
+        case .settings:  return 548
         }
     }
 

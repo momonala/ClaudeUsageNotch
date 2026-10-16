@@ -40,7 +40,7 @@ final class NotchWindowController: NSObject {
     /// The pill plus `AgentStatusGlow.outset` of margin, always reserved so the
     /// window doesn't resize whenever an agent starts or stops working.
     private var compactSize: NSSize {
-        let extraRows = appState.snapshot?.extraWindowCount ?? 0
+        let extraRows = appSettings.compactExtraWindows(for: appState.snapshot).count
         let strip = appState.showsCompactContent ? Theme.compactStripHeight(extraRows: extraRows) : 0
         return NSSize(
             width: ScreenUtils.compactPanelWidthBase + AgentStatusGlow.outset * 2,
@@ -105,7 +105,9 @@ final class NotchWindowController: NSObject {
         let compactSizeInputs = Publishers.MergeMany(
             appState.$snapshot.map { _ in () }.eraseToAnyPublisher(),
             appState.$isWorkHostFrontmost.map { _ in () }.eraseToAnyPublisher(),
-            appState.$isNotchUIHidden.map { _ in () }.eraseToAnyPublisher()
+            appState.$isNotchUIHidden.map { _ in () }.eraseToAnyPublisher(),
+            appSettings.$showFableInCompact.map { _ in () }.eraseToAnyPublisher(),
+            appSettings.$showCreditsInCompact.map { _ in () }.eraseToAnyPublisher()
         )
         compactSizeInputs
             .receive(on: DispatchQueue.main)

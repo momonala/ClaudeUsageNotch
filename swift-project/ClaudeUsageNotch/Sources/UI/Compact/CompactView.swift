@@ -43,24 +43,25 @@ struct CompactView: View {
                             trailing: AgentStatusGlow.outset))
     }
 
+    private var extraWindows: [UsageWindow] {
+        appSettings.compactExtraWindows(for: appState.snapshot)
+    }
+
     private var strip: some View {
         VStack(spacing: 3) {
             barRow(window: appState.snapshot?.sessionWindow, label: sessionLabel)
             if let weekly = appState.snapshot?.weeklyWindow {
                 barRow(window: weekly)
             }
-            if let fable = appState.snapshot?.weeklyFableWindow {
-                barRow(window: fable)
-            }
-            if let credit = appState.snapshot?.creditWindow {
-                barRow(window: credit)
+            ForEach(extraWindows, id: \.type) { window in
+                barRow(window: window)
             }
         }
         .padding(.horizontal, 10)
         // Anchored to the bottom with a real inset: centring leaves the last
         // row hard against the pill's curved bottom edge.
         .padding(.bottom, Theme.compactContentBottomInset)
-        .frame(height: Theme.compactStripHeight(extraRows: appState.snapshot?.extraWindowCount ?? 0),
+        .frame(height: Theme.compactStripHeight(extraRows: extraWindows.count),
                alignment: .bottom)
     }
 
