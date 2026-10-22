@@ -17,6 +17,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        submodules: true
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -39,9 +41,3 @@ jobs:
 
     - name: Run ruff linting
       run: uv run ruff check .
-
-    - name: Upload coverage to Codecov
-      if: always()
-      uses: codecov/codecov-action@v4
-      with:
-        fail_ci_if_error: false
