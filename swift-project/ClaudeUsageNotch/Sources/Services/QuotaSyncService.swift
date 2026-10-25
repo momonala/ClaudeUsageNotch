@@ -9,8 +9,6 @@ import Foundation
 /// when `apiBaseURL` is empty.
 @MainActor
 enum QuotaSyncService {
-    private static let hostName = ProcessInfo.processInfo.hostName
-
     static func push(_ snapshot: ServiceUsageSnapshot, settings: AppSettings) {
         guard let url = settings.apiURL(path: "api/quota_snapshots") else { return }
         let payloads = snapshot.allWindows.map { payload(for: $0, capturedAt: snapshot.capturedAt) }
@@ -23,7 +21,7 @@ enum QuotaSyncService {
             timestamp:   capturedAt,
             percentUsed: window.percentUsed,
             resetsAt:    window.resetAt,
-            source:      hostName
+            source:      DeviceName.current
         )
     }
 
@@ -32,6 +30,7 @@ enum QuotaSyncService {
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue(DeviceName.headerValue, forHTTPHeaderField: DeviceName.header)
             request.httpBody = try UsageRecord.apiEncoder.encode(payloads)
 
             let (_, response) = try await URLSession.shared.data(for: request)
