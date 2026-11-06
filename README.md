@@ -149,7 +149,7 @@ python3 -m unittest discover -s agent-status-hook
 ```
 
 **Server** — from `claude-usage-notch-server/`, `bash test-and-lint.sh`
-(pytest + black + ruff).
+(pytest + ruff format + ruff check).
 
 ---
 

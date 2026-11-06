@@ -26,7 +26,7 @@ xcodebuild test -project ClaudeUsageNotch.xcodeproj \
 Server tests — from `claude-usage-notch-server/` (use `uv`, never bare `python`):
 
 ```bash
-bash test-and-lint.sh            # pytest + black + ruff
+bash test-and-lint.sh            # pytest + ruff format + ruff check
 uv run pytest tests/ -q          # tests only
 ```
 

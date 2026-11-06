@@ -3,8 +3,6 @@ name: CI
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 
 defaults:
   run:
@@ -33,11 +31,11 @@ jobs:
     - name: Install dependencies
       run: uv sync
 
-    - name: Run tests with coverage
-      run: uv run pytest
+    - name: Run tests
+      run: uv run --with pytest --with pytest-cov pytest
 
-    - name: Check formatting with black
-      run: uv run black . --check
+    - name: Check formatting
+      run: uvx ruff format --check .
 
-    - name: Run ruff linting
-      run: uv run ruff check .
+    - name: Lint
+      run: uvx ruff check .
