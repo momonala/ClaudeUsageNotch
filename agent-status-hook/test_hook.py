@@ -79,5 +79,11 @@ class StatusForNotification(unittest.TestCase):
         )
 
 
+
+class StatusForEvent(unittest.TestCase):
+    def test_prompt_and_tool_use_mean_working(self):
+        for event in ("UserPromptSubmit", "PreToolUse"):
+            self.assertEqual(hook._status_for_event(event, {}, "idle"), "working")
+
 if __name__ == "__main__":
     unittest.main()

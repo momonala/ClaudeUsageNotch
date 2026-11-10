@@ -387,6 +387,15 @@ final class AgentStatusTests: XCTestCase {
         XCTAssertFalse(AgentStatusReading.from([older], now: now).justCompleted)
     }
 
+    func test_reading_justCompleted_supersededByWorkingSession() {
+        let now: TimeInterval = 1_000_000
+        let stopped = AgentSessionEntry(status: .idle, event: "Stop", ts: now - 2, cwd: "/done")
+        let working = AgentSessionEntry(status: .working, event: "PreToolUse", ts: now, cwd: "/busy")
+        let reading = AgentStatusReading.from([stopped, working], now: now)
+        XCTAssertEqual(reading.status, .working)
+        XCTAssertFalse(reading.justCompleted)
+    }
+
     func test_reading_justCompleted_supersededByNeedsInputSession() {
         let now: TimeInterval = 1_000_000
         let stopped = AgentSessionEntry(status: .idle, event: "Stop", ts: now - 2, cwd: "/done")
