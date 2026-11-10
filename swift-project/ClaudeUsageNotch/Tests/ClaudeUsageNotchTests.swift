@@ -330,6 +330,7 @@ final class NotificationServiceEvaluateTests: XCTestCase {
         XCTAssertTrue(NotificationService.didWindowReset(previous: 0.76, current: 0.05))
         XCTAssertFalse(NotificationService.didWindowReset(previous: 0.5, current: 0.76))
         XCTAssertFalse(NotificationService.didWindowReset(previous: 0.76, current: 0.76))
+        XCTAssertFalse(NotificationService.didWindowReset(previous: 0.0, current: 0.0))
         // Rolling-window dip — old usage ages out but usage is still high: NOT a reset.
         XCTAssertFalse(NotificationService.didWindowReset(previous: 0.42, current: 0.40))
     }
