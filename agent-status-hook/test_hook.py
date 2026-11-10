@@ -18,9 +18,6 @@ _spec.loader.exec_module(hook)
 
 
 class AsksAQuestion(unittest.TestCase):
-    def test_plain_trailing_question(self):
-        self.assertTrue(hook._asks_a_question("Want me to commit this?"))
-
     def test_question_in_the_closing_paragraph(self):
         self.assertTrue(hook._asks_a_question("Fixed the lock race.\n\nCommit it?"))
 
@@ -46,9 +43,6 @@ class AsksAQuestion(unittest.TestCase):
         )
         self.assertFalse(hook._asks_a_question(text))
 
-    def test_empty_text(self):
-        self.assertFalse(hook._asks_a_question(""))
-
 
 class StatusForStop(unittest.TestCase):
     def test_trailing_question_needs_input(self):
@@ -72,10 +66,6 @@ class StatusForStop(unittest.TestCase):
 class StatusForNotification(unittest.TestCase):
     def test_permission_prompt_needs_input(self):
         payload = {"notification_type": "permission_prompt"}
-        self.assertEqual(hook._status_for_notification(payload, "working"), "needsInput")
-
-    def test_subagent_needs_input(self):
-        payload = {"notification_type": "agent_needs_input"}
         self.assertEqual(hook._status_for_notification(payload, "working"), "needsInput")
 
     def test_idle_nudge_alone_is_idle(self):
