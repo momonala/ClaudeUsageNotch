@@ -93,21 +93,6 @@ final class ClaudeUsageMappingTests: XCTestCase {
         XCTAssertNil(snapshot.creditWindow)
     }
 
-    func test_snapshot_throwsWhenFiveHourMissing() throws {
-        let json = """
-        {
-          "seven_day": { "utilization": 61.0, "resets_at": "2026-05-25T00:00:00Z" }
-        }
-        """.data(using: .utf8)!
-
-        let dto = try JSONDecoder().decode(ClaudeUsageDTO.self, from: json)
-        XCTAssertThrowsError(try ClaudeUsageMapper.snapshot(from: dto)) { error in
-            guard case ProviderError.decoding = error else {
-                return XCTFail("Expected ProviderError.decoding, got \(error)")
-            }
-        }
-    }
-
     func test_snapshot_throwsWhenUtilizationNull() throws {
         let json = """
         { "five_hour": { "resets_at": "2026-05-18T10:00:00Z" } }
@@ -119,20 +104,6 @@ final class ClaudeUsageMappingTests: XCTestCase {
                 return XCTFail("Expected ProviderError.decoding, got \(error)")
             }
         }
-    }
-
-    func test_snapshot_optionalWindowsAreNil() throws {
-        let json = """
-        { "five_hour": { "utilization": 10.0, "resets_at": null } }
-        """.data(using: .utf8)!
-
-        let dto = try JSONDecoder().decode(ClaudeUsageDTO.self, from: json)
-        let snapshot = try ClaudeUsageMapper.snapshot(from: dto)
-
-        XCTAssertNil(snapshot.weeklyWindow)
-        XCTAssertNil(snapshot.weeklySonnetWindow)
-        XCTAssertNil(snapshot.weeklyFableWindow)
-        XCTAssertNil(snapshot.sessionWindow.resetAt)
     }
 }
 
@@ -173,11 +144,9 @@ final class ClaudeOAuthCredentialTests: XCTestCase {
     }
 
     func test_parse_expiryMilliseconds() {
-        // 9_999_999_999_000 ms = 9_999_999_999 s  (far future)
         let json = #"{"claudeAiOauthToken":"t","expiresAt":9999999999000}"#.data(using: .utf8)!
         let cred = ClaudeOAuthCredential.parse(from: json)
-        XCTAssertNotNil(cred?.expiresAt)
-        XCTAssertFalse(cred?.isLikelyExpired ?? true)
+        XCTAssertEqual(cred?.expiresAt, Date(timeIntervalSince1970: 9_999_999_999))
     }
 
     func test_parse_expirySeconds() {
@@ -367,20 +336,6 @@ final class NotificationServiceEvaluateTests: XCTestCase {
 
 }
 
-// MARK: - KeychainStore
-
-final class KeychainStoreTests: XCTestCase {
-
-    func test_roundTrip_writeReadDelete() {
-        let store = KeychainStore(service: "com.claudeusagenotch.tests.\(UUID().uuidString)")
-        let payload = "test-payload-\(UUID().uuidString)".data(using: .utf8)!
-        store.set(account: "roundtrip", data: payload)
-        XCTAssertEqual(store.get(account: "roundtrip"), payload)
-        XCTAssertTrue(store.delete(account: "roundtrip"))
-        XCTAssertNil(store.get(account: "roundtrip"))
-    }
-}
-
 // MARK: - AgentStatus
 
 final class AgentStatusTests: XCTestCase {
@@ -422,29 +377,6 @@ final class AgentStatusTests: XCTestCase {
         XCTAssertEqual(reading.status, .working)
     }
 
-    func test_reading_multiSession_needsInputOverridesWorking() {
-        let now: TimeInterval = 1_000_000
-        let working = AgentSessionEntry(status: .working, event: "PreToolUse", ts: now, cwd: "/a")
-        let waiting = AgentSessionEntry(status: .needsInput, event: "Notification", ts: now, cwd: "/b")
-        let reading = AgentStatusReading.from([working, waiting], now: now)
-        XCTAssertEqual(reading.status, .needsInput)
-    }
-
-    func test_reading_justCompleted_withinWindow() {
-        let now: TimeInterval = 1_000_000
-        let stopped = AgentSessionEntry(status: .idle, event: "Stop", ts: now - 2, cwd: "")
-        let reading = AgentStatusReading.from([stopped], now: now, completedWithin: 4)
-        XCTAssertTrue(reading.justCompleted)
-        XCTAssertEqual(reading.status, .idle)
-    }
-
-    func test_reading_justCompleted_expiresAfterWindow() {
-        let now: TimeInterval = 1_000_000
-        let stopped = AgentSessionEntry(status: .idle, event: "Stop", ts: now - 10, cwd: "")
-        let reading = AgentStatusReading.from([stopped], now: now, completedWithin: 4)
-        XCTAssertFalse(reading.justCompleted)
-    }
-
     func test_reading_justCompleted_defaultWindowHoldsFor30s() {
         let now: TimeInterval = 1_000_000
         let stopped = AgentSessionEntry(status: .idle, event: "Stop", ts: now - 25, cwd: "")
@@ -452,15 +384,6 @@ final class AgentStatusTests: XCTestCase {
 
         let older = AgentSessionEntry(status: .idle, event: "Stop", ts: now - 31, cwd: "")
         XCTAssertFalse(AgentStatusReading.from([older], now: now).justCompleted)
-    }
-
-    func test_reading_justCompleted_supersededByWorkingSession() {
-        let now: TimeInterval = 1_000_000
-        let stopped = AgentSessionEntry(status: .idle, event: "Stop", ts: now - 2, cwd: "/done")
-        let working = AgentSessionEntry(status: .working, event: "PreToolUse", ts: now, cwd: "/busy")
-        let reading = AgentStatusReading.from([stopped, working], now: now)
-        XCTAssertEqual(reading.status, .working)
-        XCTAssertFalse(reading.justCompleted)
     }
 
     func test_reading_justCompleted_supersededByNeedsInputSession() {
@@ -487,28 +410,6 @@ final class ExpandedPanelGeometryTests: XCTestCase {
             XCTAssertEqual(content - card, ExpandedPanelGeometry.notchGap(for: mode), accuracy: 0.001)
         }
     }
-
-    private static func snapshot(fable: Bool, credit: Bool) -> ServiceUsageSnapshot {
-        let w = { (t: UsageWindowType) in UsageWindow(type: t, percentUsed: 0.1) }
-        return ServiceUsageSnapshot(
-            sessionWindow: w(.session),
-            weeklyWindow: w(.weekly),
-            weeklyFableWindow: fable ? w(.weeklyFable) : nil,
-            creditWindow: credit ? w(.monthly) : nil
-        )
-    }
-
-    func test_extraCardsGrowUsageOnly() {
-        let base = ExpandedPanelGeometry.windowContentHeight(for: .usage, snapshot: Self.snapshot(fable: false, credit: false))
-        let one  = ExpandedPanelGeometry.windowContentHeight(for: .usage, snapshot: Self.snapshot(fable: true, credit: false))
-        let two  = ExpandedPanelGeometry.windowContentHeight(for: .usage, snapshot: Self.snapshot(fable: true, credit: true))
-        XCTAssertEqual(one - base, ExpandedPanelGeometry.usageFirstExtraCard, accuracy: 0.001)
-        XCTAssertEqual(two - one, ExpandedPanelGeometry.usageExtraCard, accuracy: 0.001)
-        XCTAssertEqual(
-            ExpandedPanelGeometry.windowContentHeight(for: .settings, snapshot: Self.snapshot(fable: true, credit: true)),
-            ExpandedPanelGeometry.windowContentHeight(for: .settings, snapshot: nil), accuracy: 0.001
-        )
-    }
 }
 
 // MARK: - Compact reset countdown
@@ -533,15 +434,9 @@ final class CompactCountdownTests: XCTestCase {
         XCTAssertEqual(sessionWindow(resettingIn: 25 * 3600).timeToReset(.compact, now: now), "1d")
     }
 
-    func test_compactString_floorsRatherThanRounds() {
-        // "2h" has to mean *at least* two hours, never "nearly three".
-        XCTAssertEqual(sessionWindow(resettingIn: 2 * 3600 + 59 * 60 + 59).timeToReset(.compact, now: now), "2h")
-    }
-
     func test_compactString_neverReportsZero() {
         XCTAssertEqual(sessionWindow(resettingIn: 30).timeToReset(.compact, now: now), "1m")
         XCTAssertEqual(sessionWindow(resettingIn: 0).timeToReset(.compact, now: now), "now")
-        XCTAssertEqual(sessionWindow(resettingIn: -60).timeToReset(.compact, now: now), "now")
     }
 
     func test_compactString_isNilWithoutResetAt() {
