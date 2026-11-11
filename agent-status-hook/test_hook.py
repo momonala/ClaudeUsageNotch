@@ -130,3 +130,27 @@ class WireFormat(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NeverFails(unittest.TestCase):
+    def test_malformed_input_exits_zero_and_leaves_the_status_file_alone(self):
+        import os
+        import subprocess
+        import sys
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as home:
+            for stdin in ("not json", "", "[]"):
+                with self.subTest(stdin=stdin):
+                    result = subprocess.run(
+                        [sys.executable, str(pathlib.Path(__file__).with_name("hook.py"))],
+                        input=stdin,
+                        capture_output=True,
+                        text=True,
+                        env={**os.environ, "HOME": home},
+                    )
+                    self.assertEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, "")
+            self.assertFalse(
+                pathlib.Path(home, "Library/Application Support/ClaudeUsageNotch/agent-status.json").exists()
+            )

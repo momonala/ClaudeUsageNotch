@@ -15,6 +15,7 @@ import re
 import sys
 import tempfile
 import time
+import traceback
 from enum import Enum
 
 STATUS_DIR = os.path.expanduser("~/Library/Application Support/ClaudeUsageNotch")
@@ -166,4 +167,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # A non-zero exit surfaces as a hook error in every Claude Code session.
+    try:
+        main()
+    except Exception:
+        traceback.print_exc()
