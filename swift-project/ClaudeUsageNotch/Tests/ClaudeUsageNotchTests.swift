@@ -513,14 +513,13 @@ final class FrontmostAppTests: XCTestCase {
 final class ConnectionStateTests: XCTestCase {
 
     private let at = Date(timeIntervalSince1970: 1_000_000)
-    private let notConfigured = ConnectionState(credentials: .notConfigured)
     private let expired = ConnectionState(credentials: .expired)
 
     private func connected(lastSync: Date?) -> ConnectionState {
         ConnectionState(credentials: .connected(lastSync: lastSync))
     }
 
-    private func syncing(from state: ConnectionState) -> ConnectionState {
+    private func syncing(_ state: ConnectionState) -> ConnectionState {
         ConnectionState(credentials: state.credentials, isSyncing: true)
     }
 
@@ -532,37 +531,37 @@ final class ConnectionStateTests: XCTestCase {
     }
 
     func test_startedWithCredentials_connectsWithoutASync() {
-        XCTAssertEqual(reduced(notConfigured, .started(hasCredentials: true)).0, connected(lastSync: nil))
+        XCTAssertEqual(reduced(.notConfigured, .started(hasCredentials: true)).0, connected(lastSync: nil))
     }
 
     func test_startedWithoutCredentials_isNotConfigured() {
-        XCTAssertEqual(reduced(connected(lastSync: at), .started(hasCredentials: false)).0, notConfigured)
+        XCTAssertEqual(reduced(connected(lastSync: at), .started(hasCredentials: false)).0, .notConfigured)
     }
 
     func test_credentialsSaved_connectsAndKeepsAnInFlightSync() {
         XCTAssertEqual(reduced(expired, .credentialsSaved).0, connected(lastSync: nil))
-        XCTAssertEqual(reduced(syncing(from: expired), .credentialsSaved).0,
-                       syncing(from: connected(lastSync: nil)))
+        XCTAssertEqual(reduced(syncing(expired), .credentialsSaved).0,
+                       syncing(connected(lastSync: nil)))
         XCTAssertEqual(reduced(connected(lastSync: at), .credentialsSaved).0, connected(lastSync: at))
     }
 
-    func test_refreshRequested_syncsFromTheSettledState() {
-        XCTAssertEqual(reduced(expired, .refreshRequested).0, syncing(from: expired))
-        XCTAssertEqual(reduced(syncing(from: expired), .refreshRequested).0, syncing(from: expired))
+    func test_refreshRequested_setsSyncingAndKeepsCredentials() {
+        XCTAssertEqual(reduced(expired, .refreshRequested).0, syncing(expired))
+        XCTAssertEqual(reduced(syncing(expired), .refreshRequested).0, syncing(expired))
     }
 
     func test_synced_connectsFromAnyState() {
-        for state in [notConfigured, expired, syncing(from: expired)] {
+        for state in [ConnectionState.notConfigured, expired, syncing(expired)] {
             XCTAssertEqual(reduced(state, .synced(at: at)).0, connected(lastSync: at))
         }
     }
 
     func test_missingCredentials_isNotConfigured() {
-        XCTAssertEqual(reduced(connected(lastSync: at), .failed(.missingCredentials)).0, notConfigured)
+        XCTAssertEqual(reduced(connected(lastSync: at), .failed(.missingCredentials)).0, .notConfigured)
     }
 
     func test_unauthorized_expiresAndNotifiesOnlyWhenItWasConnected() {
-        let fromConnected = reduced(syncing(from: connected(lastSync: at)), .failed(.unauthorized))
+        let fromConnected = reduced(syncing(connected(lastSync: at)), .failed(.unauthorized))
         XCTAssertEqual(fromConnected.0, expired)
         XCTAssertEqual(fromConnected.1, .notifyCredentialsExpired)
 
@@ -571,10 +570,15 @@ final class ConnectionStateTests: XCTestCase {
         XCTAssertNil(fromExpired.1)
     }
 
+    func test_lastSyncedAt_isHiddenWhileSyncing() {
+        XCTAssertEqual(connected(lastSync: at).lastSyncedAt, at)
+        XCTAssertNil(syncing(connected(lastSync: at)).lastSyncedAt)
+    }
+
     func test_otherFailure_keepsCredentialsButDropsTheLastSync() {
-        XCTAssertEqual(reduced(syncing(from: connected(lastSync: at)), .failed(.rateLimited)).0,
+        XCTAssertEqual(reduced(syncing(connected(lastSync: at)), .failed(.rateLimited)).0,
                        connected(lastSync: nil))
-        XCTAssertEqual(reduced(syncing(from: expired), .failed(.server(500))).0, expired)
+        XCTAssertEqual(reduced(syncing(expired), .failed(.server(500))).0, expired)
     }
 }
 
