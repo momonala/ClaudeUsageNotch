@@ -64,7 +64,7 @@ struct ExpandedPanelView: View {
             }
         }
         .background(KeyEventCatcher { key in
-            if key == "\u{1B}" { controller.userPressedEscape() }
+            if key == "\u{1B}" { controller.send(.escapePressed) }
         })
     }
 

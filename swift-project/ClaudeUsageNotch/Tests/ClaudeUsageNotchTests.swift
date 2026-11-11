@@ -567,3 +567,63 @@ final class ConnectionStateTests: XCTestCase {
         XCTAssertEqual(reduced(.syncing(from: .expired), .failed(.server(500))).0, .expired)
     }
 }
+
+// MARK: - NotchPhase
+
+final class NotchPhaseTests: XCTestCase {
+
+    private func reduced(_ phase: NotchPhase, _ event: NotchPhase.Event) -> NotchPhase {
+        var next = phase
+        next.reduce(event)
+        return next
+    }
+
+    func test_pointerEnteringCollapsed_hoverExpands() {
+        XCTAssertEqual(reduced(.collapsed, .pointer(inside: true)), .hoverExpanded)
+        XCTAssertEqual(reduced(.collapsed, .pointer(inside: false)), .collapsed)
+    }
+
+    func test_pointerLeavingHoverExpanded_collapses() {
+        XCTAssertEqual(reduced(.hoverExpanded, .pointer(inside: false)), .collapsed)
+        XCTAssertEqual(reduced(.hoverExpanded, .pointer(inside: true)), .hoverExpanded)
+    }
+
+    /// A click or Escape under the pointer must not re-expand on the next poll.
+    func test_collapsedUnderPointer_waitsForThePointerToLeave() {
+        XCTAssertEqual(reduced(.collapsedUnderPointer, .pointer(inside: true)), .collapsedUnderPointer)
+        XCTAssertEqual(reduced(.collapsedUnderPointer, .pointer(inside: false)), .collapsed)
+    }
+
+    func test_pinned_tracksThePointerButStaysOpen() {
+        XCTAssertEqual(reduced(.pinned(pointerInside: true), .pointer(inside: false)), .pinned(pointerInside: false))
+        XCTAssertEqual(reduced(.pinned(pointerInside: false), .pointer(inside: true)), .pinned(pointerInside: true))
+    }
+
+    func test_tap_pinsFromAnyCollapsedOrHoverPhase() {
+        XCTAssertEqual(reduced(.collapsed, .tapped), .pinned(pointerInside: false))
+        XCTAssertEqual(reduced(.collapsedUnderPointer, .tapped), .pinned(pointerInside: true))
+        XCTAssertEqual(reduced(.hoverExpanded, .tapped), .pinned(pointerInside: true))
+    }
+
+    func test_tapOnPinned_collapsesKeepingThePointer() {
+        XCTAssertEqual(reduced(.pinned(pointerInside: true), .tapped), .collapsedUnderPointer)
+        XCTAssertEqual(reduced(.pinned(pointerInside: false), .tapped), .collapsed)
+    }
+
+    func test_escape_collapsesKeepingThePointer() {
+        XCTAssertEqual(reduced(.hoverExpanded, .escapePressed), .collapsedUnderPointer)
+        XCTAssertEqual(reduced(.pinned(pointerInside: false), .escapePressed), .collapsed)
+        XCTAssertEqual(reduced(.collapsed, .escapePressed), .collapsed)
+    }
+
+    func test_clickOutside_collapsesOnlyWhenPinned() {
+        XCTAssertEqual(reduced(.pinned(pointerInside: false), .clickedOutside), .collapsed)
+        XCTAssertEqual(reduced(.hoverExpanded, .clickedOutside), .hoverExpanded)
+    }
+
+    func test_pinRequested_pinsAndKeepsPinned() {
+        XCTAssertEqual(reduced(.collapsed, .pinRequested), .pinned(pointerInside: false))
+        XCTAssertEqual(reduced(.hoverExpanded, .pinRequested), .pinned(pointerInside: true))
+        XCTAssertEqual(reduced(.pinned(pointerInside: true), .pinRequested), .pinned(pointerInside: true))
+    }
+}

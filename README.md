@@ -186,7 +186,7 @@ Sources/
 │       │                          Also defines ExpandedMode (.usage | .analytics | .settings)
 │       ├── AppSettings.swift      Persisted prefs: poll interval, thresholds, notifications
 │       ├── ConnectionState.swift  Credentials + last sync, one reduce(event)
-│       └── NotchState.swift       compactIdle / expandedHover / expandedPinned / …
+│       └── NotchPhase.swift       collapsed / hoverExpanded / pinned, one reduce(event)
 │
 ├── Providers/
 │   └── Claude/
@@ -432,7 +432,7 @@ invalidate each other and the CLI would need a fresh `claude login`.
 ## Agent status pulse (optional)
 
 A thin animated stroke around the notch perimeter, visible only in the compact,
-unhovered state (`NotchState.compactIdle`), reflecting the most-actionable state
+unhovered state (`NotchPhase` not expanded), reflecting the most-actionable state
 across your local Claude Code CLI sessions: amber pulse = a session needs your
 input, cyan pulse = a session is working, steady green = a session finished
 within the last 30 s (suppressed while any other session is working or waiting,

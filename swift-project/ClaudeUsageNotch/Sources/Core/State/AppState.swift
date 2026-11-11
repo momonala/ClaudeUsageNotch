@@ -14,7 +14,7 @@ public final class AppState: ObservableObject {
     @Published public var snapshot: ServiceUsageSnapshot?
     @Published public var incident: ServiceIncident?
 
-    @Published public var notchState: NotchState = .compactIdle
+    @Published public var notchPhase: NotchPhase = .collapsed
     @Published public var isNotchUIHidden: Bool = false { didSet { persist() } }
     @Published public var showOnboarding: Bool = false
     @Published public var expandedMode: ExpandedMode = .usage

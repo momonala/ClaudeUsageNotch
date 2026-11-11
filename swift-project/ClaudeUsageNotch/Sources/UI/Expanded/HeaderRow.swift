@@ -11,7 +11,7 @@ struct HeaderRow: View {
         // The spacer spans the notch dead-zone, keeping the controls in the
         // "ears" either side of the hardware cutout.
         HStack(spacing: 6) {
-            if appState.notchState == .expandedPinned {
+            if appState.notchPhase.isPinned {
                 Image(systemName: "pin.fill")
                     .font(.system(size: 8, weight: .semibold))
                     .foregroundColor(Theme.textSecondary.opacity(0.6))
@@ -25,7 +25,7 @@ struct HeaderRow: View {
 
             Button {
                 appState.isNotchUIHidden.toggle()
-                controller.userPressedEscape()
+                controller.send(.escapePressed)
             } label: {
                 Image(systemName: appState.isNotchUIHidden ? "eye.slash" : "eye")
                     .font(.system(size: 11))
@@ -58,7 +58,7 @@ struct HeaderRow: View {
         }
         // On the row, not on the pin itself: a transition needs an animation
         // from a view that outlives the insertion to have anything to run.
-        .animation(.easeInOut(duration: 0.15), value: appState.notchState)
+        .animation(.easeInOut(duration: 0.15), value: appState.notchPhase.isPinned)
     }
 
     private func modeButton(_ mode: ExpandedMode, icon: String) -> some View {

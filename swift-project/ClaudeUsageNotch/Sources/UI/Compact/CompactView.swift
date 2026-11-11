@@ -89,11 +89,9 @@ struct CompactView: View {
         return appState.sessionResetCompactString ?? "MAX"
     }
 
-    /// Idle only: `.compactHover` is a transient en route to `.expandedHover`,
-    /// so the glow goes the instant the mouse arrives.
     private var showAgentGlow: Bool {
         appSettings.showAgentStatusPulse
-            && appState.notchState == .compactIdle
+            && !appState.notchPhase.isExpanded
             && appState.agentStatus != .idle
     }
 }

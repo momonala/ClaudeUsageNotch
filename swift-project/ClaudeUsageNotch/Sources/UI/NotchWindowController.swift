@@ -15,7 +15,6 @@ final class NotchWindowController: NSObject {
     private var hostingController: NSHostingController<RootNotchView>?
     private var cancellables = Set<AnyCancellable>()
     private var hoverTimer: Timer?
-    private var isCurrentlyHovering = false
     private var clickOutsideMonitor: Any?
 
     private enum Layout {
@@ -86,19 +85,17 @@ final class NotchWindowController: NSObject {
         // near-black stock labels on pure black.
         panel.appearance = NSAppearance(named: .darkAqua)
 
-        appState.$notchState
+        appState.$notchPhase
+            .removeDuplicates { $0.isExpanded == $1.isExpanded && $0.isPinned == $1.isPinned }
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] state in self?.applyState(state) }
+            .sink { [weak self] phase in self?.applyPhase(phase) }
             .store(in: &cancellables)
 
         appState.$expandedMode
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                guard let self else { return }
-                switch self.appState.notchState {
-                case .expandedHover, .expandedPinned: self.applyState(self.appState.notchState)
-                default: break
-                }
+                guard let self, self.appState.notchPhase.isExpanded else { return }
+                self.applyPhase(self.appState.notchPhase)
             }
             .store(in: &cancellables)
 
@@ -137,7 +134,7 @@ final class NotchWindowController: NSObject {
         self.hostingController = hosting
         panel.contentView = hosting.view
 
-        applyState(appState.notchState)
+        applyPhase(appState.notchPhase)
         panel.orderFrontRegardless()
 
         startHoverTimer()
@@ -151,9 +148,9 @@ final class NotchWindowController: NSObject {
         clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDown) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
-                guard self.appState.notchState == .expandedPinned else { return }
+                guard self.appState.notchPhase.isPinned else { return }
                 if !self.panel.frame.contains(NSEvent.mouseLocation) {
-                    self.appState.notchState = .compactIdle
+                    self.send(.clickedOutside)
                 }
             }
         }
@@ -174,12 +171,8 @@ final class NotchWindowController: NSObject {
     /// while expanded so the card doesn't collapse under the pointer.
     private var hoverHitRect: NSRect {
         let frame = panel.frame
-        switch appState.notchState {
-        case .compactIdle, .compactHover:
-            return compactHoverHitRect(in: frame)
-        default:
-            return frame.insetBy(dx: -Layout.expandedHoverGrow, dy: -Layout.expandedHoverGrow)
-        }
+        guard appState.notchPhase.isExpanded else { return compactHoverHitRect(in: frame) }
+        return frame.insetBy(dx: -Layout.expandedHoverGrow, dy: -Layout.expandedHoverGrow)
     }
 
     /// The hardware cutout itself, and nothing below it: the strip hangs over
@@ -204,60 +197,34 @@ final class NotchWindowController: NSObject {
     }
 
     private func pollHover() {
-        let hovering = hoverHitRect.contains(NSEvent.mouseLocation)
-        guard hovering != isCurrentlyHovering else { return }
-        isCurrentlyHovering = hovering
-        if hovering { userHoveredIn()  }
-        else        { userHoveredOut() }
+        send(.pointer(inside: hoverHitRect.contains(NSEvent.mouseLocation)))
     }
 
     // MARK: - State transitions
 
-    func userHoveredIn() {
-        if appState.notchState == .compactIdle {
-            appState.notchState = .expandedHover
-        }
-    }
-
-    func userHoveredOut() {
-        guard appState.notchState != .expandedPinned else { return }
-        appState.notchState = .compactIdle
-    }
-
-    func userClicked() {
-        switch appState.notchState {
-        case .expandedPinned: appState.notchState = .compactIdle
-        default:              appState.notchState = .expandedPinned
-        }
-    }
-
-    func userPressedEscape() {
-        appState.notchState = .compactIdle
+    /// Assigns only on a real change: the hover poll sends an event every tick,
+    /// and each `@Published` write re-renders every view observing `AppState`.
+    func send(_ event: NotchPhase.Event) {
+        var next = appState.notchPhase
+        next.reduce(event)
+        guard next != appState.notchPhase else { return }
+        appState.notchPhase = next
     }
 
     // MARK: - Layout
 
     private func updateCompactLayoutIfNeeded() {
-        switch appState.notchState {
-        case .compactIdle, .compactHover:
-            let target = compactSize
-            guard abs(panel.frame.width - target.width) > 0.5
-                || abs(panel.frame.height - target.height) > 0.5 else { return }
-            animate(to: target, duration: 0.25, timing: .easeInEaseOut)
-        default:
-            break
-        }
+        guard !appState.notchPhase.isExpanded else { return }
+        let target = compactSize
+        guard abs(panel.frame.width - target.width) > 0.5
+            || abs(panel.frame.height - target.height) > 0.5 else { return }
+        animate(to: target, duration: 0.25, timing: .easeInEaseOut)
     }
 
-    private func applyState(_ state: NotchState) {
-        let targetSize: NSSize
-        switch state {
-        case .hidden:                         targetSize = NSSize(width: 1, height: 1)
-        case .compactIdle, .compactHover:     targetSize = compactSize
-        case .expandedHover, .expandedPinned: targetSize = expandedSize
-        }
+    private func applyPhase(_ phase: NotchPhase) {
+        let targetSize = phase.isExpanded ? expandedSize : compactSize
 
-        let isExpanding = (state == .expandedHover || state == .expandedPinned)
+        let isExpanding = phase.isExpanded
                        && panel.frame.height < (ScreenUtils.notchHeight + Layout.expandedHeightThreshold)
 
         guard isExpanding else {
@@ -322,16 +289,13 @@ struct RootNotchView: View {
 
     var body: some View {
         Group {
-            switch appState.notchState {
-            case .hidden:
-                Color.clear
-            case .compactIdle, .compactHover:
+            if !appState.notchPhase.isExpanded {
                 CompactView(appState: appState, appSettings: appSettings)
-                    .onTapGesture { controller.userClicked() }
+                    .onTapGesture { controller.send(.tapped) }
                     .contextMenu {
                         Button {
                             appState.expandedMode = .settings
-                            appState.notchState = .expandedPinned
+                            controller.send(.pinRequested)
                         } label: {
                             Label("Settings", systemImage: "gearshape.fill")
                         }
@@ -345,7 +309,7 @@ struct RootNotchView: View {
                             Label("Quit ClaudeUsageNotch", systemImage: "power")
                         }
                     }
-            case .expandedHover, .expandedPinned:
+            } else {
                 ExpandedPanelView(appState: appState, appSettings: appSettings, controller: controller)
                     .transition(.asymmetric(
                         insertion: .identity,
@@ -353,6 +317,6 @@ struct RootNotchView: View {
                     ))
             }
         }
-        .animation(.spring(response: 0.22, dampingFraction: 0.78), value: appState.notchState)
+        .animation(.spring(response: 0.22, dampingFraction: 0.78), value: appState.notchPhase.isExpanded)
     }
 }
