@@ -479,9 +479,9 @@ are stale and non-idle (a session that never sent `Stop`/`SessionEnd` — e.g. a
 killed terminal — so it can't hold `working`/`needsInput` forever), and
 aggregates the rest with `needsInput` > `working` > `completed` > `idle` priority
 so a session waiting on you is never hidden behind one that's merely working.
-The hook writes a finished turn as `idle` with event `Stop` (app builds already
-installed decode only `idle`/`working`/`needsInput`); the app reads that entry
-as `completed` for 30 s. `agent-status-hook/transitions.json` pins each hook
+The app decodes only `idle`, `working` and `needsInput`, so the hook writes a
+finished turn as `idle` with event `Stop` and the app reads that entry as
+`completed` for 30 s. `agent-status-hook/transitions.json` pins each hook
 event to its status and written entry, and both test suites replay it.
 
 **What fires amber.** Two independent paths, because Claude Code has no single

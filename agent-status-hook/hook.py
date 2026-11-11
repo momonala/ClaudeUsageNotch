@@ -32,8 +32,8 @@ class AgentStatus(str, Enum):
     COMPLETED = "completed"
 
 
-# Installed app builds decode only idle/working/needsInput, and read an idle
-# entry whose event is Stop as completed.
+# The app decodes only idle, working and needsInput, and reads an idle entry
+# whose event is Stop as completed.
 WIRE_STATUS = {AgentStatus.COMPLETED: AgentStatus.IDLE}
 
 STATUS_BY_EVENT = {

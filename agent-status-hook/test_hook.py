@@ -103,6 +103,30 @@ class SharedTransitionTable(unittest.TestCase):
                     {"status": row["wire"], "event": row["event"], "ts": 1.5, "cwd": ""},
                 )
 
+class WireFormat(unittest.TestCase):
+    APP_DECODES = {"idle", "working", "needsInput"}
+
+    def test_every_status_maps_to_a_value_the_app_decodes(self):
+        for status in hook.AgentStatus:
+            with self.subTest(status=status):
+                self.assertIn(hook.WIRE_STATUS.get(status, status).value, self.APP_DECODES)
+
+    def test_every_handled_event_writes_a_value_the_app_decodes(self):
+        payloads = (
+            {},
+            {"notification_type": "permission_prompt"},
+            {"notification_type": "idle_prompt"},
+            {"last_assistant_message": "Build succeeded."},
+            {"last_assistant_message": "Want me to push?"},
+        )
+        events = ("UserPromptSubmit", "PreToolUse", "Notification", "Stop")
+        for event in events:
+            for payload in payloads:
+                for current in (None, *self.APP_DECODES):
+                    with self.subTest(event=event, payload=payload, current=current):
+                        entry = hook._entry_for_event(event, payload, current, 0.0)
+                        self.assertIn(entry["status"], self.APP_DECODES)
+
 
 if __name__ == "__main__":
     unittest.main()
