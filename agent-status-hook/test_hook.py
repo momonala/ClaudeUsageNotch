@@ -7,6 +7,7 @@ the hook itself:
     python3 -m unittest discover -s agent-status-hook
 """
 import importlib.util
+import json
 import pathlib
 import unittest
 
@@ -53,14 +54,16 @@ class StatusForStop(unittest.TestCase):
         payload = {"last_assistant_message": "VPN is down. [NEEDS-ACTION]"}
         self.assertEqual(hook._status_for_stop(payload), "needsInput")
 
-    def test_plain_completion_is_idle(self):
+    def test_plain_completion_is_completed(self):
         payload = {"last_assistant_message": "Build succeeded."}
-        self.assertEqual(hook._status_for_stop(payload), "idle")
+        self.assertEqual(hook._status_for_stop(payload), "completed")
 
-    def test_absent_message_is_idle(self):
+    def test_absent_message_is_completed(self):
         # `last_assistant_message` is optional in the hook schema.
-        self.assertEqual(hook._status_for_stop({}), "idle")
-        self.assertEqual(hook._status_for_stop({"last_assistant_message": None}), "idle")
+        self.assertEqual(hook._status_for_stop({}), "completed")
+        self.assertEqual(
+            hook._status_for_stop({"last_assistant_message": None}), "completed"
+        )
 
 
 class StatusForNotification(unittest.TestCase):
@@ -79,11 +82,27 @@ class StatusForNotification(unittest.TestCase):
         )
 
 
+class SharedTransitionTable(unittest.TestCase):
+    """`transitions.json` is also replayed by the Swift tests against the app's
+    reading of the same file entries."""
 
-class StatusForEvent(unittest.TestCase):
-    def test_prompt_and_tool_use_mean_working(self):
-        for event in ("UserPromptSubmit", "PreToolUse"):
-            self.assertEqual(hook._status_for_event(event, {}, "idle"), "working")
+    ROWS = json.loads(pathlib.Path(__file__).with_name("transitions.json").read_text())
+
+    def test_each_event_reaches_its_status(self):
+        for row in self.ROWS:
+            with self.subTest(row=row):
+                status = hook._status_for_event(row["event"], row["payload"], row["current"])
+                self.assertEqual(status, row["status"])
+
+    def test_each_entry_is_written_in_the_shape_the_app_decodes(self):
+        for row in self.ROWS:
+            with self.subTest(row=row):
+                entry = hook._entry_for_event(row["event"], row["payload"], row["current"], 1.5)
+                self.assertEqual(
+                    json.loads(json.dumps(entry)),
+                    {"status": row["wire"], "event": row["event"], "ts": 1.5, "cwd": ""},
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

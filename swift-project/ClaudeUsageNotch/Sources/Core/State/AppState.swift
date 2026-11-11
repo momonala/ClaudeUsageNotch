@@ -20,7 +20,6 @@ public final class AppState: ObservableObject {
     @Published public var expandedMode: ExpandedMode = .usage
 
     @Published public var agentStatus: AgentStatus = .idle
-    @Published public var agentJustCompleted: Bool = false
 
     /// See `FrontmostAppService`. Defaults to true so a broken observer can't
     /// silently empty the notch.

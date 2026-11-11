@@ -67,11 +67,10 @@ public final class UsageCoordinator {
             .store(in: &cancellables)
         FrontmostAppService.shared.start()
 
-        AgentStatusService.shared.readingPublisher
+        AgentStatusService.shared.statusPublisher
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] reading in
-                self?.appState.agentStatus = reading.status
-                self?.appState.agentJustCompleted = reading.justCompleted
+            .sink { [weak self] status in
+                self?.appState.agentStatus = status
             }
             .store(in: &cancellables)
 
@@ -86,7 +85,6 @@ public final class UsageCoordinator {
                 } else {
                     AgentStatusService.shared.stop()
                     self.appState.agentStatus = .idle
-                    self.appState.agentJustCompleted = false
                 }
             }
             .store(in: &cancellables)

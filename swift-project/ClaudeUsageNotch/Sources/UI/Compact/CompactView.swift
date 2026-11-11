@@ -15,7 +15,7 @@ struct CompactView: View {
         ZStack(alignment: .bottom) {
             pill
             if showAgentGlow {
-                AgentStatusGlow(status: appState.agentStatus, justCompleted: appState.agentJustCompleted)
+                AgentStatusGlow(status: appState.agentStatus)
             }
         }
         .opacity(appeared ? 1 : 0)
@@ -94,6 +94,6 @@ struct CompactView: View {
     private var showAgentGlow: Bool {
         appSettings.showAgentStatusPulse
             && appState.notchState == .compactIdle
-            && (appState.agentStatus != .idle || appState.agentJustCompleted)
+            && appState.agentStatus != .idle
     }
 }

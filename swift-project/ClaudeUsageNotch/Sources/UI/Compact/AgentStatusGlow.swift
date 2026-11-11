@@ -9,7 +9,6 @@ import SwiftUI
 /// sides and bottom or the window clips the strokes away.
 struct AgentStatusGlow: View {
     let status: AgentStatus
-    let justCompleted: Bool
 
     @State private var beadPosition: CGFloat = 0
     @State private var breathe = false
@@ -41,27 +40,30 @@ struct AgentStatusGlow: View {
 
     var body: some View {
         Group {
-            if justCompleted {
+            switch status {
+            case .completed:
                 ring(lineWidth: Self.ringLineWidth)
                     .fill(Theme.statusHealthy.opacity(0.9))
-            } else if status == .working {
+            case .working:
                 ZStack {
                     ring(lineWidth: Self.ringLineWidth)
                         .fill(Theme.accentCool.opacity(Self.ringOpacity))
                     comet
                 }
                 .onAppear(perform: startComet)
-            } else if status == .needsInput {
+            case .needsInput:
                 // Weight, not scale: a `scaleEffect` breath would float the ring
                 // off the black.
                 ring(lineWidth: breathe ? Self.amberBreathWidth : Self.amberLineWidth)
                     .fill(Theme.statusWarning)
                     .opacity(breathe ? 1 : Self.amberTroughOpacity)
                     .onAppear(perform: startBreathing)
+            case .idle:
+                EmptyView()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .animation(.easeOut(duration: 2), value: justCompleted)
+        .animation(.easeOut(duration: 2), value: status == .completed)
     }
 
     /// A `repeatForever` animation only applies to views present in the

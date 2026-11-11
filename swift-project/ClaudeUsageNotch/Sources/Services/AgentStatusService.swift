@@ -3,12 +3,12 @@ import Combine
 import OSLog
 
 /// Polls the status file `agent-status-hook/hook.py` writes to and publishes
-/// the aggregated `AgentStatusReading` across all local Claude Code sessions.
+/// the aggregated `AgentStatus` across all local Claude Code sessions.
 final class AgentStatusService {
     static let shared = AgentStatusService()
     private init() {}
 
-    let readingPublisher = PassthroughSubject<AgentStatusReading, Never>()
+    let statusPublisher = PassthroughSubject<AgentStatus, Never>()
 
     private var task: Task<Void, Never>?
     private static let pollInterval: TimeInterval = 1.5
@@ -40,17 +40,17 @@ final class AgentStatusService {
     /// another idle reading.
     private func pollOnce() {
         guard let data = try? Data(contentsOf: Self.statusFileURL) else {
-            readingPublisher.send(.idle)
+            statusPublisher.send(.idle)
             return
         }
         do {
             let entries = try JSONDecoder().decode([String: AgentSessionEntry].self, from: data)
-            readingPublisher.send(
-                AgentStatusReading.from(Array(entries.values), now: Date().timeIntervalSince1970)
+            statusPublisher.send(
+                AgentStatus.current(from: Array(entries.values), now: Date().timeIntervalSince1970)
             )
         } catch {
             Self.log.error("Undecodable agent status file: \(error.localizedDescription, privacy: .public)")
-            readingPublisher.send(.idle)
+            statusPublisher.send(.idle)
         }
     }
 }

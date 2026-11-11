@@ -180,7 +180,7 @@ Sources/
 │   │   ├── Status.swift           UsageStatus, ProviderError
 │   │   ├── AnalyticsData.swift    Cost/token/model/project/skill breakdowns for the analytics chart
 │   │   ├── QuotaSnapshotPayload.swift  Payload POSTed to the sync server's quota_snapshots table
-│   │   └── AgentStatus.swift      Aggregated local Claude Code session status (idle/working/needsInput)
+│   │   └── AgentStatus.swift      Aggregated local Claude Code session status (idle/completed/working/needsInput)
 │   └── State/
 │       ├── AppState.swift         Runtime state; snapshots, notch state, incidents
 │       │                          Also defines ExpandedMode (.usage | .analytics | .settings)
@@ -477,8 +477,12 @@ Claude Code hooks and read-modify-writes a small JSON file at
 `session_id`. `AgentStatusService` polls that file (~1.5 s), drops entries that
 are stale and non-idle (a session that never sent `Stop`/`SessionEnd` — e.g. a
 killed terminal — so it can't hold `working`/`needsInput` forever), and
-aggregates the rest with `needsInput` > `working` > `idle` priority so a session
-waiting on you is never hidden behind one that's merely working.
+aggregates the rest with `needsInput` > `working` > `completed` > `idle` priority
+so a session waiting on you is never hidden behind one that's merely working.
+The hook writes a finished turn as `idle` with event `Stop` (app builds already
+installed decode only `idle`/`working`/`needsInput`); the app reads that entry
+as `completed` for 30 s. `agent-status-hook/transitions.json` pins each hook
+event to its status and written entry, and both test suites replay it.
 
 **What fires amber.** Two independent paths, because Claude Code has no single
 "waiting on the user" event:

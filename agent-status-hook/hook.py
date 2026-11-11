@@ -15,6 +15,7 @@ import re
 import sys
 import tempfile
 import time
+from enum import Enum
 
 STATUS_DIR = os.path.expanduser("~/Library/Application Support/ClaudeUsageNotch")
 STATUS_FILE = os.path.join(STATUS_DIR, "agent-status.json")
@@ -23,9 +24,21 @@ STATUS_FILE = os.path.join(STATUS_DIR, "agent-status.json")
 # in a new inode, leaving a second invocation holding a lock on the orphan.
 LOCK_FILE = os.path.join(STATUS_DIR, "agent-status.lock")
 
+
+class AgentStatus(str, Enum):
+    IDLE = "idle"
+    WORKING = "working"
+    NEEDS_INPUT = "needsInput"
+    COMPLETED = "completed"
+
+
+# Installed app builds decode only idle/working/needsInput, and read an idle
+# entry whose event is Stop as completed.
+WIRE_STATUS = {AgentStatus.COMPLETED: AgentStatus.IDLE}
+
 STATUS_BY_EVENT = {
-    "UserPromptSubmit": "working",
-    "PreToolUse": "working",
+    "UserPromptSubmit": AgentStatus.WORKING,
+    "PreToolUse": AgentStatus.WORKING,
 }
 
 # `notification_type` values that mean something is blocked on the user, as
@@ -51,8 +64,10 @@ def _status_for_notification(payload, current_status):
     `needsInput` an earlier event set for the same unresolved ask.
     """
     if payload.get("notification_type") in BLOCKED_NOTIFICATIONS:
-        return "needsInput"
-    return "needsInput" if current_status == "needsInput" else "idle"
+        return AgentStatus.NEEDS_INPUT
+    if current_status == AgentStatus.NEEDS_INPUT:
+        return AgentStatus.NEEDS_INPUT
+    return AgentStatus.IDLE
 
 
 def _asks_a_question(text):
@@ -71,12 +86,12 @@ def _asks_a_question(text):
 
 def _status_for_stop(payload):
     """The Stop payload carries `last_assistant_message` itself, so there's no
-    transcript to parse. It's optional; absent reads as plain idle.
+    transcript to parse. It's optional; absent reads as plain completion.
     """
     text = str(payload.get("last_assistant_message") or "")
     if NEEDS_ACTION_MARKER in text or _asks_a_question(text):
-        return "needsInput"
-    return "idle"
+        return AgentStatus.NEEDS_INPUT
+    return AgentStatus.COMPLETED
 
 
 def _status_for_event(event, payload, current_status):
@@ -86,6 +101,17 @@ def _status_for_event(event, payload, current_status):
     if event == "Stop":
         return _status_for_stop(payload)
     return STATUS_BY_EVENT[event]
+
+
+def _entry_for_event(event, payload, current_status, now):
+    """This session's record in the status file, in the shape the app decodes."""
+    status = _status_for_event(event, payload, current_status)
+    return {
+        "status": WIRE_STATUS.get(status, status).value,
+        "event": event,
+        "ts": now,
+        "cwd": payload.get("cwd", ""),
+    }
 
 
 def _load():
@@ -131,13 +157,9 @@ def main():
                 data.pop(session_id, None)
             else:
                 current_status = data.get(session_id, {}).get("status")
-                status = _status_for_event(event, payload, current_status)
-                data[session_id] = {
-                    "status": status,
-                    "event": event,
-                    "ts": time.time(),
-                    "cwd": payload.get("cwd", ""),
-                }
+                data[session_id] = _entry_for_event(
+                    event, payload, current_status, time.time()
+                )
             _write_atomic(data)
         finally:
             fcntl.flock(lock, fcntl.LOCK_UN)

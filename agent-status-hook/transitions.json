@@ -1,0 +1,9 @@
+[
+  {"event": "UserPromptSubmit", "payload": {}, "current": "idle", "status": "working", "wire": "working"},
+  {"event": "PreToolUse", "payload": {}, "current": "needsInput", "status": "working", "wire": "working"},
+  {"event": "Notification", "payload": {"notification_type": "permission_prompt"}, "current": "working", "status": "needsInput", "wire": "needsInput"},
+  {"event": "Notification", "payload": {"notification_type": "idle_prompt"}, "current": "needsInput", "status": "needsInput", "wire": "needsInput"},
+  {"event": "Notification", "payload": {"notification_type": "idle_prompt"}, "current": "working", "status": "idle", "wire": "idle"},
+  {"event": "Stop", "payload": {"last_assistant_message": "Ready. Want me to push?"}, "current": "working", "status": "needsInput", "wire": "needsInput"},
+  {"event": "Stop", "payload": {"last_assistant_message": "Build succeeded."}, "current": "working", "status": "completed", "wire": "idle"}
+]

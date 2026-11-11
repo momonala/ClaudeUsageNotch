@@ -341,16 +341,16 @@ final class NotificationServiceEvaluateTests: XCTestCase {
 
 final class AgentStatusTests: XCTestCase {
 
-    func test_aggregate_needsInputWinsOverWorking() {
-        XCTAssertEqual(AgentStatus.aggregate([.working, .needsInput, .idle]), .needsInput)
+    private let now: TimeInterval = 1_000_000
+
+    private func entry(_ status: AgentSessionEntry.Reported, _ event: String, age: TimeInterval) -> AgentSessionEntry {
+        AgentSessionEntry(status: status, event: event, ts: now - age, cwd: "")
     }
 
-    func test_aggregate_workingWinsOverIdle() {
-        XCTAssertEqual(AgentStatus.aggregate([.idle, .working]), .working)
-    }
-
-    func test_aggregate_nothingActive_isIdle() {
-        XCTAssertEqual(AgentStatus.aggregate([.idle, .idle]), .idle)
+    func test_aggregate_ranksNeedsInputThenWorkingThenCompleted() {
+        XCTAssertEqual(AgentStatus.aggregate([.completed, .working, .needsInput, .idle]), .needsInput)
+        XCTAssertEqual(AgentStatus.aggregate([.completed, .idle, .working]), .working)
+        XCTAssertEqual(AgentStatus.aggregate([.idle, .completed]), .completed)
         XCTAssertEqual(AgentStatus.aggregate([]), .idle)
     }
 
@@ -364,45 +364,48 @@ final class AgentStatusTests: XCTestCase {
         XCTAssertEqual(entry.cwd, "/tmp/project")
     }
 
-    func test_reading_dropsStaleNonIdleEntry() {
-        let now: TimeInterval = 1_000_000
-        let stale = AgentSessionEntry(status: .needsInput, event: "Notification", ts: now - 500, cwd: "")
-        let reading = AgentStatusReading.from([stale], now: now, staleAfter: 180)
-        XCTAssertEqual(reading.status, .idle)
+    func test_staleActiveEntry_readsAsIdle() {
+        XCTAssertEqual(AgentStatus.current(from: [entry(.needsInput, "Notification", age: 181)], now: now), .idle)
+        XCTAssertEqual(AgentStatus.current(from: [entry(.working, "PreToolUse", age: 181)], now: now), .idle)
+        XCTAssertEqual(AgentStatus.current(from: [entry(.working, "PreToolUse", age: 180)], now: now), .working)
     }
 
-    func test_reading_keepsFreshEntry() {
-        let now: TimeInterval = 1_000_000
-        let fresh = AgentSessionEntry(status: .working, event: "PreToolUse", ts: now - 10, cwd: "")
-        let reading = AgentStatusReading.from([fresh], now: now, staleAfter: 180)
-        XCTAssertEqual(reading.status, .working)
+    func test_stopEntry_readsAsCompletedFor30s() {
+        XCTAssertEqual(AgentStatus.current(from: [entry(.idle, "Stop", age: 30)], now: now), .completed)
+        XCTAssertEqual(AgentStatus.current(from: [entry(.idle, "Stop", age: 31)], now: now), .idle)
+        XCTAssertEqual(AgentStatus.current(from: [entry(.idle, "Notification", age: 1)], now: now), .idle)
     }
 
-    func test_reading_justCompleted_defaultWindowHoldsFor30s() {
-        let now: TimeInterval = 1_000_000
-        let stopped = AgentSessionEntry(status: .idle, event: "Stop", ts: now - 25, cwd: "")
-        XCTAssertTrue(AgentStatusReading.from([stopped], now: now).justCompleted)
-
-        let older = AgentSessionEntry(status: .idle, event: "Stop", ts: now - 31, cwd: "")
-        XCTAssertFalse(AgentStatusReading.from([older], now: now).justCompleted)
+    func test_completed_supersededByWorkingSession() {
+        let entries = [entry(.idle, "Stop", age: 2), entry(.working, "PreToolUse", age: 0)]
+        XCTAssertEqual(AgentStatus.current(from: entries, now: now), .working)
     }
 
-    func test_reading_justCompleted_supersededByWorkingSession() {
-        let now: TimeInterval = 1_000_000
-        let stopped = AgentSessionEntry(status: .idle, event: "Stop", ts: now - 2, cwd: "/done")
-        let working = AgentSessionEntry(status: .working, event: "PreToolUse", ts: now, cwd: "/busy")
-        let reading = AgentStatusReading.from([stopped, working], now: now)
-        XCTAssertEqual(reading.status, .working)
-        XCTAssertFalse(reading.justCompleted)
+    func test_completed_supersededByNeedsInputSession() {
+        let entries = [entry(.idle, "Stop", age: 2), entry(.needsInput, "Notification", age: 0)]
+        XCTAssertEqual(AgentStatus.current(from: entries, now: now), .needsInput)
     }
 
-    func test_reading_justCompleted_supersededByNeedsInputSession() {
-        let now: TimeInterval = 1_000_000
-        let stopped = AgentSessionEntry(status: .idle, event: "Stop", ts: now - 2, cwd: "/done")
-        let waiting = AgentSessionEntry(status: .needsInput, event: "Notification", ts: now, cwd: "/ask")
-        let reading = AgentStatusReading.from([stopped, waiting], now: now)
-        XCTAssertEqual(reading.status, .needsInput)
-        XCTAssertFalse(reading.justCompleted)
+    /// Replays the table the hook's own tests replay, so the app reads each
+    /// hook transition as the status the hook meant.
+    func test_sharedTransitionTable_readsAsTheHooksStatus() throws {
+        struct Row: Decodable {
+            let event: String
+            let status: String
+            let wire: AgentSessionEntry.Reported
+        }
+        let url = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent("../../../agent-status-hook/transitions.json")
+        let rows = try JSONDecoder().decode([Row].self, from: Data(contentsOf: url))
+        XCTAssertFalse(rows.isEmpty)
+        let expected: [String: AgentStatus] = [
+            "idle": .idle, "completed": .completed, "working": .working, "needsInput": .needsInput,
+        ]
+        for row in rows {
+            let read = AgentStatus.current(from: [entry(row.wire, row.event, age: 0)], now: now)
+            XCTAssertEqual(read, expected[row.status], "\(row.event) -> \(row.status)")
+        }
     }
 }
 
