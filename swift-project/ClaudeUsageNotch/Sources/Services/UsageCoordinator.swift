@@ -32,8 +32,7 @@ public final class UsageCoordinator {
             .sink { [weak self] snapshot in
                 guard let self else { return }
                 self.appState.snapshot = snapshot
-                self.appState.authStatus = .valid
-                self.appState.syncStatus = .ok(at: Date())
+                self.appState.connection.reduce(.synced(at: Date()))
                 self.handleNotifications(for: snapshot)
                 QuotaSyncService.push(snapshot, settings: self.appSettings)
             }
@@ -43,17 +42,12 @@ public final class UsageCoordinator {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] err in
                 guard let self else { return }
-                if err.isAuthIssue {
-                    let wasValid = self.appState.authStatus == .valid
-                    self.appState.authStatus = (err == .missingCredentials) ? .notConfigured : .expired
-                    if wasValid && err == .unauthorized {
-                        self.notifications.send(
-                            title: "Claude credentials expired",
-                            body: "Open ClaudeUsageNotch → Settings to reconnect."
-                        )
-                    }
+                if self.appState.connection.reduce(.failed(err)) == .notifyCredentialsExpired {
+                    self.notifications.send(
+                        title: "Claude credentials expired",
+                        body: "Open ClaudeUsageNotch → Settings to reconnect."
+                    )
                 }
-                self.appState.syncStatus = .error(err)
             }
             .store(in: &cancellables)
 
@@ -103,11 +97,10 @@ public final class UsageCoordinator {
             .sink { [weak self] interval in self?.usageService.updateInterval(interval) }
             .store(in: &cancellables)
 
-        if authService.hasAnyConfiguredProvider() {
-            appState.authStatus = .valid
+        let hasCredentials = authService.hasAnyConfiguredProvider()
+        appState.connection.reduce(.started(hasCredentials: hasCredentials))
+        if hasCredentials {
             usageService.start(interval: appSettings.pollIntervalSeconds)
-        } else {
-            appState.authStatus = .notConfigured
         }
     }
 
@@ -120,13 +113,13 @@ public final class UsageCoordinator {
     }
 
     public func onCredentialsSaved() {
-        appState.authStatus = .valid
+        appState.connection.reduce(.credentialsSaved)
         usageService.start(interval: appSettings.pollIntervalSeconds)
         IncidentMonitor.shared.start()
     }
 
     public func refreshNow() {
-        appState.syncStatus = .syncing
+        appState.connection.reduce(.refreshRequested)
         usageService.refreshNow()
     }
 

@@ -504,3 +504,63 @@ final class FrontmostAppTests: XCTestCase {
         }
     }
 }
+
+// MARK: - ConnectionState
+
+final class ConnectionStateTests: XCTestCase {
+
+    private let at = Date(timeIntervalSince1970: 1_000_000)
+
+    private func reduced(_ state: ConnectionState, _ event: ConnectionState.Event)
+        -> (ConnectionState, ConnectionState.Effect?) {
+        var next = state
+        let effect = next.reduce(event)
+        return (next, effect)
+    }
+
+    func test_startedWithCredentials_connectsWithoutASync() {
+        XCTAssertEqual(reduced(.notConfigured, .started(hasCredentials: true)).0, .connected(lastSync: nil))
+    }
+
+    func test_startedWithoutCredentials_isNotConfigured() {
+        XCTAssertEqual(reduced(.connected(lastSync: at), .started(hasCredentials: false)).0, .notConfigured)
+    }
+
+    func test_credentialsSaved_connectsAndKeepsAnInFlightSync() {
+        XCTAssertEqual(reduced(.expired, .credentialsSaved).0, .connected(lastSync: nil))
+        XCTAssertEqual(reduced(.syncing(from: .expired), .credentialsSaved).0,
+                       .syncing(from: .connected(lastSync: nil)))
+        XCTAssertEqual(reduced(.connected(lastSync: at), .credentialsSaved).0, .connected(lastSync: at))
+    }
+
+    func test_refreshRequested_syncsFromTheSettledState() {
+        XCTAssertEqual(reduced(.expired, .refreshRequested).0, .syncing(from: .expired))
+        XCTAssertEqual(reduced(.syncing(from: .expired), .refreshRequested).0, .syncing(from: .expired))
+    }
+
+    func test_synced_connectsFromAnyState() {
+        for state in [ConnectionState.notConfigured, .expired, .syncing(from: .expired)] {
+            XCTAssertEqual(reduced(state, .synced(at: at)).0, .connected(lastSync: at))
+        }
+    }
+
+    func test_missingCredentials_isNotConfigured() {
+        XCTAssertEqual(reduced(.connected(lastSync: at), .failed(.missingCredentials)).0, .notConfigured)
+    }
+
+    func test_unauthorized_expiresAndNotifiesOnlyWhenItWasConnected() {
+        let fromConnected = reduced(.syncing(from: .connected(lastSync: at)), .failed(.unauthorized))
+        XCTAssertEqual(fromConnected.0, .expired)
+        XCTAssertEqual(fromConnected.1, .notifyCredentialsExpired)
+
+        let fromExpired = reduced(.expired, .failed(.unauthorized))
+        XCTAssertEqual(fromExpired.0, .expired)
+        XCTAssertNil(fromExpired.1)
+    }
+
+    func test_otherFailure_keepsCredentialsButDropsTheLastSync() {
+        XCTAssertEqual(reduced(.syncing(from: .connected(lastSync: at)), .failed(.rateLimited)).0,
+                       .connected(lastSync: nil))
+        XCTAssertEqual(reduced(.syncing(from: .expired), .failed(.server(500))).0, .expired)
+    }
+}

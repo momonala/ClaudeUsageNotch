@@ -177,7 +177,7 @@ Sources/
 │   │   ├── UsageRecord.swift      Token-level record parsed from JSONL history
 │   │   ├── UsageWindow.swift      One quota window: pace, status, reset helpers
 │   │   ├── Timestamps.swift       The two ISO8601 shapes every wire format here uses
-│   │   ├── Status.swift           UsageStatus, ProviderError, AuthStatus, SyncStatus
+│   │   ├── Status.swift           UsageStatus, ProviderError
 │   │   ├── AnalyticsData.swift    Cost/token/model/project/skill breakdowns for the analytics chart
 │   │   ├── QuotaSnapshotPayload.swift  Payload POSTed to the sync server's quota_snapshots table
 │   │   └── AgentStatus.swift      Aggregated local Claude Code session status (idle/working/needsInput)
@@ -185,6 +185,7 @@ Sources/
 │       ├── AppState.swift         Runtime state; snapshots, notch state, incidents
 │       │                          Also defines ExpandedMode (.usage | .analytics | .settings)
 │       ├── AppSettings.swift      Persisted prefs: poll interval, thresholds, notifications
+│       ├── ConnectionState.swift  Credentials + last sync, one reduce(event)
 │       └── NotchState.swift       compactIdle / expandedHover / expandedPinned / …
 │
 ├── Providers/
@@ -248,7 +249,7 @@ UsageService (poll loop + backoff)
     │                                         ├──► NotificationService.evaluate(...)
     │                                         └──► QuotaSyncService.push ──POST──► sync server (when apiBaseURL set)
     │
-    └─ errorPublisher ────► UsageCoordinator ──► AppState.authStatus / syncStatus
+    └─ errorPublisher ────► UsageCoordinator ──► AppState.connection
                                                        │
     IncidentMonitor ────────────────────────────────► AppState.incidents
                                                        │

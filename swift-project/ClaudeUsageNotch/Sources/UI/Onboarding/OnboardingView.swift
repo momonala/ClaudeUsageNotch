@@ -284,7 +284,6 @@ struct OnboardingView: View {
                 let snapshot = try await provider.fetchUsage()
                 await MainActor.run {
                     appState.snapshot = snapshot
-                    appState.authStatus = .valid
                     onCredentialsSaved()
                     validating = false
                 }

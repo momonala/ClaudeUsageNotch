@@ -9,8 +9,7 @@ public enum ExpandedMode: Equatable {
 public final class AppState: ObservableObject {
     private var isLoading = false
 
-    @Published public var authStatus: AuthStatus = .notConfigured
-    @Published public var syncStatus: SyncStatus = .idle
+    @Published public var connection: ConnectionState = .notConfigured
 
     @Published public var snapshot: ServiceUsageSnapshot?
     @Published public var incident: ServiceIncident?

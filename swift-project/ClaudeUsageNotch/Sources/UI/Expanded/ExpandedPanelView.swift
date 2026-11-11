@@ -88,12 +88,12 @@ struct ExpandedPanelView: View {
     }
 
     private var lastUpdatedText: String {
-        if case .ok(let at) = appState.syncStatus {
+        if let at = appState.connection.lastSyncedAt {
             let secs = Int(Date().timeIntervalSince(at))
             if secs < 5 { return "Updated just now" }
             return "Updated \(Self.relativeDateFormatter.localizedString(for: at, relativeTo: Date()))"
         }
-        if case .syncing = appState.syncStatus { return "Syncing…" }
+        if appState.connection.isSyncing { return "Syncing…" }
         return "Not synced"
     }
 

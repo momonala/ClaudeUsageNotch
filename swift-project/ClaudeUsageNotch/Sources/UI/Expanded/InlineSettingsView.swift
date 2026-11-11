@@ -31,7 +31,7 @@ struct InlineSettingsView: View {
     // MARK: - Account
 
     private var accountSection: some View {
-        let account = AccountRow(authStatus: appState.authStatus)
+        let account = AccountRow(connection: appState.connection)
         return SettingsSection("Account") {
             SettingsRow(account.label, icon: account.icon, iconTint: account.tint) {
                 Button(account.buttonTitle) { appState.showOnboarding = true }
@@ -233,7 +233,7 @@ struct InlineSettingsView: View {
 // MARK: - Account row content
 
 /// How one auth state presents in the Account row. One switch rather than four
-/// parallel ones, so a new `AuthStatus` case can't pick up a label without a
+/// parallel ones, so a new `ConnectionState` case can't pick up a label without a
 /// matching symbol and tint.
 private struct AccountRow {
     let label: String
@@ -241,9 +241,9 @@ private struct AccountRow {
     let tint: Color
     let buttonTitle: String
 
-    init(authStatus: AuthStatus) {
-        switch authStatus {
-        case .valid:
+    init(connection: ConnectionState) {
+        switch connection.settled {
+        case .connected, .syncing:
             label = "Connected"
             icon = "checkmark.circle.fill"
             tint = Theme.statusHealthy

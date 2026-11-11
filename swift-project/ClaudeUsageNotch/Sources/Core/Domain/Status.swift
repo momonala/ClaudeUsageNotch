@@ -1,20 +1,5 @@
 import Foundation
 
-/// Whether stored credentials are usable.
-public enum AuthStatus: String, Codable, Hashable {
-    case notConfigured
-    case valid
-    case expired
-}
-
-/// Latest sync state, surfaced in compact + diagnostics views.
-public enum SyncStatus: Hashable {
-    case idle
-    case syncing
-    case ok(at: Date)
-    case error(ProviderError)
-}
-
 /// Categorised provider errors so the UI can react meaningfully.
 public enum ProviderError: Error, Hashable, CustomStringConvertible {
     case missingCredentials
