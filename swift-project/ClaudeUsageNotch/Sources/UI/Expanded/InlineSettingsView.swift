@@ -233,7 +233,7 @@ struct InlineSettingsView: View {
 // MARK: - Account row content
 
 /// How one auth state presents in the Account row. One switch rather than four
-/// parallel ones, so a new `ConnectionState` case can't pick up a label without a
+/// parallel ones, so a new `ConnectionState.Credentials` case can't pick up a label without a
 /// matching symbol and tint.
 private struct AccountRow {
     let label: String
@@ -242,8 +242,8 @@ private struct AccountRow {
     let buttonTitle: String
 
     init(connection: ConnectionState) {
-        switch connection.settled {
-        case .connected, .syncing:
+        switch connection.credentials {
+        case .connected:
             label = "Connected"
             icon = "checkmark.circle.fill"
             tint = Theme.statusHealthy

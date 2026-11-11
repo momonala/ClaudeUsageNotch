@@ -1,11 +1,13 @@
 import Foundation
 
-/// Whether the stored credentials work, and when usage last synced.
-public indirect enum ConnectionState: Hashable {
-    case notConfigured
-    case expired
-    case connected(lastSync: Date?)
-    case syncing(from: ConnectionState)
+/// Whether the stored credentials work, when usage last synced, and whether a
+/// sync is in flight.
+public struct ConnectionState: Hashable {
+    public enum Credentials: Hashable {
+        case notConfigured
+        case expired
+        case connected(lastSync: Date?)
+    }
 
     public enum Event: Hashable {
         case started(hasCredentials: Bool)
@@ -19,63 +21,59 @@ public indirect enum ConnectionState: Hashable {
         case notifyCredentialsExpired
     }
 
-    /// The state with any in-flight sync stripped off.
-    public var settled: ConnectionState {
-        if case .syncing(let from) = self { return from.settled }
-        return self
+    public var credentials: Credentials
+    public var isSyncing: Bool
+
+    public static let notConfigured = ConnectionState(credentials: .notConfigured)
+
+    public init(credentials: Credentials, isSyncing: Bool = false) {
+        self.credentials = credentials
+        self.isSyncing = isSyncing
     }
 
     public var isConnected: Bool {
-        if case .connected = settled { return true }
-        return false
-    }
-
-    public var isSyncing: Bool {
-        if case .syncing = self { return true }
+        if case .connected = credentials { return true }
         return false
     }
 
     public var lastSyncedAt: Date? {
-        if case .connected(let at) = self { return at }
-        return nil
+        guard !isSyncing, case .connected(let at) = credentials else { return nil }
+        return at
     }
 
     @discardableResult
     public mutating func reduce(_ event: Event) -> Effect? {
         switch event {
         case .started(let hasCredentials):
-            self = replacingSettled(hasCredentials ? connectedKeepingSync : .notConfigured)
+            if !hasCredentials {
+                credentials = .notConfigured
+            } else if !isConnected {
+                credentials = .connected(lastSync: nil)
+            }
             return nil
 
         case .credentialsSaved:
-            self = replacingSettled(connectedKeepingSync)
+            if !isConnected { credentials = .connected(lastSync: nil) }
             return nil
 
         case .refreshRequested:
-            self = .syncing(from: settled)
+            isSyncing = true
             return nil
 
         case .synced(let at):
-            self = .connected(lastSync: at)
+            credentials = .connected(lastSync: at)
+            isSyncing = false
             return nil
 
         case .failed(let error):
             let wasConnected = isConnected
+            isSyncing = false
             switch error {
-            case .missingCredentials: self = .notConfigured
-            case .unauthorized:       self = .expired
-            default:                  self = wasConnected ? .connected(lastSync: nil) : settled
+            case .missingCredentials: credentials = .notConfigured
+            case .unauthorized:       credentials = .expired
+            default:                  if wasConnected { credentials = .connected(lastSync: nil) }
             }
             return wasConnected && error == .unauthorized ? .notifyCredentialsExpired : nil
         }
-    }
-
-    private var connectedKeepingSync: ConnectionState {
-        if case .connected = settled { return settled }
-        return .connected(lastSync: nil)
-    }
-
-    private func replacingSettled(_ next: ConnectionState) -> ConnectionState {
-        isSyncing ? .syncing(from: next) : next
     }
 }
