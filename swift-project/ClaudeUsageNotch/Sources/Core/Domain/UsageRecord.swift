@@ -1,59 +1,39 @@
 import Foundation
 
-/// One assistant turn parsed from local JSONL history or fetched from the sync server.
+/// One assistant JSONL line parsed from local history, POSTed to the sync server.
 ///
-/// `Codable` mirrors the server's JSON schema (snake_case keys) so the same type both
-/// POSTs to and decodes from `claude-usage-notch-server`. Local JSONL parsing is manual
-/// (see `LocalHistoryReader`) because the on-disk keys differ from the API's.
-struct UsageRecord: Codable {
-    let uuid: String
-    let requestId: String?
+/// Claude Code writes one line per content block of a response, each repeating the
+/// request's usage; the server collapses them into one row per `request_id`.
+/// Keys mirror the server's snake_case schema.
+struct UsageRecord: Encodable {
+    let requestId: String
     let sessionId: String?
-    let parentUuid: String?
     let timestamp: Date
-    let cwd: String                 // full working-directory path
-    let project: String             // last path component of cwd
+    let cwd: String
     let gitBranch: String?
     let model: String
-    let version: String?
-    let entrypoint: String?
     let attributionSkill: String?
     let isSidechain: Bool
-    let stopReason: String?
-    let serviceTier: String?
     let inputTokens: Int
     let outputTokens: Int
     let cacheCreationTokens: Int
     let cacheReadTokens: Int
     let ephemeral1hTokens: Int
-    let ephemeral5mTokens: Int
-    let webSearches: Int
-    let webFetches: Int
 
     enum CodingKeys: String, CodingKey {
-        case uuid
         case requestId = "request_id"
         case sessionId = "session_id"
-        case parentUuid = "parent_uuid"
         case timestamp
         case cwd
-        case project
         case gitBranch = "git_branch"
         case model
-        case version
-        case entrypoint
         case attributionSkill = "attribution_skill"
         case isSidechain = "is_sidechain"
-        case stopReason = "stop_reason"
-        case serviceTier = "service_tier"
         case inputTokens = "input_tokens"
         case outputTokens = "output_tokens"
         case cacheCreationTokens = "cache_creation_tokens"
         case cacheReadTokens = "cache_read_tokens"
         case ephemeral1hTokens = "ephemeral_1h_tokens"
-        case ephemeral5mTokens = "ephemeral_5m_tokens"
-        case webSearches = "web_searches"
-        case webFetches = "web_fetches"
     }
 }
 

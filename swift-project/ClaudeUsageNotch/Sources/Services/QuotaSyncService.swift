@@ -20,8 +20,7 @@ enum QuotaSyncService {
             windowType:  window.type.rawValue,
             timestamp:   capturedAt,
             percentUsed: window.percentUsed,
-            resetsAt:    window.resetAt,
-            source:      DeviceName.current
+            resetsAt:    window.resetAt
         )
     }
 

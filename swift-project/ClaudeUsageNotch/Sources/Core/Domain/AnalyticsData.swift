@@ -51,9 +51,6 @@ struct AnalyticsData {
     let dailySessions:     [DailyValue]   // distinct sessions per bucket; same bucketing as dailyCost
     let hourlyActivity:    [HourlyValue]  // avg requests per hour-of-day across the lookback period
 
-    let totalWebSearches:  Int
-    let totalWebFetches:   Int
-
     var averageDailyCost: Double {
         weeklyCost / 7
     }
@@ -66,8 +63,7 @@ struct AnalyticsData {
                                        inputTokens: 0, outputTokens: 0,
                                        cacheCreateTokens: 0, cacheReadTokens: 0),
         modelBreakdown: [], projectBreakdown: [], skillBreakdown: [],
-        dailyCost: [], dailySessions: [], hourlyActivity: [],
-        totalWebSearches: 0, totalWebFetches: 0
+        dailyCost: [], dailySessions: [], hourlyActivity: []
     )
 
 }

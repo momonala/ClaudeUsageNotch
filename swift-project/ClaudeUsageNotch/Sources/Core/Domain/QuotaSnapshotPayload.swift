@@ -8,13 +8,11 @@ struct QuotaSnapshotPayload: Encodable {
     let timestamp:    Date
     let percentUsed:  Double
     let resetsAt:     Date?
-    let source:       String?
 
     enum CodingKeys: String, CodingKey {
         case windowType  = "window_type"
         case timestamp
         case percentUsed = "percent_used"
         case resetsAt    = "resets_at"
-        case source
     }
 }

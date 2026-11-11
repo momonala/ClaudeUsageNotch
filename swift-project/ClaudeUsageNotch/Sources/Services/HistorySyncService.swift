@@ -5,7 +5,7 @@ import Combine
 ///
 /// Disabled entirely when `apiBaseURL` is empty. The `lastSyncedAt` cursor only
 /// advances on a 200 response, so a failed POST is retried on the next tick; the
-/// server dedupes by `uuid`, making retries safe.
+/// server dedupes by `request_id`, making retries safe.
 @MainActor
 final class HistorySyncService {
     private let settings: AppSettings

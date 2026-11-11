@@ -547,24 +547,23 @@ Sync is **off by default** and enabled by setting a base URL in the inline setti
 
 - **Producer** — `HistorySyncService` POSTs new records on a timer (`syncIntervalSeconds`,
   default 10 min). A `lastSyncedAt` cursor (in `UserDefaults`) only advances on a `200`,
-  so failed pushes retry next tick; the server dedupes by `uuid`, making retries safe.
+  so failed pushes retry next tick; the server dedupes by `request_id`, making retries safe.
 - **Consumer** — `UsageChartView` fetches pre-aggregated analytics from
   `GET /api/analytics` via `RemoteHistoryReader.fetchAnalytics` (5 s timeout). There is
   **no** local fallback: with no `apiBaseURL`, or an unreachable Pi, the chart shows
   nothing/an error rather than re-parsing local JSONL.
 
-`UsageRecord` is `Codable` against the server's snake_case schema; local JSONL parsing
+`UsageRecord` is `Encodable` against the server's snake_case schema; local JSONL parsing
 stays manual in `LocalHistoryReader` because the on-disk keys differ from the API's.
 
-Multiple laptops can point at the same server with no extra setup: `UsageRecord.uuid`
-is assigned by Claude itself (not generated locally), so each device's local history
-merges into one deduped table regardless of which machine produced a given turn.
+Multiple laptops can point at the same server with no extra setup: `request_id` is
+assigned by the Claude API (not generated locally), so each device's local history
+merges into one row per request regardless of which machine sent it.
 
 ### Quota snapshots — real history for the % Quota chart
 
 On every successful poll, `QuotaSyncService` POSTs the live `five_hour`/`seven_day`
-utilization straight to `quota_snapshots` (`source` = hostname, useful when several
-laptops poll the same account). `GET /api/analytics` returns this as
+utilization straight to `quota_snapshots`. `GET /api/analytics` returns this as
 `session_quota_history` / `weekly_quota_history`; `UsageChartView`'s "% Quota" toggle
 plots it as a step function (each reading held until the next one), falling back to a
 token-share estimate only where no real reading exists yet (history predating this

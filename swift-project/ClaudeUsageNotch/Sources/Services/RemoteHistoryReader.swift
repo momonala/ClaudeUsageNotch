@@ -74,8 +74,6 @@ struct RemoteAnalytics: Decodable {
     let dailyCost:        [DailyValueDTO]
     let dailySessions:    [DailyValueDTO]
     let hourlyActivity:   [HourlyValueDTO]
-    let totalWebSearches: Int
-    let totalWebFetches:  Int
     let sessionBuckets:   [BucketDTO]
     let weeklyBuckets:    [BucketDTO]
     let sessionQuotaHistory: [QuotaPointDTO]
@@ -97,8 +95,6 @@ struct RemoteAnalytics: Decodable {
         case dailyCost        = "daily_cost"
         case dailySessions    = "daily_sessions"
         case hourlyActivity   = "hourly_activity"
-        case totalWebSearches = "total_web_searches"
-        case totalWebFetches  = "total_web_fetches"
         case sessionBuckets   = "session_buckets"
         case weeklyBuckets    = "weekly_buckets"
         case sessionQuotaHistory = "session_quota_history"
@@ -130,9 +126,7 @@ struct RemoteAnalytics: Decodable {
             skillBreakdown:   Self.toRankedItems(skillBreakdown),
             dailyCost:        Self.toDailyValues(dailyCost),
             dailySessions:    Self.toDailyValues(dailySessions),
-            hourlyActivity:   hourlyActivity.map { HourlyValue(hour: $0.hour, value: $0.value) },
-            totalWebSearches: totalWebSearches,
-            totalWebFetches:  totalWebFetches
+            hourlyActivity:   hourlyActivity.map { HourlyValue(hour: $0.hour, value: $0.value) }
         )
     }
 
