@@ -180,6 +180,7 @@ enum RemoteHistoryReader {
         guard let url = components?.url else { throw URLError(.badURL) }
 
         var request = URLRequest(url: url)
+        ServerAccess.authorize(&request)
         // The server answers in ~4.5 s, nearer 7 s for the longest lookback;
         // anything tighter fails the chart intermittently on a slow LAN.
         request.timeoutInterval = 8

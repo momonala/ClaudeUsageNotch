@@ -545,6 +545,18 @@ README for the API.
 Sync is **off by default** and enabled by setting a base URL in the inline settings
 (e.g. `http://raspberrypi.local:5014`); an empty URL disables it entirely.
 
+When the server sits behind Cloudflare Access (`https://claude-usage-notch-server.mnalavadi.org`),
+store an Access service token in the login Keychain once per Mac. `ServerAccess` sends it
+on every sync request; without both items, requests go out without the headers and Access
+rejects them.
+
+```bash
+security add-generic-password -U -s com.claudeusagenotch.server-access -a client-id -w '<client id>'
+security add-generic-password -U -s com.claudeusagenotch.server-access -a client-secret -w '<client secret>'
+```
+
+The first read after a rebuild may show a Keychain prompt; choose "Always Allow".
+
 - **Producer** — `HistorySyncService` POSTs new records on a timer (`syncIntervalSeconds`,
   default 10 min). A `lastSyncedAt` cursor (in `UserDefaults`) only advances on a `200`,
   so failed pushes retry next tick; the server dedupes by `request_id`, making retries safe.

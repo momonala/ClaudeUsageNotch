@@ -83,6 +83,7 @@ final class HistorySyncService {
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue(DeviceName.headerValue, forHTTPHeaderField: DeviceName.header)
+            ServerAccess.authorize(&request)
             request.httpBody = try UsageRecord.apiEncoder.encode(records)
 
             let (_, response) = try await URLSession.shared.data(for: request)
